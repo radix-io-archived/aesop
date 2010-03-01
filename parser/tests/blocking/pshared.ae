@@ -1,0 +1,97 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+
+static __blocking void run_pshared(void)
+{
+	pwait
+	{
+            pprivate int a;
+            pshared int b;
+            int c;
+
+            a = 100;
+            b = a;
+
+	    pbranch
+	    {
+                /* each pbranch block gets its own copy of pprivate variables */
+                assert(a == 100);
+                assert(a == b);
+
+                /* setting this pbranch's a to 200. */
+                a = 200;
+                assert(b == 100);
+                b = 300;
+
+                assert(c == 0);
+
+		btest1(&a);
+                /* this pbranch's a should be incremented by 1 */
+                assert(a == 201);
+
+                btest1(&b);
+                assert(b == 301);
+
+                /* c is shared */
+                assert(c == 400);
+	    }
+
+	    pbranch
+	    {
+                /* each pbranch gets its own copy of pprivate variables, so a in this pbranch should
+                 * still be 100, even though in the previous pbranch we set it to 200
+                 */
+                assert(a == 100);
+
+                /* b is shared */
+                assert(b == 300);
+
+                c = 400;
+
+                btest2(&a);
+
+                /* btest2 increments a by 2 */
+                assert(a == 102);
+	    }
+	}
+
+	printf("pwait done\n");
+}
+
+static int done = 0;
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t op_id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_pshared_post(basic_cb, myptr, NULL, NULL, &op_id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+	return 0;
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
+

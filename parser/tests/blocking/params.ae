@@ -1,0 +1,46 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+static __blocking void run_params(int a, const char *b, const char *c)
+{
+	int ret;
+	ret = btest1(&a);
+	printf("%s\n", b);
+	assert(ret == 0);
+	assert(a == 11);
+	ret = btest2(&a);
+	printf("%s\n", c);
+	assert(ret == 0);
+	assert(a == 13);
+	ret = btest3(&a);
+	printf("%d\n", a);
+	assert(ret == 0);
+	assert(a == 16);
+}
+
+static int done = 0;
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t op_id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_params_post(10, "FOO", "BAR", basic_cb, myptr, NULL, NULL, &op_id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+	return 0;
+}

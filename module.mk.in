@@ -1,0 +1,6 @@
+DIR := src/aesop
+
+LIBSRC += $(DIR)/opcache.c \
+	  $(DIR)/aesop.c \
+	  $(DIR)/resource.c
+

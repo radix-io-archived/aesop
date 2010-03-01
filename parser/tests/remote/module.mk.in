@@ -1,0 +1,13 @@
+DIR := src/aesop/parser/tests/remote
+
+# define the test_remote module
+REMOTE_TESTLIB_MODULES += $(DIR)/test_remote
+
+MYR = $(DIR)/test-remote.aer
+
+# specifies which aer files get included in the module
+REMOTE_TESTMODSRC_$(DIR)/test_remote := $(MYR)
+
+# include aer files in test library
+REMOTE_TESTLIBSRC += $(MYR)
+

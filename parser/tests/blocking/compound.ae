@@ -1,0 +1,73 @@
+
+
+#include <assert.h>
+#include <unistd.h>
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+__blocking int blah(void)
+{
+    btest_sleep(100);
+    return 0;
+}
+
+static __blocking int run_compound(void)
+{
+	int ret;
+	int a;
+
+        {
+            a = 0;
+            
+            ret = btest1(&a);
+            assert(a == 1);
+            assert(ret == 0);
+
+            ret = btest2(&a);
+            assert(a == 3);
+            assert(ret == 0);
+
+            {
+                a = 0;
+
+                ret = btest1(&a);
+                assert(a == 1);
+                assert(ret == 0);
+
+                ret = btest2(&a);
+                assert(a == 3);
+                assert(ret == 0);
+
+            }
+        }
+        return 0;
+}
+
+static int done = 0;
+static void compound_cb(void *ptr, int ret)
+{
+    printf("return: %d\n", ret);
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_compound_post(compound_cb, myptr, NULL, NULL, &id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+
+	return 0;
+}

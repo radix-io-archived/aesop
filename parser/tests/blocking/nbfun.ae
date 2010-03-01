@@ -1,0 +1,83 @@
+#include <assert.h>
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+static __blocking int run_inner_nbfun1(void)
+{
+	int ret;
+	int a = 0;
+
+	printf("a is: %d\n", a);
+	return 1;
+}
+
+static __blocking int run_outer_nbfun1(void)
+{
+	return run_inner_nbfun1();
+}
+
+static int done = 0;
+static void cb(void *ptr, int i)
+{
+    printf("%p\n", ptr);
+    printf("done: %d\n", i);
+    done = 1;
+}
+
+static __blocking int run_nbfun2(int a)
+{
+	if(a == 0)
+	{
+	    printf("reached dynamic no blocking\n");
+	    return a;
+	}
+	else
+	{
+	    return btest1(&a);
+	}
+
+	return 0;
+}
+
+static int done2 = 0;
+static void cb2(void *ptr, int r)
+{
+    printf("%p\n", ptr);
+    printf("done: %d\n", r);
+    done2 = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_outer_nbfun1_post(cb, myptr, NULL, NULL, &id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	run_nbfun2_post(20, cb2, myptr, NULL, NULL, &id);
+
+	while(done2 == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	done2 = 0;
+	run_nbfun2_post(0, cb2, myptr, NULL, NULL, &id);
+
+	while(done2 == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+
+	return 0;
+}

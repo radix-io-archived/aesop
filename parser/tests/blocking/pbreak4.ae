@@ -1,0 +1,86 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+static __blocking void run_pbreak4(void)
+{
+	int a = 0, b = 0, c = 0;
+	int ret, ret1, ret2;
+
+	ret = btest1(&a);
+	assert(ret == 0);
+	assert(a == 1);
+
+	pwait
+	{
+	    pbranch
+	    {
+		ret = btest1(&a);
+		assert(ret == 0);
+		assert(a == 2);
+		if(a > 1)
+		{
+		    printf("hit pbreak!\n");
+		    pbreak;
+		}
+		ret = btest3(&a);
+		assert(0);
+	    }
+
+	    pbranch
+	    {
+		ret1 = btest2(&b);
+		assert(ret1 == 0);
+		if(b > 1)
+		{
+		    printf("hit pbreak2!\n");
+		    pbreak;
+		}
+	    }
+
+	    pbranch
+	    {
+		printf("other pbranch\n");
+		ret2 = btest1(&c);
+		assert(ret2 == 0);
+		assert(c == 1);	
+		printf("other pbranch2\n");
+		ret2 = btest3(&c);
+		assert(ret2 == 0);
+		assert(c == 4);
+	    }
+	}
+
+	printf("pwait done\n");
+
+	ret = btest3(&a);
+	assert(ret == 0);
+	assert(a == 5);
+
+}
+
+static int done = 0;
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t op_id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_pbreak4_post(basic_cb, myptr, NULL, NULL, &op_id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+	return 0;
+}

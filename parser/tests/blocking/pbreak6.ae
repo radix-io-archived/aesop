@@ -1,0 +1,76 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+static __blocking void run_pbreak6(void)
+{
+	int a[100];
+	int b;
+	int ret[100];
+	int ret1;
+
+	memset(a, 0, sizeof(int)*100);
+
+	ret1 = btest1(&b);
+	assert(ret1 == 0);
+	assert(b == 1);
+
+	pwait
+	{
+	    pprivate int i = 0;
+	    for(i = 0; i < 100; ++i)
+	    {
+ 	        pbranch
+	        {
+		    ret[i] = btest2(&a[i]);
+		    assert(ret[i] == 0);
+		    assert(a[i] == 2);
+	        }
+	    }
+
+	    pbranch
+	    {
+		ret1 = btest1(&b);
+		if(b > 1)
+		{
+		    printf("hit pbreak!\n");
+		    pbreak;
+		}
+		ret1 = btest3(&b);
+		assert(0);
+	    }
+	}
+
+	printf("pwait done\n");
+
+	ret1 = btest3(&b);
+	assert(ret1 == 0);
+	assert(b == 5);
+
+}
+
+static int done = 0;
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t op_id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_pbreak6_post(basic_cb, myptr, NULL, NULL, &op_id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+	return 0;
+}

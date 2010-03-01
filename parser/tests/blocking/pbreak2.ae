@@ -1,0 +1,68 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+static __blocking void run_pbreak2(void)
+{
+	int a = 0, b = 0, shared = 0;
+	int ret;
+
+	pwait
+	{
+	    pbranch
+	    {
+		ret = btest1(&a);
+		assert(ret == 0);
+		assert(a == 1);
+		shared += a;
+		printf("before pbreak: a == %d!\n", a);
+		if(shared > 2)
+		{
+		    pbreak;
+		}
+		ret = btest2(&a);
+		assert(ret == 0);
+		assert(a == 3);
+	    }
+
+	    pbranch
+	    {
+		ret = btest3(&b);
+		assert(ret == 0);
+		assert(b == 3);
+		shared += b;
+
+		ret = btest1(&b);
+		assert(ret == 0);
+		assert(b == 4);
+	    }
+	}
+
+	printf("pwait done\n");
+}
+
+static int done = 0;
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t op_id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_pbreak2_post(basic_cb, myptr, NULL, NULL, &op_id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+	return 0;
+}

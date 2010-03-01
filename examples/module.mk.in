@@ -1,0 +1,5 @@
+DIR := src/aesop/examples
+
+AETESTSRC += $(DIR)/rpc-invoke.ae
+
+MODLIBS_$(DIR) = -lpthread

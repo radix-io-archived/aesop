@@ -1,0 +1,133 @@
+
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include "src/common/resources/timer/timer.hae"
+
+__blocking static int rpc_invoke()
+{
+    int a = 0;
+    int randval, val, ret;
+
+    randval = btest_random();
+    val = randval % 3;
+    printf("RANDOM VALUE: %d\n", val);
+    if(0 == val)
+    {
+	ret = btest1(&a);
+    }
+    else if(1 == val)
+    {
+	ret = btest2(&a);
+    }
+    else if(2 == val)
+    {
+	ret = btest3(&a);
+    }
+
+    assert(ret == 0);
+    assert((a-1) == val);
+    return randval;
+}
+
+__blocking static void invoke_many(int count)
+{
+    pwait
+    {
+	int i;
+	for(i = 0; i < count; ++i)
+	{
+	    pbranch { rpc_invoke(); }
+	}
+    }
+}
+
+static int running = 1;
+
+__blocking static void many_looping()
+{
+    pwait
+    {
+	int i;
+	
+	/* startup 100 looping invocations */
+	i = 0;
+	while(i < 100)
+	{
+	    pbranch
+	    {
+	        int j = 0;
+
+		while(running)
+		{
+		    rpc_invoke();
+		    printf("invoke: %d, %d\n", i, j++);
+		}
+	    }
+	    ++i;
+	}
+
+	/* let those loop for a bit */
+	pbranch
+	{
+	    triton_timer(10000);
+	    running = 0;
+	}
+    }
+}
+
+static int many_looping_done = 0;
+static void many_looping_cb(void *up)
+{
+    many_looping_done = 1;
+}
+
+static int done = 0;
+static int manydone = 0;
+
+static void cb(void *up, int ret)
+{
+    done++;
+}
+
+static void many_cb(void *up)
+{
+    manydone=1;
+}
+
+int main(int argc, char *argv[])
+{
+    ae_context_t ctx;
+    int i;
+
+    triton_timer_init();
+    btest_init();
+
+    ae_context_create(&ctx, 2, "btest", "timer");
+
+    for(i = 0; i < 100; ++i)
+    {
+	rpc_invoke_post(cb, NULL, NULL, NULL, NULL);
+    }
+
+    while(done < 100)
+    {
+	ae_poll(ctx, 100);
+    }
+
+    invoke_many_post(200, many_cb, NULL, NULL, NULL, NULL);
+    while(manydone == 0)
+    {
+	ae_poll(ctx, 100);
+    }
+
+    many_looping_post(many_looping_cb, NULL, NULL, NULL, NULL);
+    while(many_looping_done == 0)
+    {
+	ae_poll(ctx, 100);
+    }
+
+    ae_context_destroy(ctx);
+    btest_finalize();
+    triton_timer_finalize();
+    return 0;
+}

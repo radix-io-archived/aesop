@@ -1,0 +1,18 @@
+DIR := src/aesop/parser
+
+HSSRC += $(DIR)/CGen.lhs \
+	 $(DIR)/CParse.lhs \
+	 $(DIR)/CUtils.lhs \
+	 $(DIR)/BlockingContext.lhs \
+	 $(DIR)/Walker.lhs \
+	 $(DIR)/ContextGen.lhs \
+	 $(DIR)/Serialize.hs \
+	 $(DIR)/Header.lhs
+
+HSBINSRC += $(DIR)/ae-blocking-parser.lhs $(DIR)/ae-remote-parser.lhs
+
+MODNAME_$(DIR)/ae-blocking-parser.lhs = BlockingParser
+MODNAME_$(DIR)/ae-remote-parser.lhs = RemoteParser
+
+clean::
+	rm -rf *.o *.hi ae-blocking-parser ae-remote-parser

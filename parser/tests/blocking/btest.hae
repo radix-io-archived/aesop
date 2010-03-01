@@ -1,0 +1,56 @@
+#ifndef __BTEST_AEH__
+#define __BTEST_AEH__
+
+#include <stdlib.h>
+#include <stdio.h>
+#include "src/aesop/aesop.h"
+#include "src/aesop/op.h"
+
+/* These interfaces are used to test the gsl code for correctness.  They
+ * emulate a basic resource with blocking functions, using different completion
+ * techniques (queue/polling, threads, immediate completion).
+ */
+
+/* These three functions increment the integer pointer by 1, 2, and 3 respectively,
+ * by first storing the operation on a queue and completing the operation through
+ * a poll call.
+ */
+
+__blocking int btest1(int *a);
+__blocking int btest2(int *b);
+__blocking int btest3(int *c);
+
+/* This function sleeps for the specified seconds.  This is implemented by putting
+ * the operation on queue, and performing the sleep() call at polling time.
+ */
+__blocking int btest_sleep(int secs);
+
+/* This function is a blocking function that never returns, but can be cancelled.
+ * The operation is placed on a queue, and if a call to ae_cancel occurs the operation
+ * is completed, otherwise the operation remains on the queue indefinitely.
+ */
+__blocking int btest_forever();
+
+/* This function simply returns a random value.  The operation is first placed
+ * on a queue, and during polling the random value is calculated and the operation
+ * completed.
+ */
+__blocking int btest_random();
+
+/* This function tests immediate completion.  It increments the parameter passed in
+ * directly in the post function and calls the callback from the post function, returning
+ * the TRITON_COMPLETE value instead of TRITON_POSTED.
+ */
+__blocking int ictest1(int *a);
+
+/* This function tests completion in a separate thread, where the completion callback may
+ * be called before the post call actually completes.  The post call starts a thread that
+ * increments the value and calls the callback.  After the post call starts the thread it
+ * sleeps for 1000 microseconds before returning TRITON_POSTED.
+ */
+__blocking int tctest1(int *a);
+
+int btest_init(void);
+int btest_finalize(void);
+
+#endif

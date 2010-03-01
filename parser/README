@@ -1,0 +1,25 @@
+
+If you want to build/install haskell and
+the necessary haskell libraries for aesop, you should follow these steps:
+
+On debian/ubuntu, run (requires sudo privs):
+
+./maint/hs/setup-hs-debian
+./maint/hs/setup-langc
+
+If you don't have root, but haskell (ghc) has already been installed, you can do:
+
+./maint/hs/setup-hs-local
+./maint/hs/setup-langc
+
+On systems without haskell binary packages (ghc), you'll need to do:
+
+* Download/Build/Install ghc from http://www.haskell.org/ghc/
+* Download/Build/Install MTL from http://hackage.haskell.org/cgi-bin/hackage-scripts/package/mtl
+* Download/Build/Install happy from http://www.haskell.org/happy/
+* Download/Build/Install alex from http://www.haskell.org/alex/
+
+* Then run: setup-langc
+
+NOTE: Building by hand turns out to be a big PITA, its highly recommended
+that you find a system where you can install the debian packages.

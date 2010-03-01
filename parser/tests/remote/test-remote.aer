@@ -1,0 +1,31 @@
+#include "src/common/triton-types.h"
+#include "src/aesop/aesop.h"
+#include "src/remote/encoding.h"
+#include "src/remote/remote.hae"
+#include "src/common/resources/timer/timer.hae"
+
+__remote struct myremotes
+{
+    int32_t t1;
+    uint64_t ut1;
+};
+
+__remote __blocking triton_ret_t myremote(int32_t in, int32_t *out);
+
+__remote __blocking triton_ret_t myremote(int32_t in, int32_t *out)
+{
+    triton_ret_t ret;
+    *out = triton_timer(in);
+    *out = in;
+    return TRITON_SUCCESS;
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ts=8 sts=4 sw=4 expandtab
+ */
+    

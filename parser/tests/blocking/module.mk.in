@@ -1,0 +1,58 @@
+DIR := src/aesop/parser/tests/blocking
+
+AETESTSRC +=  $(DIR)/icpfor.ae \
+	      $(DIR)/tcpfor.ae \
+	      $(DIR)/afterwhile.ae \
+	      $(DIR)/basic.ae \
+	      $(DIR)/compound.ae \
+	      $(DIR)/params.ae \
+	      $(DIR)/forloop.ae \
+	      $(DIR)/whileloop.ae \
+	      $(DIR)/parallel1.ae \
+	      $(DIR)/parallel2.ae \
+	      $(DIR)/parallel3.ae \
+	      $(DIR)/parallel4.ae \
+	      $(DIR)/parallelfor.ae \
+	      $(DIR)/parallelfor2.ae \
+	      $(DIR)/whilebreak.ae \
+	      $(DIR)/whilebreak2.ae \
+	      $(DIR)/whilebreak3.ae \
+	      $(DIR)/nested.ae \
+	      $(DIR)/pbreak.ae \
+	      $(DIR)/pbreak2.ae \
+	      $(DIR)/pbreak3.ae \
+	      $(DIR)/pbreak4.ae \
+	      $(DIR)/pbreak5.ae \
+	      $(DIR)/pbreak6.ae \
+	      $(DIR)/pbreak7.ae \
+	      $(DIR)/pbreak8.ae \
+	      $(DIR)/if.ae \
+	      $(DIR)/ifnoelse.ae \
+	      $(DIR)/ifnoelse2.ae \
+	      $(DIR)/ifnbelse.ae \
+	      $(DIR)/multif.ae \
+	      $(DIR)/mixed.ae \
+	      $(DIR)/twofors.ae \
+	      $(DIR)/threefors.ae \
+	      $(DIR)/funptrs.ae \
+	      $(DIR)/nbfun.ae \
+	      $(DIR)/pprivate.ae \
+	      $(DIR)/pshared.ae
+
+# This should not compile
+#	      $(DIR)/pbranch-with-return.ae
+
+AESOP_HDR += $(DIR)/btest.hae
+
+TESTLIBSRC += $(DIR)/btest-impl.c
+
+MODLIBS_$(DIR) = -lpthread
+
+TESTPARAMS_$(DIR)/if = 0 1 2 3 4
+TESTPARAMS_$(DIR)/ifnoelse = 0 1
+TESTPARAMS_$(DIR)/ifnoelse2 = 0 1
+TESTPARAMS_$(DIR)/ifnbelse = 0 1
+TESTPARAMS_$(DIR)/multif = 0 1 2 3 4
+TESTPARAMS_$(DIR)/mixed = 0 1 2 3 4
+TESTPARAMS_$(DIR)/twofors = 0 1 2 3 4
+TESTPARAMS_$(DIR)/threefors = 0 1 2 3 4

@@ -1,0 +1,92 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+
+static __blocking void run_par3(void)
+{
+	int a = 0, b = 0, c = 0;
+	int ret1, ret2, ret3;
+
+	pwait
+	{
+	    pbranch
+	    {
+		ret1 = btest1(&a);
+		assert(ret1 == 0);
+		assert(a == 1);
+		ret1 = btest1(&a);
+		assert(ret1 == 0);
+		assert(a == 2);
+		ret1 = btest1(&a);
+		assert(ret1 == 0);
+		assert(a == 3);
+	    }
+
+	    pbranch
+	    {
+		ret2 = btest2(&b);
+		assert(ret2 == 0);
+		assert(b == 2);
+		ret2 = btest2(&b);
+		assert(ret2 == 0);
+		assert(b == 4);
+		ret2 = btest2(&b);
+		assert(ret2 == 0);
+		assert(b == 6);
+	    }
+	
+	    pbranch
+	    {
+		ret3 = btest3(&c);
+		assert(ret3 == 0);
+		assert(c == 3);
+		ret3 = btest3(&c);
+		assert(ret3 == 0);
+		assert(c == 6);
+		ret3 = btest3(&c);
+		assert(ret3 == 0);
+		assert(c == 9);
+	    }
+	}
+
+	printf("pwait done\n");
+
+	ret1 = btest1(&a);
+	assert(ret1 == 0);
+	assert(a == 4);
+	
+	ret1 = btest2(&a);
+	assert(ret1 == 0);
+	assert(a == 6);
+
+	ret1 = btest3(&a);
+	assert(ret1 == 0);
+	assert(a == 9);
+}
+
+static int done = 0;
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t op_id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_par3_post(basic_cb, myptr, NULL, NULL, &op_id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+	return 0;
+}

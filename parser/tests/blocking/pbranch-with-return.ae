@@ -1,0 +1,53 @@
+#include <assert.h>
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+static __blocking int pbranch_with_return(void)
+{
+
+    pwait
+    {
+        pprivate int a = 0;
+
+        pbranch
+        {
+            btest1(&a);
+            return a;
+        }
+
+        pbranch
+        {
+            btest2(&a);
+        }
+    }
+
+    return 0;
+}
+
+static int done = 0;
+static void cb(void *ptr, int i)
+{
+    printf("%p\n", ptr);
+    printf("done: %d\n", i);
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	pbranch_with_return_post(cb, myptr, NULL, NULL, &id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+
+	return 0;
+}

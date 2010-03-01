@@ -1,0 +1,50 @@
+
+#include <assert.h>
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+static __blocking void run_basic(void)
+{
+	int ret;
+	int a = 0;
+
+	ret = btest1(&a);
+	assert(a == 1);
+	assert(ret == 0);
+
+	ret = btest2(&a);
+	assert(a == 3);
+	assert(ret == 0);
+
+	ret = btest3(&a);
+	assert(a == 6);
+	assert(ret == 0);
+}
+
+static int done = 0;
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_basic_post(basic_cb, myptr, NULL, NULL, &id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+
+	return 0;
+}

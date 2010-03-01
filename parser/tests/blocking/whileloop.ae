@@ -1,0 +1,53 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+static __blocking void run_whileloop(void)
+{
+	int i, ret;
+	int a = 0;
+	
+	i = 100;
+	while(i > 0)
+	{
+		ret = btest1(&a);
+		assert(ret == 0);
+		assert(a == ((100-i)*6+1));
+
+		ret = btest2(&a);
+		assert(ret == 0);
+		assert(a == ((100-i)*6+3));
+
+		ret = btest3(&a);
+		assert(ret == 0);
+		assert(a == ((100-i)*6+6));
+		--i;
+	}
+}
+	
+static int done = 0;
+
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t op_id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+	run_whileloop_post(basic_cb, myptr, NULL, NULL, &op_id);
+
+	while(done == 0)
+        {
+	    ae_poll(NULL, 0);
+	}
+
+	btest_finalize();
+	free(myptr);
+	return 0;
+}

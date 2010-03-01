@@ -1,0 +1,115 @@
+
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+
+int val = 0;
+
+static __blocking void run_threefors(void)
+{
+	int i, j, k;
+	int a = 0;
+	int b = 0;
+	int ret;
+	
+	for(i = 10; i > 0; --i)
+	{
+		for(j = 0; j < 10; ++j)
+		{
+			for(k = 10; k > 0; k--)
+			{
+				if(val == 0)
+				{
+					printf("no calls\n");
+				}
+				else if(val == 1)
+				{
+					ret = btest1(&a);
+					assert(ret == 0);
+					assert(a == (b+1));
+
+					ret = btest1(&a);
+					assert(ret == 0);
+					assert(a == (b+2));
+
+					ret = btest1(&a);
+					assert(ret == 0);
+					assert(a == (b+3));
+				}
+				else if(val == 2)
+				{
+					ret = btest2(&a);
+					assert(ret == 0);
+					assert(a == (b+2));
+
+					ret = btest2(&a);
+					assert(ret == 0);
+					assert(a == (b+4));
+
+					ret = btest2(&a);
+					assert(ret == 0);
+					assert(a == (b+6));
+				}
+				else if(val == 3)
+				{
+					ret = btest3(&a);
+					assert(ret == 0);
+					assert(a == (b+3));
+
+					ret = btest3(&a);
+					assert(ret == 0);
+					assert(a == (b+6));
+
+					ret = btest3(&a);
+					assert(ret == 0);
+					assert(a == (b+9));
+				}
+				else
+				{
+					ret = btest1(&a);
+					assert(ret == 0);
+					assert(a == (b+1));
+
+					ret = btest2(&a);
+					assert(ret == 0);
+					assert(a == (b+3));
+
+					ret = btest3(&a);
+					assert(ret == 0);
+					assert(a == (b+6));
+				}
+
+				b = a;
+			}
+		}
+	}
+}
+	
+static int done = 0;
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t op_id;
+	void *myptr = malloc(1);
+
+	btest_init();
+	printf("%p\n", myptr);
+
+	val = atoi(argv[1]);
+	run_threefors_post(basic_cb, myptr, NULL, NULL, &op_id);
+
+	while(done == 0)
+	{
+	    ae_poll(NULL, 0);
+	}
+
+	btest_finalize();
+	free(myptr);
+	return 0;
+}
