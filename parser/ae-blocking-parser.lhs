@@ -753,7 +753,7 @@ to calling the appropriate callback
 >	return $ map ((trLocals p b) . (transformExits (mkCompoundStmt Nothing endStmts (getNI b)))) stmts
 
 > swapReturnWithCallback :: CStat -> CStat -> CStat
-> swapReturnWithCallback endStmt (CReturn retexpr ni) = assert (isJust retexpr) compoundStmt
+> swapReturnWithCallback endStmt (CReturn retexpr ni) = compoundStmt
 >	where retparam = if isNothing retexpr then [] else [fromJust retexpr]
 >	      compoundStmt = mkCompoundStmt Nothing (endStmt :
 >               [CExpr (Just (CCall (CMember (mkVar "ctl" ni)
@@ -769,7 +769,7 @@ to calling the appropriate callback
 >	everywhere (mkT $ swapReturnWithCallback endStmt) stmt
 
 > swapPostReturnWithCallback :: CStat -> CStat -> CStat
-> swapPostReturnWithCallback endStmt (CReturn retexpr ni) = assert (isJust retexpr) compoundStmt
+> swapPostReturnWithCallback endStmt (CReturn retexpr ni) = compoundStmt
 >	where retparam = if isNothing retexpr then [] else [fromJust retexpr]
 >	      compoundStmt = mkCompoundStmt Nothing (endStmt :
 >                [(CExpr (Just (CCall (CMember (mkVar "ctl" ni)

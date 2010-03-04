@@ -648,25 +648,6 @@ CTypeOfType CDecl NodeInfo
 >                  ((genCDecl "triton_node_t" "id" ni) : params) -- parameters
 >                  stubStmts
 
-> mkServiceBlock :: String -> String -> String -> Bool -> String -> String -> NodeInfo -> RemoteT [CStat]
-> mkServiceBlock fname inTypeName inName isInPtr outTypeName outName ni = do
->       let macro = if isInPtr then "AER_MK_SERVICE_PTR_BLOCK" else "AER_MK_SERVICE_BLOCK"
->       mkStmtFromRemote macro [fname, inTypeName, inName, outTypeName, outName] ni
-
-> mkServiceStmts :: String -> [CDecl] -> NodeInfo -> RemoteT CStat
-> mkServiceStmts fname params ni = do
->       let [inparam, outparam] = params
->           (Ident inParamName _ _) = getCDeclName inparam
->           (Ident outParamName _ _) = getCDeclName outparam
->           inTypeName = canonCDecl (removeAPtr inparam)
->           outTypeName = canonCDecl (removeAPtr outparam)
->           (CDecl _ inDerived _) = inparam
->           isInPtr = any isDerivedPtr (join $ map getDerivedDeclrs inDerived)
->       serviceBlock <- mkServiceBlock fname inTypeName inParamName isInPtr outTypeName outParamName ni
-
->       return $ mkCompoundWithDecls Nothing [inparam, (removeAPtr outparam), genCDecl "triton_ret_t" "ret" ni]
->                                    serviceBlock ni
-
 > mkServiceFun :: CFunDef -> RemoteT CExtDecl
 > mkServiceFun fundef = do
 >       let fname = getFunDefName fundef
@@ -676,12 +657,23 @@ CTypeOfType CDecl NodeInfo
 >           newspecs = filterOutTypeSpec $ noremote
 >           (Ident inParamName _ _) = getCDeclName inparam
 >           (Ident outParamName _ _) = getCDeclName outparam
->           inTypeName = canonCDecl (removeAPtr inparam)
->           outTypeName = canonCDecl (removeAPtr outparam)
+>           inTypeName = show $ pretty (removeAPtr $ emptyDeclrList inparam)
+>           outTypeName = show $ pretty (removeAPtr $ emptyDeclrList outparam)
+>           canonInType = getRemoteTypeName $ getTypeSpecFromDecl inparam 
+>           canonOutType = getRemoteTypeName $ getTypeSpecFromDecl outparam
 >           (CDecl _ inDerived _) = inparam
 >           isInPtr = any isDerivedPtr (join $ map getDerivedDeclrs inDerived)
 >           macro = if isInPtr then "AER_MK_SERVICE_FNDEF_INPTR" else "AER_MK_SERVICE_FNDEF"
->       [fdef] <- mkFunDefFromRemote (fname ++ "_service_block") [] macro [fname, inTypeName, inParamName, outTypeName, outParamName] ni
+>       assert (isJust canonInType) return ()
+>       assert (isJust canonOutType) return ()
+>       [fdef] <- mkFunDefFromRemote (fname ++ "_service_block") [] macro
+>                                    [fname,
+>                                     inTypeName,
+>                                     fromJust canonInType,
+>                                     inParamName,
+>                                     outTypeName,
+>                                     fromJust canonOutType,
+>                                     outParamName] ni
 >       return $ addDeclSpecs fdef newspecs
 
 > mkOpStmts :: String -> NodeInfo -> RemoteT [CStat]
@@ -697,6 +689,11 @@ CTypeOfType CDecl NodeInfo
 >                   ("__get_op_id_" ++ fname)
 >                   []
 >                   (mkCompoundStmt Nothing (opfunStmts) ni)
+
+> mkRegCtorFun :: String -> NodeInfo -> RemoteT CExtDecl
+> mkRegCtorFun serviceName ni = do
+>       [fdef] <- mkFunDefFromRemote "" [] "AER_MK_REG_CTOR_FNDEF" [serviceName] ni
+>       return fdef
 
 > transformRemote :: CExtDecl -> RemoteT [CExtDecl]
 > transformRemote e@(CFDefExt funDef)
@@ -768,7 +765,8 @@ CTypeOfType CDecl NodeInfo
 >       opidDecls <- mkOpIdDecls ni
 >       sDecls <- mkServiceDecls ni
 >       regf <- mkRegFun sname ni
->       return $ CTranslUnit (opidDecls ++ sDecls ++ [regf]) ni
+>       ctor <- mkRegCtorFun sname ni
+>       return $ CTranslUnit (opidDecls ++ sDecls ++ [regf, ctor]) ni
 
 > generateAST :: FilePath -> IO CTranslUnit
 > generateAST input_file = do
@@ -779,8 +777,10 @@ CTypeOfType CDecl NodeInfo
 >         Right ast      -> return ast
 
 > getRegistryDecl :: String -> NodeInfo -> CTranslUnit
-> getRegistryDecl s ni = CTranslUnit [ CDeclExt $ (mkFunDecl ("aer_remote_register_" ++ s) (CTypeDef (newIdent "triton_ret_t" ni) ni) []
->                                                            [mkAnonCDecl (CVoidType ni) [] ni]) ] ni
+> getRegistryDecl s ni = CTranslUnit [ 
+>                            CDeclExt $ (mkFunDecl ("aer_remote_register_" ++ s)
+>                                                  (CTypeDef (newIdent "triton_ret_t" ni) ni) []
+>                                                  [mkAnonCDecl (CVoidType ni) [] ni]) ] ni
 
 > writeRegistryFiles :: String -> Maybe String -> RemoteT ()
 > writeRegistryFiles s r = do
@@ -801,7 +801,7 @@ CTypeOfType CDecl NodeInfo
 >       \#ifndef ___" ++ s ++ "_h__ \n\
 >       \#define ___" ++ s ++ "_h__ \n\
 >       \#include \"src/aesop/aesop.h\" \n\
->       \#include \"src/remote/service.h\" \n\
+>       \#include \"src/remote/service.hae\" \n\
 >       \\n\n"
 >       liftIO $ ((appendFile headerfile) . show . pretty) (getRegistryDecl s ni)
 >       liftIO $ appendFile headerfile $ " \n\

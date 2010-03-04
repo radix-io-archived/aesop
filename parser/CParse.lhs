@@ -32,6 +32,12 @@ _123_34_
 > getPosVarStr :: NodeInfo -> String
 > getPosVarStr (NodeInfo p _ _) = "_" ++ (show $ posRow p) ++ "_" ++ (show $ posColumn p) ++ "_"
 
+This is useful for removing the names (and initializers) from a declaration, making it
+a declaration without a name (good for return types, etc.).
+
+> emptyDeclrList :: CDecl -> CDecl
+> emptyDeclrList (CDecl specifiers _ ni) = CDecl specifiers [] ni
+
 Get the declarators from a list of triples
 
 > getCDeclrsFromList :: [(Maybe CDeclr, Maybe CInit, Maybe CExpr)] -> [CDeclr]

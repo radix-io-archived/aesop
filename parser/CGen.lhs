@@ -79,8 +79,14 @@ Functions to generate AST objects from C template code
 >         (Right ios) -> do { removeFile fp; return ios }
 >         (Left error) -> trace ("Preprocessor failed:" ++  (show error)) $ assert False $ return Data.ByteString.empty
 
+> swapNodeInfo :: NodeInfo -> NodeInfo -> NodeInfo
+> swapNodeInfo newni oldni = newni
+
+> swapNodeInfoInStmts :: NodeInfo -> [CStat] -> [CStat]
+> swapNodeInfoInStmts ni stmts = map (everywhere (mkT $ swapNodeInfo ni)) stmts
+
 > mkStmtFromCPPMacro :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> [CStat]
-> mkStmtFromCPPMacro idirs defines ifile ni macro params = stmts
+> mkStmtFromCPPMacro idirs defines ifile ni macro params = swapNodeInfoInStmts ni stmts
 >       where preproc = unsafePerformIO $ doStmtPP idirs defines ifile ni macro params
 >             strproc = Data.ByteString.Char8.unpack preproc
 >             parsedResult = (execParser_ translUnitP preproc $ posOfNode ni)
@@ -90,7 +96,8 @@ Functions to generate AST objects from C template code
 >		        (Right (CTranslUnit edecls _)) -> case (last edecls) of
 >                                                             (CFDefExt (CFunDef _ _ _ stmt _)) -> [stmt]
 >                                                             _ -> []
->			(Left pe) -> trace ("Error generating function definitions from macro '" ++ macro ++ "': " ++ strproc ++ (show pe))
+>			(Left pe) -> trace ("Error generating function definitions from macro '" ++
+>                                           macro ++ "': " ++ strproc ++ (show pe))
 >                                          (assert False [])
 
 > declDummyName :: String
@@ -116,8 +123,11 @@ Functions to generate AST objects from C template code
 >             dname (CDeclExt d) = (/=) declDummyName $ identToString (getCDeclName d)
 >             dname _ = False 
 
+> swapNodeInfoInDecls :: NodeInfo -> [CDecl] -> [CDecl]
+> swapNodeInfoInDecls ni decls = map (everywhere (mkT $ swapNodeInfo ni)) decls
+
 > mkDeclsFromCPPMacro :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> [CDecl]
-> mkDeclsFromCPPMacro idirs defines ifile ni macro params = decls
+> mkDeclsFromCPPMacro idirs defines ifile ni macro params = swapNodeInfoInDecls ni decls
 >       where preproc = unsafePerformIO $ doDeclPP idirs defines ifile ni macro params
 >             strproc = Data.ByteString.Char8.unpack preproc
 >             parsedResult = (execParser_ translUnitP preproc $ posOfNode ni)
@@ -156,8 +166,11 @@ Functions to generate AST objects from C template code
 > insertStmtBlock :: (Data a) => String -> [CStat] -> a -> a
 > insertStmtBlock name insert a = everywhere (mkT $ swapStmts name insert) a
 
+> swapNodeInfoInExtDecls :: NodeInfo -> [CExtDecl] -> [CExtDecl]
+> swapNodeInfoInExtDecls ni edecls = map (everywhere (mkT $ swapNodeInfo ni)) edecls
+
 > mkFunDefFromCPPMacro :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> String -> [CStat] -> [CExtDecl]
-> mkFunDefFromCPPMacro idirs defines ifile ni macro params insertName insertStmts = [completedFunDef]
+> mkFunDefFromCPPMacro idirs defines ifile ni macro params insertName insertStmts = swapNodeInfoInExtDecls ni [completedFunDef]
 >       where preproc = unsafePerformIO $ doFunDefPP idirs defines ifile ni macro params
 >             strproc = Data.ByteString.Char8.unpack preproc
 >             parsedResult = (execParser_ translUnitP preproc $ posOfNode ni)

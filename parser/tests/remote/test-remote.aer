@@ -10,15 +10,26 @@ __remote struct myremotes
     uint64_t ut1;
 };
 
-__remote __blocking triton_ret_t myremote(int32_t in, int32_t *out);
+__remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out);
 
-__remote __blocking triton_ret_t myremote(int32_t in, int32_t *out)
+__remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out)
 {
     triton_ret_t ret;
     *out = triton_timer(in);
     *out = in;
     return TRITON_SUCCESS;
 }
+
+__remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremotes *out);
+
+__remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremotes *out)
+{
+    triton_ret_t ret;
+    out->t1 = triton_timer(in->t1);
+    out->ut1 = 100;
+    return TRITON_SUCCESS;
+}
+
 
 /*
  * Local variables:

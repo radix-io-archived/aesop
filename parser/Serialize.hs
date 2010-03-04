@@ -64,7 +64,7 @@ instance Serialize CFunDef where
         $+$  hsep (map pretty declspecs)                      -- __attribute__((noreturn)) static long
         <+> pretty declr                                     -- foo(b)
         $+$ (ii . vcat . map (<> semi) . map pretty) decls   --     register long b;
-        $$ serializePrec (-1) stat                           -- {  ...
+        $+$ serializePrec (-1) stat                          -- {  ...
                                                              -- }
 
 instance Serialize CStat where
@@ -81,13 +81,13 @@ instance Serialize CStat where
 	szLine ni $+$
         (ii $  text "if" <+> text "(" <> pretty expr <> text ")")
                 $+$ serializePrec (-1) stat
-              $$ maybeP szElse estat
+              $+$ maybeP szElse estat
       where
         szElse (CIf else_if_expr else_if_stat else_stat ni) =
 	  szLine ni $+$ 
           text "else if" <+> text "(" <> pretty else_if_expr <> text ")"
             $+$ serializePrec (-1) else_if_stat
-          $$ maybeP szElse else_stat
+          $+$ maybeP szElse else_stat
         szElse else_stmt =
           text "else" $+$ serializePrec (-1) else_stmt
 
@@ -102,7 +102,7 @@ instance Serialize CStat where
     serialize (CWhile expr stat True ni) =
 	szLine ni $+$ 
         (ii $ text "do" $+$ serializePrec (-1) stat
-               $$ text "while" <+> text "(" <> pretty expr <> text ");")
+               $+$ text "while" <+> text "(" <> pretty expr <> text ");")
     serialize (CFor for_init cond step stat ni) =
 	szLine ni $+$ 
         (ii $ text "for" <+> text "("
@@ -122,7 +122,7 @@ instance Serialize CStat where
     serialize (CPBranch stmt ni) = szLine ni $+$ (ii $ text "pbranch" $+$ prettyPrec (-1) stmt)
     serialize (CPBreak ni) = szLine ni $+$ (ii $ text "pbreak" <> semi)
     serializePrec p (CCompound localLabels bis ni) =
-        let inner = szLine ni $+$ text "{" $+$ mlistP ppLblDecls localLabels $+$ vcat (map serialize bis) $$ text "}"
+        let inner = text "{" $+$ mlistP ppLblDecls localLabels $+$ vcat (map serialize bis) $+$ text "}"
         in  if p == -1 then inner else ii inner
         where ppLblDecls =  vcat . map (\l -> text "__label__" <+> identP l <+> semi)
     serializePrec _ p = serialize p
