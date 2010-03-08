@@ -21,15 +21,15 @@ typedef struct ae_opcache *ae_opcache_t;
     __callback(__user_ptr, __saved_error_code); \
     } while(0)
 
-int ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache);
+triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache);
    
-int ae_opcache_double_size(ae_opcache_t cache);
+triton_ret_t ae_opcache_double_size(ae_opcache_t cache);
 
-int ae_opcache_destroy(ae_opcache_t cache);
+void ae_opcache_destroy(ae_opcache_t cache);
 
 struct ae_op *ae_opcache_get(ae_opcache_t cache);
 
-int ae_opcache_put(ae_opcache_t cache, struct ae_op *op);
+void ae_opcache_put(ae_opcache_t cache, struct ae_op *op);
 
 inline int ae_opcache_size(ae_opcache_t cache);
 

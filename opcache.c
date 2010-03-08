@@ -2,6 +2,7 @@
 #include <errno.h>
 #include "src/aesop/aesop.h"
 #include "src/aesop/opcache.h"
+#include "src/common/triton-error.h"
 
 #define TRITON_OPCACHE_ARRAY_COUNT 32
 #define TRITON_OPCACHE_MAX_INDEX (0xFFFFFF)
@@ -18,13 +19,13 @@ struct ae_opcache
     int member_offset;
 };
 
-int ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache)
+triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache)
 {
     struct ae_opcache *c;
     c = malloc(sizeof(*c));
     if(!c)
     {
-        return -ENOMEM;
+        return TRITON_ERR_NOMEM;
     }
     c->size = init_size;
     c->array_count = 1;
@@ -32,7 +33,7 @@ int ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t
     if(!c->array[0])
     {
         free(c);
-        return -ENOMEM;
+        return TRITON_ERR_NOMEM;
     }
     c->typesize = typesize;
     c->member_offset = member_offset;
@@ -40,10 +41,10 @@ int ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t
     triton_mutex_init(&c->mutex, NULL);
     ae_ops_init(&(c->free_list));
     *cache = c;
-    return 0;
+    return TRITON_SUCCESS;
 }
     
-int ae_opcache_double_size(ae_opcache_t cache)
+triton_ret_t ae_opcache_double_size(ae_opcache_t cache)
 {
     int i;
     triton_mutex_lock(&cache->mutex);
@@ -56,15 +57,15 @@ int ae_opcache_double_size(ae_opcache_t cache)
         }
         free(cache);
         triton_mutex_unlock(&cache->mutex);
-        return -ENOMEM;
+        return TRITON_ERR_NOMEM;
     }
     cache->array_count++;
     cache->size *= 2;
     triton_mutex_unlock(&cache->mutex);
-    return 0;
+    return TRITON_SUCCESS;
 }
 
-int ae_opcache_destroy(ae_opcache_t cache)
+void ae_opcache_destroy(ae_opcache_t cache)
 {
     int i;
     triton_mutex_lock(&cache->mutex);
@@ -74,7 +75,7 @@ int ae_opcache_destroy(ae_opcache_t cache)
     }
     free(cache);
     triton_mutex_unlock(&cache->mutex);
-    return 0;
+    return;
 }
 
 inline int ae_opcache_size(ae_opcache_t cache)
@@ -119,13 +120,13 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
     return op;
 }
 
-int ae_opcache_put(ae_opcache_t cache, struct ae_op *op)
+void ae_opcache_put(ae_opcache_t cache, struct ae_op *op)
 {
     triton_mutex_lock(&cache->mutex);
     ae_ops_enqueue(op, &cache->free_list);
     triton_mutex_unlock(&cache->mutex);
 
-    return 0;
+    return;
 }
 
 struct ae_op *ae_opcache_lookup(ae_opcache_t cache, int id)
