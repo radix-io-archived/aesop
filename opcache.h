@@ -3,6 +3,7 @@
 #define __OPCACHE_H__
 
 #include "src/aesop/op.h"
+#include "src/common/triton-error.h"
 
 typedef struct ae_opcache *ae_opcache_t;
 
@@ -16,7 +17,7 @@ typedef struct ae_opcache *ae_opcache_t;
 #define ae_opcache_complete_op(__opcache, __op, __ret_type, __error_code) do { \
     void (*__callback)(void *, __ret_type) = (__op)->callback; \
     void* __user_ptr = (__op)->user_ptr; \
-    int __saved_error_code = __error_code; \
+    __ret_type __saved_error_code = __error_code; \
     ae_opcache_put(__opcache, __op); \
     __callback(__user_ptr, __saved_error_code); \
     } while(0)
