@@ -73,8 +73,8 @@ void ae_opcache_destroy(ae_opcache_t cache)
     {
         free(cache->array[i]);
     }
-    free(cache);
     triton_mutex_unlock(&cache->mutex);
+    free(cache);
     return;
 }
 
