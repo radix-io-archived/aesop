@@ -60,7 +60,7 @@ static void *tctest1_threadfun(void *ptr)
     op = (struct ae_op *)ptr;
     bop = ae_op_entry(op, struct btest_op, op);
     *(bop->value) += 1;
-    ae_opcache_complete_op(test_opcache, &bop->op, 0);
+    ae_opcache_complete_op(test_opcache, &bop->op, int, 0);
 
     return NULL;
 }
@@ -282,40 +282,40 @@ static int btest_poll(ae_context_t context, int ms)
    if(b)
    {
 	*(b->value) += 1;
-        ae_opcache_complete_op(test_opcache, &b->op, 0);
+        ae_opcache_complete_op(test_opcache, &b->op, int, 0);
    }
 
    b = poll_list(&list2);
    if(b)
    {
 	*(b->value) += 2;
-        ae_opcache_complete_op(test_opcache, &b->op, 0);
+        ae_opcache_complete_op(test_opcache, &b->op, int, 0);
    }
 
    b = poll_list(&list3);
    if(b)
    {
 	*(b->value) += 3;
-        ae_opcache_complete_op(test_opcache, &b->op, 0);
+        ae_opcache_complete_op(test_opcache, &b->op, int, 0);
    }
 
    b = poll_list(&clist);
    if(b)
    {
-        ae_opcache_complete_op(test_opcache, &b->op, -1);
+        ae_opcache_complete_op(test_opcache, &b->op, int, -1);
    }
 
    b = poll_list(&rlist);
    if(b)
    {
-       ae_opcache_complete_op(test_opcache, &b->op, random());
+       ae_opcache_complete_op(test_opcache, &b->op, int, random());
    }
 
    s = poll_sleep_list();
    if(s)
    {
 	sleep(s->sleep);
-        ae_opcache_complete_op(sleep_opcache, &s->op, 0);
+        ae_opcache_complete_op(sleep_opcache, &s->op, int, 0);
    }
    return 0;
 }
