@@ -13,8 +13,8 @@ typedef struct ae_opcache *ae_opcache_t;
 /* note that __error_code is copied on purpose for safety in case it is a
  * member of the __op structure.
  */
-#define ae_opcache_complete_op(__opcache, __op, __error_code) do { \
-    void (*__callback)(void *, int) = (__op)->callback; \
+#define ae_opcache_complete_op(__opcache, __op, __ret_type, __error_code) do { \
+    void (*__callback)(void *, __ret_type) = (__op)->callback; \
     void* __user_ptr = (__op)->user_ptr; \
     int __saved_error_code = __error_code; \
     ae_opcache_put(__opcache, __op); \
