@@ -6,7 +6,7 @@
 
 typedef struct ae_op
 {
-    void (*callback)(void *ptr, int ret);
+    void *callback;
     int (*op_worker)(struct ae_op* op);
     void *user_ptr;
     ae_hints_t hints;
@@ -21,7 +21,8 @@ typedef struct ae_op
     ((_op != NULL) ?                     \
         ((_type *)((char *)(_op) - (unsigned long)((&((_type *)0)->_member)))) : NULL)
 
-#define ae_invoke_callback(_op, _result) (_op)->callback((_op)->user_ptr, _result)
+#define ae_invoke_callback(_op, __ret_type, _result) \
+    ((void (*)(void *, __ret_type))(_op)->callback)((_op)->user_ptr, _result)
 
 #define ae_op_fill(_op, _cb, _up, _hints, _ctx) \
     do {                                        \
