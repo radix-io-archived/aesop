@@ -7,7 +7,7 @@
 
 typedef struct ae_opcache *ae_opcache_t;
 
-#define TRITON_OPCACHE_INIT(_optype, _member, _size, _name) \
+#define AE_OPCACHE_INIT(_optype, _member, _size, _name) \
     ae_opcache_init(sizeof(_optype), (unsigned long)(&((_optype *)0)->_member), _size, (_name))
 
 /* complete an operation by returning it to opcache and invoking callback */

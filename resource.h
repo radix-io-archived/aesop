@@ -26,11 +26,11 @@ uint64_t ae_id_lookup(ae_op_id_t id, int *resource_id);
 struct ae_resource
 {
     const char *resource_name;
-    int (*test)(ae_op_id_t id, int ms_timeout);
-    int (*poll_context)(ae_context_t context, int ms_timeout);
-    int (*cancel)(ae_context_t ctx, ae_op_id_t id);
-    int (*register_context)(ae_context_t context);
-    int (*unregister_context)(ae_context_t context);
+    triton_ret_t (*test)(ae_op_id_t id, int ms_timeout);
+    triton_ret_t (*poll_context)(ae_context_t context, int ms_timeout);
+    triton_ret_t (*cancel)(ae_context_t ctx, ae_op_id_t id);
+    triton_ret_t (*register_context)(ae_context_t context);
+    triton_ret_t (*unregister_context)(ae_context_t context);
 };
 
 /* Called by resources to register themselves to the resource framework */
@@ -40,19 +40,19 @@ void ae_resource_unregister(int resource_id);
 /* Contexts are created to allow separation of polling for different logical
  * groups of operations.
  */
-int ae_context_create(ae_context_t *context, int resource_count, ...);
+triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...);
 
 /* Context destruction.  Called to cleanup state allocated in ae_context_create.
  */
-int ae_context_destroy(ae_context_t context);
+triton_ret_t ae_context_destroy(ae_context_t context);
 
 /* Poll for completion of the operations within the given context up to a
  * timeout value.
  */
-int ae_poll(ae_context_t context, int ms);
+triton_ret_t ae_poll(ae_context_t context, int ms);
 
 /* Cancel an operation */
-int ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
+triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
 
 /* The ae_ctl structure is used by the aesop generated code to manage parallel and
  * nested operations.  This structure is not needed by resource writers or aesop 

@@ -53,7 +53,7 @@ void ae_resource_unregister(int id)
     ae_resource_count--;
 }
 
-int ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
+triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 {
     struct ae_ctl *ctl;
     int resource_id, ridx;
@@ -180,7 +180,7 @@ void ae_backtrace(void)
 
 #include <assert.h>
 
-int ae_poll(ae_context_t context, int millisecs)
+triton_ret_t ae_poll(ae_context_t context, int millisecs)
 {
     int resource_ms, i, ret;
     int rid, ridx;
@@ -231,15 +231,15 @@ int ae_poll(ae_context_t context, int millisecs)
         ret = nanosleep(&ts, NULL);
         if(ret != 0)
         {
-            return -errno;
+            return triton_error_from_errno(errno);
         }
     }
-    return 0;
+    return TRITON_SUCCESS;
 }
 
 #include <stdarg.h>
 
-int ae_context_create(ae_context_t *context, int resource_count, ...)
+triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
 {
     va_list ap;
     char *rname;
@@ -249,7 +249,7 @@ int ae_context_create(ae_context_t *context, int resource_count, ...)
 
     if(ae_context_count == AE_MAX_CONTEXTS)
     {
-        return -EINVAL;
+        return TRITON_ERR_INVAL;
     }
 
     c = &(ae_context_entries[cindex]);
@@ -259,7 +259,7 @@ int ae_context_create(ae_context_t *context, int resource_count, ...)
     c->resource_ids = malloc(sizeof(int) * resource_count);
     if(!c->resource_ids)
     {
-        return -ENOMEM;
+        return TRITON_ERR_NOMEM;
     }
     reindex = 0;
 
@@ -296,16 +296,16 @@ int ae_context_create(ae_context_t *context, int resource_count, ...)
         if(!resource_found)
         {
             va_end(ap);
-            return -EINVAL;
+            return TRITON_ERR_INVAL;
         }
     }
     va_end(ap);
 
     *context = c;
-    return 0;
+    return TRITON_SUCCESS; 
 }
 
-int ae_context_destroy(ae_context_t context)
+triton_ret_t ae_context_destroy(ae_context_t context)
 {
     int rid, idx, i;
 
@@ -322,7 +322,7 @@ int ae_context_destroy(ae_context_t context)
     context->resource_ids = NULL;
     context->id = -1;
     context->resource_count = -1;
-    return 0;
+    return TRITON_SUCCESS;
 }
 
 /*

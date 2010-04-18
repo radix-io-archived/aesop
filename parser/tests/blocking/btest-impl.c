@@ -273,7 +273,7 @@ static struct btest_op * poll_list(ae_ops_t *list)
    return NULL;
 }
 
-static int btest_poll(ae_context_t context, int ms)
+static triton_ret_t btest_poll(ae_context_t context, int ms)
 {
    struct btest_op *b;
    struct bsleep_op *s;
@@ -317,10 +317,10 @@ static int btest_poll(ae_context_t context, int ms)
 	sleep(s->sleep);
         ae_opcache_complete_op(sleep_opcache, &s->op, int, 0);
    }
-   return 0;
+   return TRITON_SUCCESS;
 }
 
-static int btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
+static triton_ret_t btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
 {
    struct ae_op *t, *tmp;
    struct btest_op *b;
@@ -336,7 +336,7 @@ static int btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
 	}
    }
 
-   return 0;
+   return TRITON_SUCCESS;
 }     
 
 struct ae_resource btest_resource =
@@ -350,8 +350,8 @@ int btest_init(void)
 {
     ae_resource_register(&btest_resource, &btest_resource_id);
 
-    TRITON_OPCACHE_INIT(struct bsleep_op, op, 1024, &sleep_opcache);
-    TRITON_OPCACHE_INIT(struct btest_op, op, 1024, &test_opcache);
+    AE_OPCACHE_INIT(struct bsleep_op, op, 1024, &sleep_opcache);
+    AE_OPCACHE_INIT(struct btest_op, op, 1024, &test_opcache);
 
     ae_ops_init(&list1);
     ae_ops_init(&list2);
