@@ -61,14 +61,14 @@
     }
 
 #define AE_MK_PBREAK_DECLS() \
-    int __ae_cancel_ret;
+    triton_ret_t __ae_cancel_ret;
 
 #define AE_MK_PBREAK_STMTS(__prefix, __fname, __location) \
 { \
     done_ctl->parent->hit_pbreak = 1; \
     triton_list_del(&done_ctl->link); \
     __ae_cancel_ret = ae_cancel_children(done_ctl->context, done_ctl->parent); \
-    if(__ae_cancel_ret != 0) \
+    if(__ae_cancel_ret != TRITON_SUCCESS) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: ae_cancel_cancel did not return success\n", #__fname, __location); \
     } \

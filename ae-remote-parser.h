@@ -389,7 +389,7 @@ __blocking triton_ret_t __service_##__fname__(aer_message_t *send_message, aer_m
     static uint64_t __op_id_##__fname__ = 0;
 
 #define AER_MK_REG_CTOR_FNDEF(__service_name__) \
-static void aer_remote_static_initializer_##__service_name__(void) __attribute__((constructor)) \
+__attribute__((constructor)) static void aer_remote_static_initializer_##__service_name__(void) \
 { \
     triton_ret_t ret; \
     ret = aer_remote_register_##__service_name__(); \

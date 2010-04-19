@@ -74,7 +74,7 @@ struct ae_ctl
 };
 
 /* internal function -- used by generated code */
-int ae_cancel_children(ae_context_t ctx, void *ptr);
+triton_ret_t ae_cancel_children(ae_context_t ctx, void *ptr);
 
 void ae_backtrace(void);
 

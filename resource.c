@@ -57,23 +57,23 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 {
     struct ae_ctl *ctl;
     int resource_id, ridx;
-    int ret = -EINVAL;
+    triton_ret_t ret;
 
     ae_id_lookup(op_id, &resource_id);
     ridx = AE_RESOURCE_ID2IDX(resource_id);
     if(ridx > ae_resource_count)
     {
-	return -EINVAL;
+	return TRITON_ERR_INVAL;
     }
 
     if(ae_resource_entries[ridx].id != resource_id)
     {
-	return -EINVAL;
+	return TRITON_ERR_INVAL;
     }
 
     if(ae_resource_entries[ridx].id == -1)
     {
-	return -EINVAL;
+	return TRITON_ERR_INVAL;
     }
 
     if(resource_id == 0)
@@ -84,7 +84,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 	{
 	    /* already cancelled! */
 	    triton_mutex_unlock(&ctl->mutex);
-	    return -EINVAL;
+	    return TRITON_ERR_INVAL;
 	}
 
 	ctl->cancelled = 1;
@@ -95,14 +95,14 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 	    struct ae_ctl *child_ctl;
 	    if(triton_list_empty(&ctl->children))
 	    {
-		return -EINVAL;
+		return TRITON_ERR_INVAL;
 	    }
 
 	    triton_list_for_each(entry, safe, &ctl->children)
 	    {
 		child_ctl = triton_list_get_entry(entry, typeof(*child_ctl), link);
 		ret = ae_cancel_op(context, child_ctl->current_op_id);
-		if(ret != 0)
+		if(ret != TRITON_SUCCESS)
 		{
 		    /* cancel failed */
 		    triton_mutex_unlock(&ctl->mutex);
@@ -131,9 +131,9 @@ uint64_t ae_id_lookup(ae_op_id_t id, int *resource_id)
     return (~AE_RESOURCE_MASK)&id;
 }
 
-int ae_cancel_children(ae_context_t context, void *ptr)
+triton_ret_t ae_cancel_children(ae_context_t context, void *ptr)
 {
-    int ret;
+    triton_ret_t ret;
     struct ae_ctl *ctl;
     struct ae_ctl *child_ctl;
     struct triton_list_link *entry, *safe;
@@ -144,21 +144,21 @@ int ae_cancel_children(ae_context_t context, void *ptr)
         /* don't do anything here because there are no children
          * to cancel
          */
-	return 0;
+	return TRITON_SUCCESS;
     }
 
     triton_list_for_each(entry, safe, &ctl->children)
     {
 	child_ctl = triton_list_get_entry(entry, struct ae_ctl, link);
 	ret = ae_cancel_op(context, child_ctl->current_op_id);
-	if(ret != 0)
+	if(ret != TRITON_SUCCESS)
 	{
 	    /* cancel failed */
 	    return ret;
 	}
     }
 
-    return 0;
+    return TRITON_SUCCESS;
 }
 
 #include <execinfo.h>
@@ -182,9 +182,10 @@ void ae_backtrace(void)
 
 triton_ret_t ae_poll(ae_context_t context, int millisecs)
 {
-    int resource_ms, i, ret;
+    int resource_ms, i;
     int rid, ridx;
     int resources_polled = 0;
+    triton_ret_t ret;
 
     if(context)
     {
@@ -196,7 +197,7 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
             if(ae_resource_entries[ridx].resource->poll_context)
             {
                 ret = ae_resource_entries[ridx].resource->poll_context(context, resource_ms);
-                if(ret != 0)
+                if(ret != TRITON_SUCCESS)
                 {
                     return ret;
                 }
@@ -213,7 +214,7 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
             {
                 ret = ae_resource_entries[i].resource->poll_context(
                     context, resource_ms);
-                if(ret != 0)
+                if(ret != TRITON_SUCCESS)
                 {
                     return ret;
                 }
@@ -224,12 +225,13 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
 
     if(resources_polled == 0)
     {
+        int nret;
         struct timespec ts;
 
         ts.tv_sec = (int)(millisecs / 1e3);
         ts.tv_nsec = (millisecs % 1000) * 1e6;
-        ret = nanosleep(&ts, NULL);
-        if(ret != 0)
+        nret = nanosleep(&ts, NULL);
+        if(nret != 0)
         {
             return triton_error_from_errno(errno);
         }
@@ -245,7 +247,8 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
     char *rname;
     int cindex = ae_context_count;
     ae_context_t c;
-    int i, j, ret, reindex;
+    int i, j, reindex;
+    triton_ret_t ret;
 
     if(ae_context_count == AE_MAX_CONTEXTS)
     {
@@ -280,7 +283,7 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
                 if(ae_resource_entries[j].resource->register_context)
                 {
                     ret = ae_resource_entries[j].resource->register_context(c);
-                    if(ret != 0)
+                    if(ret != TRITON_SUCCESS)
                     {
                         /* what do we do if a context fails to register with a resource? */
                         va_end(ap);
