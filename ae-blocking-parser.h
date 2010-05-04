@@ -145,6 +145,7 @@
     __ctl->callback = callback; \
     __ctl->hints = hints; \
     __ctl->context = context; \
+    if(op_id) *op_id = ae_id_gen(0, (uint64_t)ctl); \
     triton_mutex_init(&__ctl->mutex, NULL); \
 }
 
@@ -214,7 +215,6 @@
 #define AE_MK_POST_FUN_FINISHED_STMTS() \
 __ae_post_end: \
 { \
-                   if(op_id) *op_id = ae_id_gen(0, (uint64_t)ctl); \
                    return __ae_postret; \
 } \
 
