@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 	printf("%p\n", myptr);
 
 	val = atoi(argv[1]);
-	run_mixed_post(basic_cb, myptr, NULL, NULL, &op_id);
+	run_mixed(basic_cb, myptr, NULL, NULL, &op_id);
 
 	while(done == 0)
 	{

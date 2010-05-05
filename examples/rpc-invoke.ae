@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
     for(i = 0; i < 100; ++i)
     {
-	rpc_invoke_post(cb, NULL, NULL, NULL, NULL);
+	rpc_invoke(cb, NULL, NULL, NULL, NULL);
     }
 
     while(done < 100)
@@ -114,13 +114,13 @@ int main(int argc, char *argv[])
 	ae_poll(ctx, 100);
     }
 
-    invoke_many_post(200, many_cb, NULL, NULL, NULL, NULL);
+    invoke_many(200, many_cb, NULL, NULL, NULL, NULL);
     while(manydone == 0)
     {
 	ae_poll(ctx, 100);
     }
 
-    many_looping_post(many_looping_cb, NULL, NULL, NULL, NULL);
+    many_looping(many_looping_cb, NULL, NULL, NULL, NULL);
     while(many_looping_done == 0)
     {
 	ae_poll(ctx, 100);

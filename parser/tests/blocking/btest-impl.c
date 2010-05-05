@@ -35,7 +35,7 @@ static ae_ops_t rlist;
 static ae_opcache_t test_opcache;
 static ae_opcache_t sleep_opcache;
 
-triton_ret_t ictest1_post(int *a,
+triton_ret_t ictest1(int *a,
                       void (*callback)(void *ptr, int ret),
                       void *up,
                       ae_hints_t hints,
@@ -46,12 +46,6 @@ triton_ret_t ictest1_post(int *a,
     callback(up, 0);
     return TRITON_SUCCESS;
 }
-triton_ret_t (* ictest1)(int *a,
-                     void (*callback)(void *ptr, int ret),
-                     void *up,
-                     ae_hints_t hints,
-                     ae_context_t ctx,
-                     ae_op_id_t *op_id) = ictest1_post;
 
 static void *tctest1_threadfun(void *ptr)
 {
@@ -65,7 +59,7 @@ static void *tctest1_threadfun(void *ptr)
     return NULL;
 }
 
-triton_ret_t tctest1_post(int *a,
+triton_ret_t tctest1(int *a,
                       void (*callback)(void *ptr, int ret),
                       void *up,
                       ae_hints_t hints,
@@ -86,14 +80,8 @@ triton_ret_t tctest1_post(int *a,
 
     return TRITON_SUCCESS;
 }
-triton_ret_t (* tctest1)(int *a,
-                     void (*callback)(void *ptr, int ret),
-                     void *up,
-                     ae_hints_t hints,
-                     ae_context_t ctx,
-                     ae_op_id_t *op_id) = tctest1_post;
 
-triton_ret_t btest1_post(int *a,
+triton_ret_t btest1(int *a,
                      void (*callback)(void *ptr, int ret),
                      void *up,
                      ae_hints_t hints,
@@ -113,14 +101,8 @@ triton_ret_t btest1_post(int *a,
 
     return TRITON_SUCCESS;
 }
-triton_ret_t (* btest1)(int *a,
-                    void (*callback)(void *ptr, int ret),
-                    void *up,
-                    ae_hints_t hints,
-                    ae_context_t ctx,
-                    ae_op_id_t *op_id) = btest1_post;
 
-triton_ret_t btest2_post(int *a,
+triton_ret_t btest2(int *a,
                      void (*callback)(void *ptr, int ret),
                      void *up,
                      ae_hints_t hints,
@@ -140,14 +122,8 @@ triton_ret_t btest2_post(int *a,
 
     return TRITON_SUCCESS;
 }
-triton_ret_t (* btest2)(int *a,
-                    void (*callback)(void *ptr, int ret),
-                    void *up,
-                    ae_hints_t hints,
-                    ae_context_t ctx,
-                    ae_op_id_t *op_id) = btest2_post;
 
-triton_ret_t btest3_post(int *a,
+triton_ret_t btest3(int *a,
                      void (*callback)(void *ptr, int ret),
                      void *up,
                      ae_hints_t hints,
@@ -167,14 +143,8 @@ triton_ret_t btest3_post(int *a,
 
     return TRITON_SUCCESS;
 }
-triton_ret_t (* btest3)(int *a,
-                    void (*callback)(void *ptr, int ret),
-                    void *up,
-                    ae_hints_t hints,
-                    ae_context_t ctx,
-                    ae_op_id_t *op_id) = btest3_post;
 
-triton_ret_t btest_sleep_post(int secs,
+triton_ret_t btest_sleep(int secs,
                           void (*callback)(void *ptr, int ret),
                           void *up,
                           ae_hints_t hints,
@@ -194,14 +164,8 @@ triton_ret_t btest_sleep_post(int secs,
 
     return TRITON_SUCCESS;
 }
-triton_ret_t (* btest_sleep)(int secs,
-                         void (*callback)(void *ptr, int ret),
-                         void *up,
-                         ae_hints_t hints,
-                         ae_context_t ctx,
-                         ae_op_id_t *op_id) = btest_sleep_post;
 
-triton_ret_t btest_forever_post(void (*callback)(void *ptr, int ret),
+triton_ret_t btest_forever(void (*callback)(void *ptr, int ret),
                             void *up,
                             ae_hints_t hints,
                             ae_context_t ctx,
@@ -220,13 +184,8 @@ triton_ret_t btest_forever_post(void (*callback)(void *ptr, int ret),
 
     return TRITON_SUCCESS;
 }
-triton_ret_t (* btest_forever)(void (*callback)(void *ptr, int ret),
-                           void *up,
-                           ae_hints_t hints,
-                           ae_context_t ctx,
-                           ae_op_id_t *op_id) = btest_forever_post;
 
-triton_ret_t btest_random_post(void (*callback)(void *ptr, int ret),
+triton_ret_t btest_random(void (*callback)(void *ptr, int ret),
                            void *up,
                            ae_hints_t hints,
                            ae_context_t ctx,
@@ -245,11 +204,6 @@ triton_ret_t btest_random_post(void (*callback)(void *ptr, int ret),
 
     return TRITON_SUCCESS;
 }
-triton_ret_t (* btest_random)(void (*callback)(void *ptr, int ret),
-                          void *up,
-                          ae_hints_t hints,
-                          ae_context_t ctx,
-                          ae_op_id_t *op_id) = btest_random_post;
 
 static struct bsleep_op * poll_sleep_list(void)
 {
@@ -364,7 +318,7 @@ int btest_init(void)
     return 0;
 }
 
-int btest_finalize(void)
+void btest_finalize(void)
 {
     ae_resource_unregister(btest_resource_id);
 

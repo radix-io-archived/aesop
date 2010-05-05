@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 
 	btest_init();
 	printf("%p\n", myptr);
-	run_compound_post(compound_cb, myptr, NULL, NULL, &id);
+	run_compound(compound_cb, myptr, NULL, NULL, &id);
 
 	while(done == 0)
         {

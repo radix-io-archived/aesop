@@ -50,7 +50,7 @@ int main(
 
     btest_init();
     printf("%p\n", myptr);
-    run_parfor_post(basic_cb, myptr, NULL, NULL, &op_id);
+    run_parfor(basic_cb, myptr, NULL, NULL, &op_id);
 
     while (done == 0)
     {

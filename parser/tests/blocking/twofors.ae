@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 	printf("%p\n", myptr);
 
 	val = atoi(argv[1]);
-	run_twofors_post(basic_cb, myptr, NULL, NULL, &op_id);
+	run_twofors(basic_cb, myptr, NULL, NULL, &op_id);
 
 	while(done == 0)
 	{

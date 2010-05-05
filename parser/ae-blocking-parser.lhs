@@ -289,8 +289,8 @@ Register blocking function declarations:  __blocking int myfun();
 >	  let function = splitFunDecl (CDecl specifiers initdecls ni)
 >         registerBlocking function
 >         pDecl <- mkPostDecl function specifiers
->         pPtrDecl <- mkPostPtrDecl True function specifiers
-> 	  return $ [CDeclExt pDecl, CDeclExt pPtrDecl]
+>         -- pPtrDecl <- mkPostPtrDecl True function specifiers
+> 	  return $ [CDeclExt pDecl]
 
 Transform function declarations that take blocking function pointers as parameters:  int myfun(__blocking int (*fnp)(void));
 We only need to do the transformation here to get the type signature right, we don't generate anything else.
@@ -640,7 +640,7 @@ From a blocking function definition, Construct an external declaration parameter
 >			           [fieldsDecl, paramsDecl] ++ pwaitDecls) ni
 
 > mkPostFunName :: String -> String -> String
-> mkPostFunName ctlName name = name ++ "_post"
+> mkPostFunName ctlName name = name
 
 Each callback function defined for a given blocking function must have a unique name.  We use:
 
@@ -1317,7 +1317,7 @@ and finally the code up-to the first blocking call.
 >	fparams <- mkPostParams f
 >       ret <- mkPostRetType ni
 >	return $ mkFunDeclWithDeclSpecs
->		   (fname ++ "_post")
+>		   fname
 >		   ret []
 >		   (filterStdDeclSpecs declspecs)
 >	           fparams
@@ -1333,7 +1333,7 @@ and finally the code up-to the first blocking call.
 >		    ((filterStdDeclSpecs declspecs) ++
 >		     (if extern then [CStorageSpec $ CExtern ni] else []))
 >		    fparams
->		    (if not extern then Just (fname ++ "_post") else Nothing)
+>		    (if not extern then Just fname else Nothing)
 
 > mkPostFunction :: String -> BlockingContext -> CFunDef -> [CStat] -> WalkerT CExtDecl
 > mkPostFunction prefix bctx funDef postStmts = do
@@ -1566,13 +1566,13 @@ CStat:  The blocking statement
 
 >       postFun <- mkPostFunction prefix ctx funDef postStmts
 >       pDecl <- mkPostDecl fi specs
->       pPtrDecl <- mkPostPtrDecl False fi specs 
+>       -- pPtrDecl <- mkPostPtrDecl False fi specs 
 
 >	let postDecls = []
 
 >	    -- Construct the external declarations of parameters, callback functions, and post function
 >	    transformedDecls = pwaitStructs ++ [paramsStruct, ctlStruct] ++ callbackDecls ++ callbackDefs ++
->			       [CDeclExt pDecl, CDeclExt pPtrDecl] ++
+>			       [CDeclExt pDecl] ++
 >			       [postFun]
 
 >	-- Clear the blocking function parameters registry

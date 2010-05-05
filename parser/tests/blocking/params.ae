@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
 	btest_init();
 	printf("%p\n", myptr);
-	run_params_post(10, "FOO", "BAR", basic_cb, myptr, NULL, NULL, &op_id);
+	run_params(10, "FOO", "BAR", basic_cb, myptr, NULL, NULL, &op_id);
 
 	while(done == 0)
         {

@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
 	btest_init();
 	printf("%p\n", myptr);
-	run_pbreak_post(basic_cb, myptr, NULL, NULL, &op_id);
+	run_pbreak(basic_cb, myptr, NULL, NULL, &op_id);
 
 	while(done == 0)
         {

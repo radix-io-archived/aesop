@@ -51,6 +51,6 @@ __blocking int ictest1(int *a);
 __blocking int tctest1(int *a);
 
 int btest_init(void);
-int btest_finalize(void);
+void btest_finalize(void);
 
 #endif
