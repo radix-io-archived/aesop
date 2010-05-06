@@ -776,7 +776,7 @@ to calling the appropriate callback
 >				     	      (newIdent "callback" ni) True ni)
 >		            	     ([constructExprFromC ni "ctl->user_ptr"] ++ retparam) ni)) ni),
 >		  mkStmtFromC ni "free(ctl);",
->		  mkStmtFromC ni "return 0;"]) ni
+>		  mkStmtFromC ni "return TRITON_SUCCESS;"]) ni
 > swapPostReturnWithCallback e c = c
 
 > transformPostFuncReturnStmts :: CStat -> CStat -> CStat

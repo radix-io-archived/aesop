@@ -50,6 +50,7 @@
     if(__ae_postret != TRITON_SUCCESS) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: post call did not return AE_POSTED or AE_COMPLETE, trace exiting\n", #__fname, __location); \
+        assert(__ae_postret == TRITON_SUCCESS); \
         return; \
     }
 
@@ -57,6 +58,7 @@
     if(__ae_postret != TRITON_SUCCESS) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: post call did not return AE_POSTED or AE_COMPLETE, trace exiting\n", #__fname, __location); \
+        assert(__ae_postret == TRITON_SUCCESS); \
         return __ae_postret; \
     }
 
@@ -71,6 +73,7 @@
     if(__ae_cancel_ret != TRITON_SUCCESS) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: ae_cancel_cancel did not return success\n", #__fname, __location); \
+        assert(__ae_cancel_ret == TRITON_SUCCESS); \
     } \
 }
 
@@ -158,6 +161,7 @@
     if(__ctl == NULL) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for control structure failed!\n", #__fname, __location); \
+        assert(__ctl != NULL); \
         goto __ae_##__pbranch_id##_end; \
     } \
     __ctl->parent = __parent_ctl; \
