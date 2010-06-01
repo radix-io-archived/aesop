@@ -119,9 +119,9 @@ either from a pbreak, or from an external cancel call of the entire blocking fun
 > mkPBranchPostStmts pb pwaitName prefix parentPrefix fname stmts ni = do
 >       let location = show $ posRow $ posOfNode ni
 >       fileName <- getFileName
->       ds <- mkDeclsFromBlocking "AE_MK_PBRANCH_POST_DECLS" [mkStructCtlName fname, prefix] ni
+>       ds <- mkDeclsFromBlocking "AE_MK_PBRANCH_POST_DECLS" [mkStructCtlName fname] ni
 >       ss <- mkStmtFromBlocking  "AE_MK_PBRANCH_POST_STMTS"
->                                 [pwaitName, prefix, parentPrefix, mkStructCtlName fname, fileName, location, getPBranchId pb] ni
+>                                 [pwaitName, mkStructCtlName fname, fileName, location, getPBranchId pb] ni
 >	return [mkCompoundWithDecls Nothing ds (ss ++ stmts) ni]
 
 > mkBlockingParamsParallelFields :: String -> Bool -> NodeInfo -> WalkerT [CDecl]
