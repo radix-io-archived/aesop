@@ -44,10 +44,9 @@ triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_
     return TRITON_SUCCESS;
 }
     
-triton_ret_t ae_opcache_double_size(ae_opcache_t cache)
+static triton_ret_t ae_opcache_double(ae_opcache_t cache)
 {
     int i;
-    triton_mutex_lock(&cache->mutex);
     cache->array[cache->array_count] = malloc(cache->typesize * cache->size);
     if(!cache->array[cache->array_count])
     {
@@ -61,8 +60,16 @@ triton_ret_t ae_opcache_double_size(ae_opcache_t cache)
     }
     cache->array_count++;
     cache->size *= 2;
-    triton_mutex_unlock(&cache->mutex);
     return TRITON_SUCCESS;
+}
+
+triton_ret_t ae_opcache_double_size(ae_opcache_t cache)
+{
+    triton_ret_t ret;
+    triton_mutex_lock(&cache->mutex);
+    ret = ae_opcache_double(cache);
+    triton_mutex_unlock(&cache->mutex);
+    return ret;
 }
 
 void ae_opcache_destroy(ae_opcache_t cache)
@@ -98,7 +105,7 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
     {
         if(cache->count == cache->size)
         {
-            ae_opcache_double_size(cache);
+            ae_opcache_double(cache);
         }
 
         aind = cache->array_count - 1;

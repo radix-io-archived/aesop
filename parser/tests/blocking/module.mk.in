@@ -37,7 +37,8 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/funptrs.ae \
 	      $(DIR)/nbfun.ae \
 	      $(DIR)/pprivate.ae \
-	      $(DIR)/pshared.ae
+	      $(DIR)/pshared.ae \
+	      $(DIR)/pbreak-before-blocking.ae
 
 # This should not compile
 #	      $(DIR)/pbranch-with-return.ae

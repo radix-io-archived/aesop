@@ -53,28 +53,20 @@ void ae_resource_unregister(int id)
     ae_resource_count--;
 }
 
+/**
+ * ae_cancel_op tries to cancel the operation with the given id.  This
+ * function returns TRITON_SUCCESS if the operation was successfully cancelled,
+ * the callback for the operation is responsible for returning TRITON_ERR_CANCELLED
+ * in the callback or somehow notifying through the callback that the operation was
+ * cancelled.
+ */ 
 triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 {
     struct ae_ctl *ctl;
     int resource_id, ridx;
-    triton_ret_t ret;
+    triton_ret_t ret, saved;
 
     ae_id_lookup(op_id, &resource_id);
-    ridx = AE_RESOURCE_ID2IDX(resource_id);
-    if(ridx > ae_resource_count)
-    {
-	return TRITON_ERR_INVAL;
-    }
-
-    if(ae_resource_entries[ridx].id != resource_id)
-    {
-	return TRITON_ERR_INVAL;
-    }
-
-    if(ae_resource_entries[ridx].id == -1)
-    {
-	return TRITON_ERR_INVAL;
-    }
 
     if(resource_id == 0)
     {
@@ -90,24 +82,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 	ctl->cancelled = 1;
 	if(ctl->in_pwait)
 	{
-	    /* cancel children */
-	    struct triton_list_link *entry, *safe;
-	    struct ae_ctl *child_ctl;
-	    if(triton_list_empty(&ctl->children))
-	    {
-		return TRITON_ERR_INVAL;
-	    }
-
-	    triton_list_for_each(entry, safe, &ctl->children)
-	    {
-		child_ctl = triton_list_get_entry(entry, typeof(*child_ctl), link);
-		ret = ae_cancel_op(context, child_ctl->current_op_id);
-		if(ret != TRITON_SUCCESS)
-		{
-		    /* cancel failed */
-		    triton_mutex_unlock(&ctl->mutex);
-		}
-	    }
+            ret = ae_cancel_children(context, ctl);
 	}
 	else
 	{
@@ -116,29 +91,63 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 	triton_mutex_unlock(&ctl->mutex);
 	return ret;
     }
+    else
+    {
+        ridx = AE_RESOURCE_ID2IDX(resource_id);
+        if(ridx > ae_resource_count)
+        {
+            return TRITON_ERR_INVAL;
+        }
 
-    return ae_resource_entries[ridx].resource->cancel(context, op_id);
+        if(ae_resource_entries[ridx].id != resource_id)
+        {
+            return TRITON_ERR_INVAL;
+        }
+
+        if(ae_resource_entries[ridx].id == -1)
+        {
+            return TRITON_ERR_INVAL;
+        }
+
+        if(ae_resource_entries[ridx].resource->cancel)
+        {
+            return ae_resource_entries[ridx].resource->cancel(context, op_id);
+        }
+        else
+        {
+            return TRITON_SUCCESS;
+        }
+    }
 }
 
 ae_op_id_t ae_id_gen(int resource_id, uint64_t ptr)
 {
-    return (ae_op_id_t)(AE_GET_RESOURCE_MASK(resource_id) | ptr);
+    ae_op_id_t newid;
+    newid.u = resource_id;
+    newid.l = ptr;
+    return newid;
 }
 
 uint64_t ae_id_lookup(ae_op_id_t id, int *resource_id)
 {
-    if(resource_id) *resource_id = AE_GET_RESOURCE_ID(id);
-    return (~AE_RESOURCE_MASK)&id;
+    if(resource_id) *resource_id = id.u;
+    return id.l;
 }
 
-triton_ret_t ae_cancel_children(ae_context_t context, void *ptr)
+/**
+ * ae_cancel_children tries to cancel all the children of this context.  This
+ * function returns TRITON_SUCCESS if all operations was successfully cancelled,
+ * the callbacks for the operations are responsible for returning TRITON_ERR_CANCELLED
+ * in the callback or somehow notifying through the callback that the operation was
+ * cancelled.  Right now, if one of the operations fails to be cancelled, we return
+ * failure immediately instead of trying to cancel the others.
+ */ 
+triton_ret_t ae_cancel_children(ae_context_t context, struct ae_ctl *ctl)
 {
     triton_ret_t ret;
-    struct ae_ctl *ctl;
     struct ae_ctl *child_ctl;
     struct triton_list_link *entry, *safe;
 
-    ctl = (struct ae_ctl *)ptr;
     if(triton_list_empty(&ctl->children))
     {
         /* don't do anything here because there are no children

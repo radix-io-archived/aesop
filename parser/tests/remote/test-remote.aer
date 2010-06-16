@@ -1,8 +1,21 @@
+#include <unistd.h>
+
 #include "src/common/triton-types.h"
+#include "src/common/triton-hints.h"
 #include "src/aesop/aesop.h"
 #include "src/remote/encoding.h"
 #include "src/remote/remote.hae"
+#include "src/net/triton-message.hae"
+#include "src/net/triton-message-method.hae"
+#include "src/net/mock/mock-method.h"
+#include "src/common/resources/scheduling/sched.hae"
 #include "src/common/resources/timer/timer.hae"
+
+#include "src/remote/service.hae"
+
+#include "src/aesop/parser/tests/remote/test_remote_module.h"
+
+static triton_msg_ctx_t mock_ctx;
 
 __remote struct myremotes
 {
@@ -15,8 +28,42 @@ __remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out);
 __remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out)
 {
     triton_ret_t ret;
-    *out = triton_timer(in);
+    triton_node_t from, self;
+    triton_string_t fromstr, selfstr;
+
+    /* do a blocking call here just so we have something */
+    triton_timer(10);
+
     *out = in;
+
+    ret = triton_hints_get("triton.mock.self", sizeof(self), &self);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
+    ret = triton_node_to_string(mock_ctx, self, &selfstr);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
+
+
+    ret = triton_hints_get("triton.remote.from", sizeof(from), &from);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
+    ret = triton_node_to_string(mock_ctx, from, &fromstr);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
+
+    printf("remotefun1 invoked ( %s -> %s ):  in: %d, out: %d\n", fromstr.string, selfstr.string, in, *out);
+
+    triton_string_destroy(&fromstr);
+    triton_string_destroy(&selfstr);
+
     return TRITON_SUCCESS;
 }
 
@@ -25,11 +72,179 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
 __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremotes *out)
 {
     triton_ret_t ret;
-    out->t1 = triton_timer(in->t1);
+    triton_node_t from, self;
+    triton_string_t fromstr, selfstr;
+
+    /* do a blocking call here just so we have something */
+    ret = triton_timer(10);
+
+    out->t1 = in->t1;
     out->ut1 = 100;
-    return TRITON_SUCCESS;
+
+    ret = triton_hints_get("triton.mock.self", sizeof(self), &self);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
+    ret = triton_node_to_string(mock_ctx, self, &selfstr);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
+
+    ret = triton_hints_get("triton.remote.from", sizeof(from), &from);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
+    ret = triton_node_to_string(mock_ctx, from, &fromstr);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
+
+    printf("remotefun2 invoked from (%s -> %s):  in: (%d,%d) out: (%d,%d)\n", fromstr.string, selfstr.string, in->t1, in->ut1, out->t1, out->ut1);
+
+    triton_string_destroy(&fromstr);
+
+    return ret;
 }
 
+__blocking void do_server(void)
+{
+    aer_service_engine_start();
+}
+
+__blocking void do_remote_clients(int count)
+{
+    triton_ret_t ret;
+    struct myremotes in, out;
+    int32_t fun1res;
+
+    pwait
+    {
+        pprivate triton_node_t self, node0;
+        pprivate int i;
+        pprivate char nodestr[100];
+
+        for(i = 0; i < count; ++i)
+        {
+            pbranch
+            {
+                sprintf(nodestr, "%d", i);
+                self = triton_node_lookup(mock_ctx, nodestr);
+                ret = triton_hints_put("triton.mock.self", sizeof(self), &self);
+                assert(ret == TRITON_SUCCESS);
+
+                node0 = triton_node_lookup(mock_ctx, "0");
+
+                ret = remote_remotefun1(node0, 10, &fun1res);
+                assert(ret == TRITON_SUCCESS);
+                assert(fun1res == 10);
+
+                in.t1 = 100;
+                in.ut1 = 0;
+                ret = remote_remotefun2(node0, &in, &out);
+                assert(ret == TRITON_SUCCESS);
+                assert(out.t1 == 100);
+                assert(out.ut1 == 100);
+            }
+        }
+    }
+}
+
+__blocking void do_remote_test(int count)
+{
+    triton_string_t selfstr;
+    triton_ret_t ret;
+
+    pwait
+    {
+        pprivate triton_node_t self;
+
+        pbranch
+        {
+            self = triton_node_lookup(mock_ctx, "0");
+            ret = triton_hints_put("triton.mock.self", sizeof(self), &self);
+            assert(ret == TRITON_SUCCESS);
+
+            /* start server */
+            aer_service_engine_start();
+        }
+
+        pbranch
+        {
+            do_remote_clients(count);
+            /* clients done.  stop service engine */
+            aer_service_engine_stop();
+
+            /* ensure that no ops are in progress */
+            while(aer_service_engine_in_progress_count() > 0)
+            {
+                /* ops in progress, wait for a sec and then check again */
+                triton_timer(1000);
+            }
+
+            /* no ops in progress!  cancel waiting receives! */
+            pbreak;
+        }
+    }
+}
+
+static int done = 0;
+static void cb(void *up)
+{
+    done=1;
+}
+
+int main(int argc, char *argv[])
+{
+    triton_ret_t ret;
+    ae_op_id_t op_id;
+
+    assert(argc > 1);
+
+    ret = ae_hints_init();
+    assert(ret == TRITON_SUCCESS);
+
+    triton_debug_init();
+
+    aesop_init();
+
+    ret = triton_sched_resource_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_timer_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_msg_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_msg_mock_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_msg_enable_method("mock", &mock_ctx);
+    assert(ret == TRITON_SUCCESS);
+
+    /* triton_debug_enable("/dev/stdout", "all"); */
+
+    ret = aer_service_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = aer_remote_register_test_remote();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = ae_hints_type_register("triton.mock.self", 0, NULL);
+    assert(ret == TRITON_SUCCESS);
+
+    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, NULL, &op_id, atoi(argv[1]));
+    while(!done)
+    {
+        ae_poll(NULL, 0);
+    }
+
+    return 0;
+}
 
 /*
  * Local variables:
@@ -39,4 +254,3 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
  *
  * vim: ts=8 sts=4 sw=4 expandtab
  */
-    

@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
 	s.myfun = blocking1;
 	s.a = 0;
-	do_blocking(&s, basic_cb, myptr, NULL, NULL, &id);
+        ae_post_blocking(do_blocking, basic_cb, myptr, NULL, NULL, &id, &s);
 
 	while(done == 0)
         {
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	done = 0;
 	t.p = &s;
 	t.b = 100;
-	do_mtype_blocking(&t, basic_cb, myptr, NULL, NULL, &id);
+        ae_post_blocking(do_mtype_blocking, basic_cb, myptr, NULL, NULL, &id, &t);
 
 	while(done == 0)
         {
@@ -92,7 +92,8 @@ int main(int argc, char *argv[])
 	done = 0;
 	t.p = &s;
 	t.b = 100;
-	do_ttype_blocking(&t, basic_cb, myptr, NULL, NULL, &id);
+
+        ae_post_blocking(do_ttype_blocking, basic_cb, myptr, NULL, NULL, &id, &t);
 
 	while(done == 0)
         {
@@ -102,7 +103,8 @@ int main(int argc, char *argv[])
 	done = 0;
 	t.p = &s;
 	t.b = 100;
-	do_atype_blocking(&t, basic_cb, myptr, NULL, NULL, &id);
+
+        ae_post_blocking(do_atype_blocking, basic_cb, myptr, NULL, NULL, &id, &t);
 
 	while(done == 0)
         {

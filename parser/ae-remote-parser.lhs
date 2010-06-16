@@ -765,8 +765,10 @@ CTypeOfType CDecl NodeInfo
 >       opidDecls <- mkOpIdDecls ni
 >       sDecls <- mkServiceDecls ni
 >       regf <- mkRegFun sname ni
->       ctor <- mkRegCtorFun sname ni
->       return $ CTranslUnit (opidDecls ++ sDecls ++ [regf, ctor]) ni
+>       -- ctor <- mkRegCtorFun sname ni
+>       -- return $ CTranslUnit (opidDecls ++ sDecls ++ [regf, ctor]) ni
+>       return $ CTranslUnit (opidDecls ++ sDecls ++ [regf]) ni
+
 
 > generateAST :: FilePath -> IO CTranslUnit
 > generateAST input_file = do
