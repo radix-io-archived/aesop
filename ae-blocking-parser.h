@@ -152,31 +152,29 @@
     triton_mutex_init(&__ctl->mutex, NULL); \
 }
 
-#define AE_MK_PBRANCH_POST_DECLS(__ctl_type) \
-    struct __ctl_type * child_ctl, *parent_ctl;
+#define AE_MK_PBRANCH_POST_DECLS(__ctl_type, __ctl) \
+    struct __ctl_type * __ctl;
 
-#define AE_MK_PBRANCH_POST_STMTS(__pwait_ctl, __ctl_type, __fname, __location, __pbranch_id) \
+#define AE_MK_PBRANCH_POST_STMTS(__pwait_ctl, __ctl, __parent_ctl, __ctl_type, __fname, __location, __pbranch_id) \
 { \
-    parent_ctl = ctl; \
-    child_ctl = malloc(sizeof(*child_ctl)); \
-    if(child_ctl == NULL) \
+    __ctl = malloc(sizeof(*__ctl)); \
+    if(__ctl == NULL) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for control structure failed!\n", #__fname, __location); \
-        assert(child_ctl != NULL); \
+        assert(__ctl != NULL); \
         goto __ae_##__pbranch_id##_end; \
     } \
-    child_ctl->parent = ctl; \
-    child_ctl->context = ctl->context; \
-    child_ctl->hints = ctl->hints; \
-    child_ctl->params = ctl->params; \
-    memcpy(&child_ctl->__pwait_ctl.private, &ctl->__pwait_ctl.private, sizeof(child_ctl->__pwait_ctl.private)); \
-    child_ctl->__pwait_ctl.shared_params = &ctl->__pwait_ctl.shared; \
-    ctl = child_ctl; \
-    triton_mutex_lock(&child_ctl->parent->mutex); \
-    child_ctl->parent->posted++; \
-    triton_list_link_clear(&child_ctl->link); \
-    triton_queue_enqueue(&child_ctl->link, &child_ctl->parent->children); \
-    triton_mutex_unlock(&child_ctl->parent->mutex); \
+    __ctl->parent = __parent_ctl; \
+    __ctl->context = __parent_ctl->context; \
+    __ctl->hints = __parent_ctl->hints; \
+    __ctl->params = __parent_ctl->params; \
+    memcpy(&__ctl->__pwait_ctl.private, &__parent_ctl->__pwait_ctl.private, sizeof(__ctl->__pwait_ctl.private)); \
+    __ctl->__pwait_ctl.shared_params = &__parent_ctl->__pwait_ctl.shared; \
+    triton_mutex_lock(&__ctl->parent->mutex); \
+    __ctl->parent->posted++; \
+    triton_list_link_clear(&__ctl->link); \
+    triton_queue_enqueue(&__ctl->link, &__ctl->parent->children); \
+    triton_mutex_unlock(&__ctl->parent->mutex); \
 }
 
 #define AE_MK_PARENT_POINTER_DECL(__parent) \
