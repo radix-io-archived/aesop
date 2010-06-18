@@ -132,6 +132,17 @@ either from a pbreak, or from an external cancel call of the entire blocking fun
 >                                 [pwaitName, mkStructCtlName fname, fileName, location, getPBranchId pb] ni
 >	return [mkCompoundWithDecls Nothing ds (ss ++ stmts ++ es) ni]
 
+> mkLonePBranchPostStmts :: BlockingContext -> String -> String -> [CStat] -> NodeInfo -> WalkerT [CStat]
+> mkLonePBranchPostStmts pb prefix fname stmts ni = do
+>       let location = show $ posRow $ posOfNode ni
+>       fileName <- getFileName
+>       ds <- mkDeclsFromBlocking "AE_MK_LONE_PBRANCH_POST_DECLS" [mkStructCtlName fname] ni
+>       ss <- mkStmtFromBlocking  "AE_MK_LONE_PBRANCH_POST_STMTS"
+>                                 [mkStructCtlName fname, fileName, location, getPBranchId pb] ni
+>       es <- mkStmtFromBlocking  "AE_MK_LONE_PBRANCH_POST_END_STMTS"
+>                                 [mkStructCtlName fname, fileName, location, getPBranchId pb] ni
+>	return [mkCompoundWithDecls Nothing ds (ss ++ stmts ++ es) ni]
+
 > mkBlockingParamsParallelFields :: String -> Bool -> NodeInfo -> WalkerT [CDecl]
 > mkBlockingParamsParallelFields _ False _ = return []
 > mkBlockingParamsParallelFields name True ni = mkDeclsFromBlocking "AE_MK_PARENT_POINTER_DECL" [name] ni
@@ -486,6 +497,12 @@ gets called in the blocking function myblockingfun.
 >           $ invalid "return not allowed within pwait/pbranch context" ni
 >       return ()
 
+> isValidLonePBranch :: CStat -> WalkerT ()
+> isValidLonePBranch (CPBranch stmts ni) = do
+>       when (containsReturn [stmts])
+>           $ invalid "return not allowed within lone pbranch" ni
+>       return ()
+
 > getBlockingCallName :: CExpr -> WalkerT (Maybe String)
 > getBlockingCallName (CCall e args _) =  do
 >	res <- lookupBlocking e 
@@ -717,12 +734,27 @@ runfun(ctl->fields.a, ctl->fields.b, ctl->fields.c, ctl->fields.d);
 > trPBranchLocals ctlPrefix bctx stmt
 >    | hasPBranchAncestor bctx =
 >	let pbranchCtx = getPBranchAncestor bctx
->	    pwaitCtx = getPWaitAncestor bctx
 >	    locals = join $ map getCDeclNames $ getPBranchDecls pbranchCtx
->	in (addParams2PtrPrefixes ctlPrefix
->			          ((mkPWaitName (getPWaitId pwaitCtx)) ++ "." ++ mkSharedPtrName)
->		                  (mkParamPBranchName (getPBranchId pbranchCtx))
->			          locals) stmt
+>           pwaitCtx = getPWaitAncestor bctx
+
+>       in if hasPWaitAncestor bctx then
+>          
+>              -- pbranch has a parameter struct in the pwait struct for the control struct
+>              -- myvar becomes:  ctl->pwait_100_23.pbranch_123_10.myvar
+>	       addParams2PtrPrefixes ctlPrefix
+>	   	                     ((mkPWaitName (getPWaitId pwaitCtx)) ++ "." ++ mkSharedPtrName)
+>		                     (mkParamPBranchName (getPBranchId pbranchCtx))
+>			             locals
+>                                    stmt
+
+>          else
+>              -- a lone pbranch has a parameter struct in the control struct
+>              -- myvar becomes:  ctl->pbranch_123_10.myvar
+>              addParamsPtrPrefixes ctlPrefix
+>                                   (mkParamPBranchName (getPBranchId pbranchCtx))
+>                                   locals
+>                                   stmt
+
 >    | otherwise = stmt
 
 > trPWaitLocals :: String -> BlockingContext -> CStat -> CStat
@@ -1011,7 +1043,20 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	isValidPWait pwaitDef
 >	getParallelStmts next tr
 
-> generatePostStmts (Just next@(PBranchContext _ _ _ _ _ _ _ _)) tr = return []
+> generatePostStmts (Just pb@(PBranchContext _ branchDef (b:branchStmts) _ _ _ _ _)) tr = do
+>       isValidLonePBranch branchDef
+>	let ni = getNI pb
+>           nbStmtsBeforePB = nbStmtsBefore pb
+>	    nbStmts = nbStmtsBefore b
+>	    pbDeclInits = getInitsFromDecls $ getLocalDeclarations branchDef
+>	    pbend = [mkLabel ("__ae_" ++ (getPBranchId pb) ++ "_end") [] ni]
+>           fname = getParentName b
+>       cp <- getPrefix
+>       lonePostStmts <- generatePostStmts (Just b) (pb : tr)
+>       loneStmts <- mkLonePBranchPostStmts pb cp (getParentName pb) lonePostStmts ni
+>       nextStmts <- generatePostStmts (next pb) tr
+>	afterPBStmts <- generateAfterStmts pb (pb : tr)
+>       return $ loneStmts ++ pbend ++ nextStmts ++ afterPBStmts
 
 > generatePostStmts (Just c) _ = error $ "generatePostStmts: " ++ (getCtxName c) ++ " not handled yet"
 
@@ -1236,20 +1281,26 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >		tlAfterLastBlocking <- translateForCB b $ bcallReturn ++ (nbStmtsAfter b)
 
 >		-- get statements after pwait context
->		let pwaitCtx = getPWaitAncestor b
->		    pbranchCtx = getPBranchAncestor b
->		afterPWaitStmts <- getStmtsAfter pwaitCtx []
->		pbDone <- getPBDone
+>               if hasPWaitAncestor b then do
+>		    let pwaitCtx = getPWaitAncestor b
+>		        pbranchCtx = getPBranchAncestor b
+>		    afterPWaitStmts <- getStmtsAfter pwaitCtx []
+>		    pbDone <- getPBDone
 
->		pbDoneStmts <- liftM concat $ sequence [mkPBranchDeleteStmts ni,
->				                        mkPBranchDoneStmts prefix pn ni]
->               let doneStmts = pbDone pbranchCtx ni
->		setDoneCtlStmt <- mkDoneCtlSetStmt prefix ni
->		(cbDecls, cbStmts) <- mkPBranchCallbackStartStmts prefix pn ni 
->	        return $ [mkCompoundWithDecls Nothing 
->					      cbDecls 
->					      (cbStmts ++ tlAfterLastBlocking ++ setDoneCtlStmt ++
->					       pbDoneStmts ++ doneStmts ++ afterPWaitStmts) $ getNI b]
+>		    pbDoneStmts <- liftM concat $ sequence [mkPBranchDeleteStmts ni,
+>				                            mkPBranchDoneStmts prefix pn ni]
+>                   let doneStmts = pbDone pbranchCtx ni
+>		    setDoneCtlStmt <- mkDoneCtlSetStmt prefix ni
+>		    (cbDecls, cbStmts) <- mkPBranchCallbackStartStmts prefix pn ni 
+>	            return $ [mkCompoundWithDecls Nothing 
+>					          cbDecls 
+>					          (cbStmts ++ tlAfterLastBlocking ++ setDoneCtlStmt ++
+>					          pbDoneStmts ++ doneStmts ++ afterPWaitStmts) ni]
+>                 else do
+>                   -- if there's no pwait, we handle the lone pbranch case
+>                   
+>                   ds <- mkStmtFromBlocking "AE_MK_LONE_PBRANCH_DONE_STMTS" [] ni
+>                   return $ [mkCompoundWithDecls Nothing [] (tlAfterLastBlocking ++ ds) ni]
 
 >	| otherwise = translateForCB b $ bcallReturn ++ (nbStmtsAfter b)
 
@@ -1288,7 +1339,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	| isLastContext b && parentIsIf b = 
 >               let res = findTransition $ fromJust $ parent b
 >               in assert (isJust $ parent b) res
->	| isLastContext b && parentIsPBranch b = findTransition $ getPWaitAncestor b
+>	| isLastContext b && parentIsPBranch b && hasPWaitAncestor b = findTransition $ getPWaitAncestor b
 >       | isLastContext b && parentIsCompound b =
 >               let res = findTransition $ fromJust $ parent b
 >               in assert (isJust $ parent b) res
@@ -1485,6 +1536,8 @@ CStat:  The blocking statement
 >	nextBlockingPostStmts <- generateNextPostStmts (findTransition b)
 
 >	prefix <- getPrefix
+
+>       assert (isJust blockingCall) return ()
 
 >	-- finally, generate the actual callback function definition
 >	mkCallback prefix

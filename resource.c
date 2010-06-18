@@ -337,6 +337,50 @@ triton_ret_t ae_context_destroy(ae_context_t context)
     return TRITON_SUCCESS;
 }
 
+triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
+{
+    triton_ret_t ret;
+    triton_mutex_lock(&ctl->mutex);
+    ret = ae_cancel_children(ctl->context, ctl);
+    triton_mutex_unlock(&ctl->mutex);
+    return ret;
+}
+
+int ae_count_branches(struct ae_ctl *ctl)
+{
+    int r;
+    triton_mutex_lock(&ctl->mutex);
+    r = triton_list_count(&ctl->children);
+    triton_mutex_unlock(&ctl->mutex);
+    return r;
+}
+    
+static triton_list_t ae_lone_pbranch_list = TRITON_LIST_STATIC_INITIALIZER(ae_lone_pbranch_list);
+static triton_mutex_t ae_lone_pbranch_mutex = TRITON_MUTEX_INITIALIZER;
+
+void ae_lone_pbranches_add(struct ae_ctl *ctl)
+{
+    triton_mutex_lock(&ae_lone_pbranch_mutex);
+    triton_queue_enqueue(&ctl->link, &ae_lone_pbranch_list);
+    triton_mutex_unlock(&ae_lone_pbranch_mutex);
+}
+
+void ae_lone_pbranches_remove(struct ae_ctl *ctl)
+{
+    triton_mutex_lock(&ae_lone_pbranch_mutex);
+    triton_list_del(&ctl->link);
+    triton_mutex_unlock(&ae_lone_pbranch_mutex);
+}
+
+int ae_lone_pbranches_count(void)
+{
+    int ret;
+    triton_mutex_lock(&ae_lone_pbranch_mutex);
+    ret = triton_list_count(&ae_lone_pbranch_list);
+    triton_mutex_unlock(&ae_lone_pbranch_mutex);
+    return ret;
+}
+
 /*
  * Local variables:
  *  c-indent-level: 4

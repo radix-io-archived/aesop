@@ -1,8 +1,8 @@
 #include <unistd.h>
 
 #include "src/common/triton-types.h"
-#include "src/common/triton-hints.h"
 #include "src/aesop/aesop.h"
+#include "src/aesop/hints.h"
 #include "src/remote/encoding.h"
 #include "src/remote/remote.hae"
 #include "src/net/triton-message.hae"
@@ -36,7 +36,7 @@ __remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out)
 
     *out = in;
 
-    ret = triton_hints_get("triton.mock.self", sizeof(self), &self);
+    ret = aesop_hints_get("triton.mock.self", sizeof(self), &self);
     if(ret != TRITON_SUCCESS)
     {
         return ret;
@@ -48,7 +48,7 @@ __remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out)
     }
 
 
-    ret = triton_hints_get("triton.remote.from", sizeof(from), &from);
+    ret = aesop_hints_get("triton.remote.from", sizeof(from), &from);
     if(ret != TRITON_SUCCESS)
     {
         return ret;
@@ -81,7 +81,7 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
     out->t1 = in->t1;
     out->ut1 = 100;
 
-    ret = triton_hints_get("triton.mock.self", sizeof(self), &self);
+    ret = aesop_hints_get("triton.mock.self", sizeof(self), &self);
     if(ret != TRITON_SUCCESS)
     {
         return ret;
@@ -92,7 +92,7 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
         return ret;
     }
 
-    ret = triton_hints_get("triton.remote.from", sizeof(from), &from);
+    ret = aesop_hints_get("triton.remote.from", sizeof(from), &from);
     if(ret != TRITON_SUCCESS)
     {
         return ret;
@@ -133,7 +133,7 @@ __blocking void do_remote_clients(int count)
             {
                 sprintf(nodestr, "%d", i);
                 self = triton_node_lookup(mock_ctx, nodestr);
-                ret = triton_hints_put("triton.mock.self", sizeof(self), &self);
+                ret = aesop_hints_put("triton.mock.self", sizeof(self), &self);
                 assert(ret == TRITON_SUCCESS);
 
                 node0 = triton_node_lookup(mock_ctx, "0");
@@ -165,7 +165,7 @@ __blocking void do_remote_test(int count)
         pbranch
         {
             self = triton_node_lookup(mock_ctx, "0");
-            ret = triton_hints_put("triton.mock.self", sizeof(self), &self);
+            ret = aesop_hints_put("triton.mock.self", sizeof(self), &self);
             assert(ret == TRITON_SUCCESS);
 
             /* start server */
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
     ret = aer_service_init();
     assert(ret == TRITON_SUCCESS);
 
-    ret = aer_remote_register_test_remote();
+    ret = aer_remote_register_test_remote_mock();
     assert(ret == TRITON_SUCCESS);
 
     ret = ae_hints_type_register("triton.mock.self", 0, NULL);

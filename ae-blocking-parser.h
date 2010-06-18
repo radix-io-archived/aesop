@@ -106,7 +106,7 @@
     done_ctl->parent->gen.completed++; \
     __ae_pwait_done = done_ctl->parent->gen.allposted == 1 && done_ctl->parent->gen.posted == done_ctl->parent->gen.completed; \
     triton_mutex_unlock(&done_ctl->parent->gen.mutex); \
-    ae_hints_destroy(&done_ctl->gen.hints); \
+    ae_hints_destroy(done_ctl->gen.hints); \
     free(done_ctl); \
 }
 
@@ -188,6 +188,38 @@
     ctl = parent_ctl; \
 }
 
+#define AE_MK_LONE_PBRANCH_POST_DECLS(__ctl_type) \
+    struct __ctl_type * child_ctl, *parent_ctl;
+
+#define AE_MK_LONE_PBRANCH_POST_STMTS(__ctl_type, __fname, __location, __pbranch_id) \
+{ \
+    parent_ctl = ctl; \
+    child_ctl = malloc(sizeof(*child_ctl)); \
+    if(child_ctl == NULL) \
+    { \
+        triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for control structure failed!\n", #__fname, __location); \
+        assert(child_ctl != NULL); \
+        goto __ae_##__pbranch_id##_end; \
+    } \
+    ae_ctl_init(&child_ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
+    child_ctl->parent = ctl; \
+    ae_hints_copy(ctl->gen.hints, &child_ctl->gen.hints); \
+    child_ctl->params = ctl->params; \
+    ctl = child_ctl; \
+    triton_list_link_clear(&child_ctl->gen.link); \
+    ae_lone_pbranches_add(&child_ctl->gen); \
+}
+
+#define AE_MK_LONE_PBRANCH_POST_END_STMTS(__ctl_type, __fname, __location, __pbranch_id) \
+{ \
+    ctl = parent_ctl; \
+}
+
+#define AE_MK_LONE_PBRANCH_DONE_STMTS() \
+{ \
+    ae_lone_pbranches_remove(&ctl->gen); \
+    free(ctl); \
+}
 #define AE_MK_PARENT_POINTER_DECL(__parent) \
     struct __parent##_ctl *parent;
 

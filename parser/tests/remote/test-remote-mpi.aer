@@ -1,0 +1,165 @@
+#include <unistd.h>
+
+#include "src/common/triton-types.h"
+#include "src/common/triton-hints.h"
+#include "src/aesop/aesop.h"
+#include "src/remote/encoding.h"
+#include "src/remote/remote.hae"
+#include "src/net/triton-message.hae"
+#include "src/net/triton-message-method.hae"
+#include "src/net/mock/mock-method.h"
+#include "src/common/resources/scheduling/sched.hae"
+#include "src/common/resources/timer/timer.hae"
+
+#include "src/remote/service.hae"
+
+#include "src/aesop/parser/tests/remote/test_remote_module.h"
+
+#include "mpi.h"
+
+static triton_msg_ctx_t mpi_ctx;
+
+__remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out);
+
+__remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
+{
+    triton_ret_t ret, ret1, ret2;
+    triton_node_t from, self, n1, n2;
+    triton_string_t fromstr, selfstr;
+    int rank, r1, r2, size;
+    char n1str[100], n2str[100];
+    int32_t res1 = 0, res2 = 0;
+
+    rank = MPI_Rank();
+    size = MPI_Size();
+
+    r1 = rank * 2;
+    if(r1 % 2 == 1) ++r1;
+    r2 = r1 + 2;
+
+    sprintf(n1str, "%s", r1);
+    n1 = triton_node_lookup(mpi_ctx, n1str);
+    sprintf(n2str, "%s", r2);
+    n2 = triton_node_lookup(mpi_ctx, n2str);
+
+    pwait
+    {
+        if(r1 < size)
+        {
+            pbranch
+            {
+                ret1 = remote_scatter_gather(n1, in, &res1);
+                if(ret1 != TRITON_SUCCESS)
+                {
+                    pbreak;
+                }
+            }
+        }
+
+        if(r2 < size)
+        {
+            pbranch
+            {
+                ret2 = remote_scatter_gather(n2, in, &res2);
+                if(ret2 != TRITON_SUCCESS)
+                {
+                    pbreak;
+                }
+            }
+        }
+    }
+
+    if(ret1 == TRITON_SUCCESS && ret2 == TRITON_SUCCESS)
+    {
+        *out = res1 + res2 + rank;
+        ret = TRITON_SUCCESS;
+    }
+    else
+    {
+        ret = (ret1 == TRITON_SUCCESS) ? ret2 : ret1;
+    }
+
+    return ret;
+}
+
+__blocking void do_remote_test(void)
+{
+    triton_ret_t ret;
+    int32_t result;
+    int rank;
+
+    rank = MPI_Rank();
+
+    if(rank == 0)
+    {
+        /* rank 0 calls local scatter_gather, which starts everything */
+        ret = scatter_gather(50, &result);
+
+    }
+    else
+    {
+        /* service a single scatter/gather request */
+        ret = aer_service_requests(1);
+    }
+}
+
+static int done = 0;
+static void cb(void *up)
+{
+    done=1;
+}
+
+int main(int argc, char *argv[])
+{
+    triton_ret_t ret;
+    ae_op_id_t op_id;
+
+    ret = ae_hints_init();
+    assert(ret == TRITON_SUCCESS);
+
+    triton_debug_init();
+
+    aesop_init();
+
+    ret = triton_sched_resource_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_timer_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_msg_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_msg_mpi_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_msg_enable_method("mpi", &mpi_ctx);
+    assert(ret == TRITON_SUCCESS);
+
+    /* triton_debug_enable("/dev/stdout", "all"); */
+
+    triton_zeroconf_set("aesop.remote.method", "mpi");
+
+    ret = aer_service_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = aer_remote_register_test_remote_mpi();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, NULL, &op_id);
+    while(!done)
+    {
+        ae_poll(NULL, 0);
+    }
+
+    return 0;
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ts=8 sts=4 sw=4 expandtab
+ */
