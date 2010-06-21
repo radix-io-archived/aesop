@@ -15,4 +15,4 @@ MODNAME_$(DIR)/ae-blocking-parser.lhs = BlockingParser
 MODNAME_$(DIR)/ae-remote-parser.lhs = RemoteParser
 
 clean::
-	rm -rf *.o *.hi ae-blocking-parser ae-remote-parser
+	rm -rf *.o *.hi $(DIR)/ae-blocking-parser $(DIR)/ae-remote-parser
