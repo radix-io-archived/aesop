@@ -93,6 +93,7 @@ struct ae_ctl
     int in_pwait;    
     ae_hints_t hints;
     ae_context_t context;
+    int refcount;
 };
 
 static inline void ae_ctl_init(struct ae_ctl *ctl, const char *name, ae_hints_t hints, ae_context_t context)
@@ -108,6 +109,34 @@ static inline void ae_ctl_init(struct ae_ctl *ctl, const char *name, ae_hints_t 
     ctl->cancelled = 0;
     triton_mutex_init(&ctl->mutex, NULL);
     triton_list_init(&ctl->children);
+    ctl->refcount = 0;
+}
+
+static inline int ae_ctl_refcount(struct ae_ctl *ctl)
+{
+    int rc;
+    triton_mutex_lock(&ctl->mutex);
+    rc = ctl->refcount;
+    triton_mutex_unlock(&ctl->mutex);
+    return rc;
+}
+
+static inline int ae_ctl_refinc(struct ae_ctl *ctl)
+{
+    int rc;
+    triton_mutex_lock(&ctl->mutex);
+    rc = ++ctl->refcount;
+    triton_mutex_unlock(&ctl->mutex);
+    return rc;
+}
+
+static inline int ae_ctl_refdec(struct ae_ctl *ctl)
+{
+    int rc;
+    triton_mutex_lock(&ctl->mutex);
+    rc = --ctl->refcount;
+    triton_mutex_unlock(&ctl->mutex);
+    return rc;
 }
 
 /* internal function -- used by generated code */

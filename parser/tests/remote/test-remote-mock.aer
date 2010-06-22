@@ -110,11 +110,6 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
     return ret;
 }
 
-__blocking void do_server(void)
-{
-    aer_service_engine_start();
-}
-
 __blocking void do_remote_clients(int count)
 {
     triton_ret_t ret;
@@ -177,16 +172,6 @@ __blocking void do_remote_test(int count)
             do_remote_clients(count);
             /* clients done.  stop service engine */
             aer_service_engine_stop();
-
-            /* ensure that no ops are in progress */
-            while(aer_service_engine_in_progress_count() > 0)
-            {
-                /* ops in progress, wait for a sec and then check again */
-                triton_timer(1000);
-            }
-
-            /* no ops in progress!  cancel waiting receives! */
-            pbreak;
         }
     }
 }

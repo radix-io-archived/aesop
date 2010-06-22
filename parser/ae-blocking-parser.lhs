@@ -28,7 +28,7 @@
 > import ContextGen
 > import Serialize
 > import Header
-		
+
 > mkStmtFromBlockingMacro :: Walker -> String -> [String] -> NodeInfo -> [CStat]
 > mkStmtFromBlockingMacro w macro params ni = mkStmtFromCPPMacro includePaths defs "ae-blocking-parser.h" ni macro params
 >       where includePaths = includes w
@@ -799,7 +799,7 @@ to calling the appropriate callback
 >               [CExpr (Just (CCall (CMember (mkVar "ctl" ni)
 >				             (newIdent "callback" ni) True ni)
 >		            	    ([constructExprFromC ni "ctl->user_ptr"] ++ retparam) ni)) ni,
->		 mkStmtFromC ni "free(ctl);",
+>                mkStmtFromC ni "if(ae_ctl_refcount(&ctl->gen) == 0) free(ctl);",
 >		 mkStmtFromC ni "return;"]) ni
 
 > swapReturnWithCallback e c = c
@@ -815,7 +815,7 @@ to calling the appropriate callback
 >                [(CExpr (Just (CCall (CMember (mkVar "ctl" ni)
 >				     	      (newIdent "callback" ni) True ni)
 >		            	     ([constructExprFromC ni "ctl->user_ptr"] ++ retparam) ni)) ni),
->		  mkStmtFromC ni "free(ctl);",
+>                 mkStmtFromC ni "if(ae_ctl_refcount(&ctl->gen) == 0) free(ctl);",
 >		  mkStmtFromC ni "return TRITON_SUCCESS;"]) ni
 > swapPostReturnWithCallback e c = c
 
@@ -1197,12 +1197,11 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 
 > getStmtsAfter :: BlockingContext -> [CStat] -> WalkerT [CStat]
 > getStmtsAfter b bcallReturn
->	| containsBreak $ nbStmtsAfter b = do
->		let loopCtx = findLoopParent b
->		    ni = getNI b
->		breakStmts <- generateAfterStmts loopCtx []
+
+>	| (containsBreak $ nbStmtsAfter b) && (isJust $ findLoopParent b) = do
+>		breakStmts <- generateAfterStmts (fromJust $ findLoopParent b) []
 >	        tlAfter <- translateForCB b $ bcallReturn ++ (nbStmtsAfter b)
->		return $ swapBreak (mkCompoundStmt Nothing (breakStmts ++ [CReturn Nothing ni]) $ getNI b) tlAfter 
+>		return $ swapBreak (mkCompoundStmt Nothing (breakStmts ++ [CReturn Nothing (getNI b)]) $ getNI b) tlAfter 
 
 >	| (containsPBreak $ nbStmtsAfter b) && isLastContext b && parentIsPBranch b = do
 >		prefix <- getPrefix
@@ -1233,8 +1232,6 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >		return $ [mkCompoundWithDecls Nothing pbranchDecls
 >				(pbranchStart ++ afterStmts ++ setDoneCtlStmt ++
 >				 pbranchDelete ++ pbranchDone ++ pbCheckDone ++ afterPWaitStmts) $ getNI b]
-
-
 
 >	| containsPBreak $ nbStmtsAfter b = do
 >		prefix <- getPrefix

@@ -15,11 +15,11 @@
 > import qualified Data.ByteString.Char8
 > import Control.Exception
 > import Data.List
-> import Debug.Trace
 > import CParse
 > import System.IO
 > import System.IO.Unsafe
 > import System.Directory
+> import Debug.Trace
 
 > type ReturnType = (CTypeSpec, [CDerivedDeclr])
 
@@ -63,6 +63,14 @@ Functions to generate AST objects from C template code
 > mkStmtsFromCLines :: NodeInfo -> String -> [CStat]
 > mkStmtsFromCLines ni lines = [mkStmtFromC ni lines]
 
+> doCPP :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> FilePath -> IO Data.ByteString.ByteString
+> doCPP idirs defines ifile ni fp = do
+>       let cppa = CppArgs ((map IncludeDir idirs) ++ [IncludeFile ifile] ++ (map (uncurry Define) defines)) [] Nothing fp Nothing
+>       result <- runPreprocessor (newGCC "gcc") cppa
+>       case result of
+>           (Right ios) -> do { removeFile fp; return ios }
+>           (Left error) -> trace ("Preprocessor failed:" ++ (show error)) $ assert False $ return Data.ByteString.empty
+
 > doStmtPP :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> IO Data.ByteString.ByteString
 > doStmtPP idirs defines ifile ni macro params = do
 >     let paramsStr [] = ""
@@ -73,11 +81,7 @@ Functions to generate AST objects from C template code
 >     hPutStrLn h "}"
 >     hClose h
 >     -- putStrLn $ join $ map (\(a,b) -> "-D" ++ a ++ "=" ++ b) defines
->     let cppa = CppArgs ((map IncludeDir idirs) ++ [IncludeFile ifile] ++ (map (uncurry Define) defines)) [] Nothing fp Nothing
->     result <- runPreprocessor (newGCC "gcc") cppa
->     case result of
->         (Right ios) -> do { removeFile fp; return ios }
->         (Left error) -> trace ("Preprocessor failed:" ++  (show error)) $ assert False $ return Data.ByteString.empty
+>     doCPP idirs defines ifile ni fp
 
 > swapNodeInfo :: NodeInfo -> NodeInfo -> NodeInfo
 > swapNodeInfo newni oldni = newni
@@ -111,11 +115,7 @@ Functions to generate AST objects from C template code
 >     hPutStrLn h $ "int " ++ declDummyName ++ ";"
 >     hPutStrLn h $ macro ++ "(" ++ (paramsStr params) ++ ")"
 >     hClose h
->     let cppa = CppArgs ((map IncludeDir idirs) ++ [IncludeFile ifile] ++ (map (uncurry Define) defines)) [] Nothing fp Nothing
->     result <- runPreprocessor (newGCC "gcc") cppa
->     case result of
->         (Right ios) -> do { removeFile fp; return ios }
->         (Left error) -> trace ("Preprocessor failed:" ++  (show error)) $ assert False $ return Data.ByteString.empty
+>     doCPP idirs defines ifile ni fp
 
 > getDeclsAfterDummy :: [CExtDecl] -> [CDecl]
 > getDeclsAfterDummy edecls = map getd $ reverse $ takeWhile dname (reverse edecls)
@@ -146,11 +146,7 @@ Functions to generate AST objects from C template code
 >     hPutStrLn h $ "int " ++ declDummyName ++ ";"
 >     hPutStrLn h $ macro ++ "(" ++ (paramsStr params) ++ ")"
 >     hClose h
->     let cppa = CppArgs ((map IncludeDir idirs) ++ [IncludeFile ifile] ++ (map (uncurry Define) defines)) [] Nothing fp Nothing
->     result <- runPreprocessor (newGCC "gcc") cppa
->     case result of
->         (Right ios) -> do { removeFile fp; return ios }
->         (Left error) -> trace ("Preprocessor failed:" ++  (show error)) $ assert False $ return Data.ByteString.empty
+>     doCPP idirs defines ifile ni fp
 
 > getFunDefDeclsAfterDummy :: [CExtDecl] -> [CExtDecl]
 > getFunDefDeclsAfterDummy edecls = reverse $ takeWhile dname (reverse edecls)

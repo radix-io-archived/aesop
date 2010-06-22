@@ -208,6 +208,7 @@
     ctl = child_ctl; \
     triton_list_link_clear(&child_ctl->gen.link); \
     ae_lone_pbranches_add(&child_ctl->gen); \
+    ae_ctl_refinc(&child_ctl->parent->gen); \
 }
 
 #define AE_MK_LONE_PBRANCH_POST_END_STMTS(__ctl_type, __fname, __location, __pbranch_id) \
@@ -217,7 +218,10 @@
 
 #define AE_MK_LONE_PBRANCH_DONE_STMTS() \
 { \
+    int prc; \
     ae_lone_pbranches_remove(&ctl->gen); \
+    prc = ae_ctl_refdec(&ctl->parent->gen); \
+    if(prc == 0) free(ctl->parent); \
     free(ctl); \
 }
 #define AE_MK_PARENT_POINTER_DECL(__parent) \
