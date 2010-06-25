@@ -29,6 +29,7 @@
 > import Header
 > import Text.Regex.PCRE
 > import Array
+> import System.Directory
 
 Each type in the registry is the name and a set of truth values each function
 required:  (encode, decode, encode_size, init, destroy)
@@ -45,7 +46,8 @@ is set to true.
 >       typeReg :: RemoteTypeRegistry,
 >       funs :: [String],
 >       includes :: [FilePath],
->       defines :: [(String, String)]
+>       defines :: [(String, String)],
+>       remoteParser :: Maybe MacroParser
 > }
 
 > type RemoteT = StateT Remote IO
@@ -57,8 +59,8 @@ is set to true.
 
 > registerRemoteFun :: String -> RemoteT ()
 > registerRemoteFun name = do
->       (Remote fname treg funs is d) <- get
->       put (Remote fname treg (name:funs) is d)
+>       r <- get
+>       put $ r { funs = name : (funs r) }
 
 > registerEncodeFun :: String -> RemoteT ()
 > registerEncodeFun e = do
@@ -136,10 +138,11 @@ is set to true.
 >       when (isJust res) $ invalid (s ++ " already has encoding functions defined.\n") ni
 >       liftIO $ Data.HashTable.insert (typeReg r) s (True, True, True, True, True)
 
-> newRemoteState :: String -> [FilePath] -> [(String, String)] -> IO Remote
-> newRemoteState fname includes defs = do
+> newRemoteState :: String -> [FilePath] -> [(String, String)] -> FilePath -> IO Remote
+> newRemoteState fname includes defs macroHeader = do
 >       r <- Data.HashTable.new (==) Data.HashTable.hashString
->       return $ Remote fname r [] includes defs
+>       bp <- mkParser includes defs macroHeader
+>       return $ Remote fname r [] includes defs (Just bp)
 
 > getRemoteTypeName :: CTypeSpec -> Maybe String
 > getRemoteTypeName (CSUType (CStruct CStructTag (Just n) _ _ _) _) = Just $ "struct_" ++ (identToString n)
@@ -185,21 +188,21 @@ CTypeOfType CDecl NodeInfo
 
 > mkDeclsFromRemote :: String -> [String] -> NodeInfo -> RemoteT [CDecl]
 > mkDeclsFromRemote macro params ni = do
->       includes <- getIncludes
->       defs <- getDefines
->       return $ mkDeclsFromCPPMacro includes defs "ae-remote-parser.h" ni macro params
+>       r <- get
+>       let mp = assert (isJust $ remoteParser r) (fromJust $ remoteParser r)
+>       return $ mkDeclsFromCPPMacro mp ni macro params
 
 > mkStmtFromRemote :: String -> [String] -> NodeInfo -> RemoteT [CStat]
 > mkStmtFromRemote macro params ni = do
->       includes <- getIncludes
->       defs <- getDefines
->       return $ mkStmtFromCPPMacro includes defs "ae-remote-parser.h" ni macro params
+>       r <- get
+>       let mp = assert (isJust $ remoteParser r) (fromJust $ remoteParser r)
+>       return $ mkStmtFromCPPMacro mp ni macro params
 
 > mkFunDefFromRemote :: String -> [CStat] -> String -> [String] -> NodeInfo -> RemoteT [CExtDecl]
 > mkFunDefFromRemote name block macro params ni = do
->       includes <- getIncludes
->       defs <- getDefines
->       return $ mkFunDefFromCPPMacro includes defs "ae-remote-parser.h" ni macro params name block
+>       r <- get
+>       let mp = assert (isJust $ remoteParser r) (fromJust $ remoteParser r)
+>       return $ mkFunDefFromCPPMacro mp ni macro params name block
 
 > mkEncodeBlock :: NodeInfo -> String -> String -> Bool -> RemoteT [CStat]
 > mkEncodeBlock ni typeName fieldName isPtr = do
@@ -385,8 +388,8 @@ CTypeOfType CDecl NodeInfo
 >       let nInfos = map nodeInfo fields
 >           tbns = zip4 types bools nInfos fields
 >       let checkRemoteFields (t, b, n, f) = when (not b) $ 
->               invalid ("struct '" ++  (fromJust structName) ++ "' with parameter '" ++ 
->                        (identToString $ getCDeclName $ f) ++ "' is not a valid remote type\n") n
+>               invalid ("struct '" ++  (show $ fromJust structName) ++ "' with parameter '" ++ 
+>                        (show $ getCDeclName $ f) ++ "' is not a valid remote type\n") n
 >       mapM_ checkRemoteFields tbns
 >       
 >       let (s:_) = filter isStructTypeSpec specs
@@ -418,8 +421,8 @@ CTypeOfType CDecl NodeInfo
 
 > setFileName :: FilePath -> RemoteT ()
 > setFileName f = do
->       (Remote _ t s is d) <- get
->       put (Remote f t s is d)
+>       r <- get
+>       put $ r { filename = f }
 
 > getFilePosStr :: NodeInfo -> RemoteT String
 > getFilePosStr (NodeInfo p _ _) = do
@@ -514,14 +517,14 @@ CTypeOfType CDecl NodeInfo
 
 >           let [inputdecl, outputdecl] = params
 >               origDecl = CDeclExt $ (CDecl newspecs inits ni)
->           stubDecl <- mkStubDecl fname returnType params ni
->           serviceDecl <- mkServiceDecl ni fname 
+>           stubDecl <- mkStubDecl (identToString fname) returnType params ni
+>           serviceDecl <- mkServiceDecl ni (identToString fname)
 
 >           return [origDecl, stubDecl, serviceDecl]
 
 >       | isFunDecl d = do
 >               let (fname, _, _) = splitFunDecl d
->               registerEFun fname
+>               registerEFun (identToString fname)
 >               return [e]
 
 > registerRemoteDecl e@(CFDefExt fd) = do
@@ -847,9 +850,11 @@ CTypeOfType CDecl NodeInfo
 >       when (isNothing outfile && isNothing sname) $ ioError $ userError "No output file specified."
 
 >       when pheader $ do { mapM_ (\f -> parseRemoteHeader f report (fromJust outfile)) files ; exitWith (ExitSuccess) }
->       w <- newRemoteState "" includes defs -- empty string here because the parseRemote function sets the filename for each file
+>       r <- newRemoteState "" includes defs "src/aesop/ae-remote-parser.h" -- empty string here because the parseRemote function sets the filename for each file
 >       let remotes = map (\f -> parseRemote pretty includes outfile report f) files :: [RemoteT ()]
->       w <- foldM (flip execStateT) w remotes
->       when (isJust sname) $ do { runStateT (writeRegistryFiles (fromJust sname) regdir) w; return () }
+>       r <- foldM (flip execStateT) r remotes
+>       when (isJust sname) $ do { runStateT (writeRegistryFiles (fromJust sname) regdir) r; return () }
+>       assert (isJust $ remoteParser r) return ()
+>       removeFile $ macheader $ fromJust $ remoteParser r
 
 vim: ts=8 sts=4 sw=4 expandtab

@@ -91,6 +91,17 @@ Will result in ["a", "b", "c"]
 > isTypeDefDecl (CDecl (s:specs) initdecls ni) = isTypeDefSpec s
 > isTypeDefDecl _ = False
 
+> getTypedefIdentsFromDecls :: [CExtDecl] -> [Ident]
+> getTypedefIdentsFromDecls ds = concatMap getIdent $ concatMap getd ds
+>       where getd (CDeclExt d) = [d]
+>             getd _ = []
+>             getIdent d@(CDecl specs inits ni)
+>                 | isTypeDefDecl d =
+>                       let (i:ids) = inits
+>		            ((Just (CDeclr (Just id@(Ident tname _ _)) _ _ _ _)), _, _) = i
+>                       in [id]
+>                 | otherwise = []
+
 > structSpecHasName :: CDeclSpec -> Bool
 > structSpecHasName (CTypeSpec (CSUType (CStruct _ (Just _) _ _ _) _)) = True
 > structSpecHasName _ = False
@@ -114,40 +125,40 @@ Will result in ["a", "b", "c"]
 >       isTypeDefSpec s1 && isTypeDefTypeSpec s2
 > isTypeDefOfTypeDef _ = False
 
-> getStructName :: CDeclSpec -> Maybe String
-> getStructName (CTypeSpec (CSUType (CStruct _ n _ _ _) _)) = if isJust n then Just $ identToString $ fromJust n else Nothing
+> getStructName :: CDeclSpec -> Maybe Ident
+> getStructName (CTypeSpec (CSUType (CStruct _ n _ _ _) _)) = if isJust n then Just $ fromJust n else Nothing
 > getStructName _ = Nothing
 
-> getStructTypeDefInfo :: CDecl -> Maybe (Maybe String, String)
+> getStructTypeDefInfo :: CDecl -> Maybe (Maybe Ident, Ident)
 > getStructTypeDefInfo d@(CDecl (s1:s2:[]) initdecls ni)
 >	| isTypeDefSpec s1 && isStructTypeSpec s2 =
 >               let (i:ids) = initdecls
->		    ((Just (CDeclr (Just (Ident tname _ _)) _ _ _ _)), _, _) = i
->		in Just (getStructName s2, tname)
+>		    ((Just (CDeclr (Just ti@(Ident tname _ _)) _ _ _ _)), _, _) = i
+>		in Just (getStructName s2, ti)
 >	| otherwise = Nothing
 
-> getTypeDefTypeDefInfo :: CDecl -> Maybe (String, String)
+> getTypeDefTypeDefInfo :: CDecl -> Maybe (Ident, Ident)
 > getTypeDefTypeDefInfo d@(CDecl (s1:s2:[]) initdecls ni)
 >       | isTypeDefSpec s1 && isTypeDefTypeSpec s2 =
->               let (CTypeSpec (CTypeDef (Ident pname _ _) _)) = s2
+>               let (CTypeSpec (CTypeDef pi@(Ident pname _ _) _)) = s2
 >                   (i:ids) = initdecls
->		    ((Just (CDeclr (Just (Ident tname _ _)) _ _ _ _)), _, _) = i
->               in Just (pname, tname)
+>		    ((Just (CDeclr (Just ti@(Ident tname _ _)) _ _ _ _)), _, _) = i
+>               in Just (pi, ti)
 >	| otherwise = Nothing
 
-> getStructInfo :: CDecl -> Maybe (Maybe String, [CDecl])
+> getStructInfo :: CDecl -> Maybe (Maybe Ident, [CDecl])
 > getStructInfo (CDecl s i n) = 
 >	let (t:ts) = filter isStructTypeSpec s
 >	in case t of
->		(CTypeSpec (CSUType (CStruct _ (Just n) (Just f) _ _) _)) -> Just (Just $ identToString n, f)
+>		(CTypeSpec (CSUType (CStruct _ (Just n) (Just f) _ _) _)) -> Just (Just $ n, f)
 >		(CTypeSpec (CSUType (CStruct _ Nothing (Just f) _ _) _)) -> Just (Nothing, f)
 >		_ -> Nothing
 
-> getTypeName :: CDecl -> Maybe String
+> getTypeName :: CDecl -> Maybe Ident 
 > getTypeName d@(CDecl s _ _) =
 >       let (sp:sps) = s
 >	in case sp of
->		(CTypeSpec (CSUType (CStruct _ (Just n) _ _ _) _)) -> Just $ identToString n
+>		(CTypeSpec (CSUType (CStruct _ (Just n) _ _ _) _)) -> Just $ n
 >	 	_ -> Nothing
 
 > isVarDecl :: CDecl -> Bool
@@ -233,17 +244,20 @@ For the function derived declarator, get the function parameters
 
 split a function declaration into tuple: (function-name, (return-type, return-derived-list), function-parameters)
 
-> splitFunDecl :: CDecl -> (String, (CTypeSpec, [CDerivedDeclr]), [CDecl])
-> splitFunDecl decl  = (identToString $ dn, getReturn decl, getParams decl)
+> splitFunDecl :: CDecl -> (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl])
+> splitFunDecl decl  = (dn, getReturn decl, getParams decl)
 >       where (dn:dns) = getCDeclNames decl
 
-> getFunInfo :: CFunDef -> (String, (CTypeSpec, [CDerivedDeclr]), [CDecl])
-> getFunInfo f = (getFunDefName f, getFunDefReturn f, getFunDefParams f)
+> getFunInfo :: CFunDef -> (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl])
+> getFunInfo f = (getFunDefIdent f, getFunDefReturn f, getFunDefParams f)
 
 Get the name of a function definition
 
 > getFunDefName :: CFunDef -> String
 > getFunDefName (CFunDef _ (CDeclr name _ _ _ _) _ _ _) = identToString $ fromJust name
+
+> getFunDefIdent :: CFunDef -> Ident
+> getFunDefIdent (CFunDef _ (CDeclr name _ _ _ _) _ _ _) = fromJust name
 
 Get the parameter declarations of a function definition
 

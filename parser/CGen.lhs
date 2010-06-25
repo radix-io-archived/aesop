@@ -3,6 +3,8 @@
 > import Language.C.System.GCC   -- preprocessor used
 > import Language.C.System.Preprocess
 > import Language.C.Data.Position
+> import Language.C.Data.Name
+> import Language.C.Data.InputStream
 > import System.Environment
 > import Data.Typeable
 > import Data.Maybe
@@ -18,8 +20,63 @@
 > import CParse
 > import System.IO
 > import System.IO.Unsafe
+> import System.Exit
 > import System.Directory
+> import System.Process
 > import Debug.Trace
+> import System.Time
+
+> tmpFile :: String -> IO FilePath
+> tmpFile s = do
+>       (fp, h) <- openTempFile "/tmp" "__aesop_cgen_tmp.c"
+>       hPutStrLn h s
+>       hClose h
+>       return fp
+
+> newTmpFile :: IO FilePath
+> newTmpFile = do
+>       (fp, h) <- openTempFile "/tmp" "__aesop_cgen_tmp.c"
+>       hClose h
+>       return fp
+
+> tmpHandle :: IO (FilePath, Handle)
+> tmpHandle = do
+>       (fp, h) <- openTempFile "/tmp" "__aesop_cgen_tmp.c"
+>       return (fp, h)
+
+> getTimeDiff :: ClockTime -> ClockTime -> Float
+> getTimeDiff (TOD c1s c1p) (TOD c2s c2p) =
+>       let u1 = (fromInteger c1s) * (1e6 :: Float) + (fromInteger c1p) * (1e-6 :: Float)
+>           u2 = (fromInteger c2s) * (1e6 :: Float) + (fromInteger c2p) * (1e-6 :: Float)
+>       in u2 - u1
+
+> myCPP :: [FilePath] -> [(String, String)] -> Maybe FilePath -> [String] -> (Either String FilePath) -> IO FilePath
+> myCPP includes defines incheader options input = do
+>       inputFile <- either (\s -> tmpFile s) (\fp -> return fp) input
+>       outFile <- newTmpFile
+>       let opts = ["-E"] ++ mkIncludes ++ mkDefs ++ mkIncHeader ++ options ++ ["-o", outFile] ++ [inputFile]
+>           mkIncludes = concat [ ["-I", i] | i <- includes ]
+>           mkDefs = concat [ ["-D" ++ (fst d) ++ "=" ++ (snd d)] | d <- defines ]
+>           mkIncHeader = if isJust incheader then ["-include", fromJust incheader] else []
+>       (errorFP, errorH) <- tmpHandle
+>       -- st <- getClockTime
+>       pid <- runProcess "gcc" opts Nothing Nothing Nothing Nothing (Just errorH)
+>       ec <- waitForProcess pid
+>       -- et <- getClockTime
+>       -- let td = getTimeDiff st et
+>       -- putStrLn $ (show td) ++ "us"
+>       either (\_ -> removeFile inputFile) (\_ -> return ()) input
+>       case ec of
+>               ExitSuccess -> do
+>                       hClose errorH
+>                       removeFile errorFP
+>                       return outFile
+>               ExitFailure e -> do
+>                       errs <- hGetContents errorH
+>                       hClose errorH
+>                       removeFile errorFP
+>                       trace ("Preprocessor failed with return code: " ++ (show e) ++ "\n" ++ errs ++ "\n\n") $ assert False $ return "dummy_file.c"
+                       
 
 > type ReturnType = (CTypeSpec, [CDerivedDeclr])
 
@@ -63,25 +120,42 @@ Functions to generate AST objects from C template code
 > mkStmtsFromCLines :: NodeInfo -> String -> [CStat]
 > mkStmtsFromCLines ni lines = [mkStmtFromC ni lines]
 
-> doCPP :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> FilePath -> IO Data.ByteString.ByteString
-> doCPP idirs defines ifile ni fp = do
->       let cppa = CppArgs ((map IncludeDir idirs) ++ [IncludeFile ifile] ++ (map (uncurry Define) defines)) [] Nothing fp Nothing
->       result <- runPreprocessor (newGCC "gcc") cppa
->       case result of
->           (Right ios) -> do { removeFile fp; return ios }
->           (Left error) -> trace ("Preprocessor failed:" ++ (show error)) $ assert False $ return Data.ByteString.empty
+> data MacroParser = MacroParser { macheader :: FilePath, typedefs :: [Ident] }
 
-> doStmtPP :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> IO Data.ByteString.ByteString
-> doStmtPP idirs defines ifile ni macro params = do
+> getTypeIdents :: [FilePath] -> [(String, String)] -> FilePath -> IO [Ident]
+> getTypeIdents idirs defines macheader = do
+>       rfile <- myCPP idirs defines (Just macheader) [] (Left "\n")
+>       result <- readFile rfile
+>       removeFile rfile
+>       -- run the C parser on the result stream
+>       let parsed = execParser_ translUnitP (mkInputStream result) $ initPos macheader
+>       -- now get the typedefs as idents from the external declarations
+>       case parsed of
+>               (Right (CTranslUnit [] _)) -> return []
+>               (Right (CTranslUnit decls _)) -> return $ getTypedefIdentsFromDecls decls
+>               (Left pe) -> trace ("Error parsing declarations from header " ++ macheader) (assert False (return []))
+
+> mkParser :: [FilePath] -> [(String, String)] -> FilePath -> IO MacroParser
+> mkParser idirs defines macheader = do
+>       types <- getTypeIdents idirs defines macheader
+>       result <- myCPP idirs defines Nothing ["-imacros", macheader, "-fdirectives-only", "-P"] (Left "\n")
+>       return $ MacroParser result types
+
+> doCPPWithParser :: MacroParser -> NodeInfo -> String -> IO String
+> doCPPWithParser p ni input = do
+>       fp <- myCPP [] [] (Just $ macheader p) ["-P"] (Left input) 
+>       s <- readFile fp
+>       removeFile fp
+>       return s
+
+> doStmtPP :: MacroParser -> NodeInfo -> String -> [String] -> IO String
+> doStmtPP p ni macro params = do
 >     let paramsStr [] = ""
 >         paramsStr pp = foldl1 ((++) . (++ ",")) pp
->     (fp, h) <- openTempFile "/tmp" "__tmp-gs-macro-code.c"
->     hPutStrLn h "void tmp_triton_macro_fun(void) {"
->     hPutStrLn h (macro ++ "(" ++ (paramsStr params) ++ ")")
->     hPutStrLn h "}"
->     hClose h
+>         macBody = "void tmp_triton_macro_fun(void) {\n" ++ macro ++ "(" ++ (paramsStr params) ++ ")\n}\n"
+       
 >     -- putStrLn $ join $ map (\(a,b) -> "-D" ++ a ++ "=" ++ b) defines
->     doCPP idirs defines ifile ni fp
+>     doCPPWithParser p ni macBody
 
 > swapNodeInfo :: NodeInfo -> NodeInfo -> NodeInfo
 > swapNodeInfo newni oldni = newni
@@ -89,11 +163,10 @@ Functions to generate AST objects from C template code
 > swapNodeInfoInStmts :: NodeInfo -> [CStat] -> [CStat]
 > swapNodeInfoInStmts ni stmts = map (everywhere (mkT $ swapNodeInfo ni)) stmts
 
-> mkStmtFromCPPMacro :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> [CStat]
-> mkStmtFromCPPMacro idirs defines ifile ni macro params = swapNodeInfoInStmts ni stmts
->       where preproc = unsafePerformIO $ doStmtPP idirs defines ifile ni macro params
->             strproc = Data.ByteString.Char8.unpack preproc
->             parsedResult = (execParser_ translUnitP preproc $ posOfNode ni)
+> mkStmtFromCPPMacro :: MacroParser -> NodeInfo -> String -> [String] -> [CStat]
+> mkStmtFromCPPMacro p ni macro params = swapNodeInfoInStmts ni stmts
+>       where preproc = unsafePerformIO $ doStmtPP p ni macro params
+>             parsedResult = fmap fst $ (execParser translUnitP (mkInputStream preproc) (posOfNode ni) (typedefs p) newNameSupply)
 >	      stmts = case parsedResult of
 >		        -- parse succeeded, so we return the statement
 >                       (Right (CTranslUnit [] _)) -> []
@@ -101,21 +174,19 @@ Functions to generate AST objects from C template code
 >                                                             (CFDefExt (CFunDef _ _ _ stmt _)) -> [stmt]
 >                                                             _ -> []
 >			(Left pe) -> trace ("Error generating function definitions from macro '" ++
->                                           macro ++ "': " ++ strproc ++ (show pe))
+>                                           macro ++ "': " ++ preproc ++ (show pe))
 >                                          (assert False [])
 
 > declDummyName :: String
 > declDummyName = "__dummy_decl"
 
-> doDeclPP :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> IO Data.ByteString.ByteString
-> doDeclPP idirs defines ifile ni macro params = do
+> doDeclPP :: MacroParser -> NodeInfo -> String -> [String] -> IO String 
+> doDeclPP p ni macro params = do
 >     let paramsStr [] = ""
 >         paramsStr pp = foldl1 ((++) . (++ ",")) pp
->     (fp, h) <- openTempFile "/tmp" "__tmp-gs-macro-code.c"
->     hPutStrLn h $ "int " ++ declDummyName ++ ";"
->     hPutStrLn h $ macro ++ "(" ++ (paramsStr params) ++ ")"
->     hClose h
->     doCPP idirs defines ifile ni fp
+>         macBody = "int " ++ declDummyName ++ ";\n" ++
+>                   macro ++ "(" ++ (paramsStr params) ++ ")\n"
+>     doCPPWithParser p ni macBody
 
 > getDeclsAfterDummy :: [CExtDecl] -> [CDecl]
 > getDeclsAfterDummy edecls = map getd $ reverse $ takeWhile dname (reverse edecls)
@@ -126,27 +197,24 @@ Functions to generate AST objects from C template code
 > swapNodeInfoInDecls :: NodeInfo -> [CDecl] -> [CDecl]
 > swapNodeInfoInDecls ni decls = map (everywhere (mkT $ swapNodeInfo ni)) decls
 
-> mkDeclsFromCPPMacro :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> [CDecl]
-> mkDeclsFromCPPMacro idirs defines ifile ni macro params = swapNodeInfoInDecls ni decls
->       where preproc = unsafePerformIO $ doDeclPP idirs defines ifile ni macro params
->             strproc = Data.ByteString.Char8.unpack preproc
->             parsedResult = (execParser_ translUnitP preproc $ posOfNode ni)
+> mkDeclsFromCPPMacro :: MacroParser -> NodeInfo -> String -> [String] -> [CDecl]
+> mkDeclsFromCPPMacro p ni macro params = swapNodeInfoInDecls ni decls
+>       where preproc = unsafePerformIO $ doDeclPP p ni macro params
+>             parsedResult = fmap fst $ (execParser translUnitP (mkInputStream preproc) (posOfNode ni) (typedefs p) newNameSupply)
 >	      decls = case parsedResult of
 >		        -- parse succeeded, so we return the statement
 >                       (Right (CTranslUnit [] _)) -> []
 >		        (Right (CTranslUnit edecls _)) -> getDeclsAfterDummy edecls
->			(Left pe) -> trace ("Error generating function definitions from macro '" ++ macro ++ "': " ++ strproc ++ (show pe))
+>			(Left pe) -> trace ("Error generating function definitions from macro '" ++ macro ++ "': " ++ preproc ++ (show pe))
 >                                          (assert False [])
 
-> doFunDefPP :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> IO Data.ByteString.ByteString
-> doFunDefPP idirs defines ifile ni macro params = do
+> doFunDefPP :: MacroParser -> NodeInfo -> String -> [String] -> IO String
+> doFunDefPP p ni macro params = do
 >     let paramsStr [] = ""
 >         paramsStr pp = foldl1 ((++) . (++ ",")) pp
->     (fp, h) <- openTempFile "/tmp" "__tmp-gs-macro-code.c"
->     hPutStrLn h $ "int " ++ declDummyName ++ ";"
->     hPutStrLn h $ macro ++ "(" ++ (paramsStr params) ++ ")"
->     hClose h
->     doCPP idirs defines ifile ni fp
+>         macBody = "int " ++ declDummyName ++ ";\n" ++
+>                   macro ++ "(" ++ (paramsStr params) ++ ")\n"
+>     doCPPWithParser p ni macBody
 
 > getFunDefDeclsAfterDummy :: [CExtDecl] -> [CExtDecl]
 > getFunDefDeclsAfterDummy edecls = reverse $ takeWhile dname (reverse edecls)
@@ -165,16 +233,15 @@ Functions to generate AST objects from C template code
 > swapNodeInfoInExtDecls :: NodeInfo -> [CExtDecl] -> [CExtDecl]
 > swapNodeInfoInExtDecls ni edecls = map (everywhere (mkT $ swapNodeInfo ni)) edecls
 
-> mkFunDefFromCPPMacro :: [FilePath] -> [(String, String)] -> FilePath -> NodeInfo -> String -> [String] -> String -> [CStat] -> [CExtDecl]
-> mkFunDefFromCPPMacro idirs defines ifile ni macro params insertName insertStmts = swapNodeInfoInExtDecls ni [completedFunDef]
->       where preproc = unsafePerformIO $ doFunDefPP idirs defines ifile ni macro params
->             strproc = Data.ByteString.Char8.unpack preproc
->             parsedResult = (execParser_ translUnitP preproc $ posOfNode ni)
+> mkFunDefFromCPPMacro :: MacroParser -> NodeInfo -> String -> [String] -> String -> [CStat] -> [CExtDecl]
+> mkFunDefFromCPPMacro p ni macro params insertName insertStmts = swapNodeInfoInExtDecls ni [completedFunDef]
+>       where preproc = unsafePerformIO $ doFunDefPP p ni macro params
+>             parsedResult = fmap fst $ (execParser translUnitP (mkInputStream preproc)  (posOfNode ni) (typedefs p) newNameSupply)
 >	      decls = case parsedResult of
 >		        -- parse succeeded, so we return the statement
 >                       (Right (CTranslUnit [] _)) -> []
 >		        (Right (CTranslUnit edecls _)) -> getFunDefDeclsAfterDummy edecls
->			(Left pe) -> trace ("Error generating function definitions from macro '" ++ macro ++ "': " ++ strproc ++ (show pe))
+>			(Left pe) -> trace ("Error generating function definitions from macro '" ++ macro ++ "': " ++ preproc ++ (show pe))
 >                                          (assert False [])
             
 >             [fdef] = assert ((length decls) == 1) $ decls
@@ -238,6 +305,11 @@ mkCDeclr "myFunPtr" [CPtrDeclr, (CFunDeclr (Right [(CDecl [CTypeSpec CIntType] [
 >	let ni = nodeInfo $ head derived
 >	in CDeclr (Just (newIdent name ni)) derived Nothing [] ni
 
+> mkIdentCDeclr :: Ident -> [CDerivedDeclr] -> CDeclr
+> mkIdentCDeclr name derived = 
+>	let ni = nodeInfo $ head derived
+>	in CDeclr (Just name)  derived Nothing [] ni
+
 > mkAnonCDeclr :: [CDerivedDeclr] -> CDeclr
 > mkAnonCDeclr derived = 
 >	let ni = nodeInfo $ head derived
@@ -260,6 +332,9 @@ mkCDecl (CTypeDef "myType") [CPtrDeclr] "baz"
 
 > mkCDecl :: CTypeSpec -> [CDerivedDeclr] -> String -> NodeInfo -> CDecl
 > mkCDecl mtype derives name ni = CDecl [CTypeSpec mtype] [(Just $ mkCDeclr name derives, Nothing, Nothing)] ni
+
+> mkIdentCDecl :: CTypeSpec -> [CDerivedDeclr] -> Ident -> NodeInfo -> CDecl
+> mkIdentCDecl mtype derives name ni = CDecl [CTypeSpec mtype] [(Just $ mkIdentCDeclr name derives, Nothing, Nothing)] ni
 
 > mkAnonCDecl :: CTypeSpec -> [CDerivedDeclr] -> NodeInfo -> CDecl
 > mkAnonCDecl mtype derives ni = CDecl [CTypeSpec mtype] [(Just $ mkAnonCDeclr derives, Nothing, Nothing)] ni
@@ -362,6 +437,11 @@ Make the function pointer: void (* name) (params);
 > mkFunDecl fname returnType returnDerived params = 
 >	let ni = nodeInfo returnType 
 >	in mkCDecl returnType ([mkFunDeclr params ni] ++ returnDerived) fname ni
+
+> mkIdentFunDecl :: Ident -> CTypeSpec -> [CDerivedDeclr] -> [CDecl] -> CDecl
+> mkIdentFunDecl fname returnType returnDerived params = 
+>	let ni = nodeInfo returnType 
+>	in mkIdentCDecl returnType ([mkFunDeclr params ni] ++ returnDerived) fname ni
 
 > mkFunDeclWithDeclSpecs :: String -> CTypeSpec -> [CDerivedDeclr] -> [CDeclSpec] -> [CDecl] -> CDecl
 > mkFunDeclWithDeclSpecs fname rType rDerived declSpecs params =

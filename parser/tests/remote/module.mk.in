@@ -1,19 +1,28 @@
 DIR := src/aesop/parser/tests/remote
 
 # define the test_remote module
-REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mock $(DIR)/test_remote_mpi
+REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mock
 
 # specifies which aer files get included in the module
 REMOTE_TESTMODSRC_$(DIR)/test_remote_mock := $(DIR)/test-remote-mock.aer
 
+# include aer file as test binary
+REMOTE_TESTSRC += $(DIR)/test-remote-mock.aer
+
+MODLIBS_$(DIR)/test-remote-mock = -lpthread
+
+ifneq (,$(BUILD_MPI))
+
+REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mpi
+
 REMOTE_TESTMODSRC_$(DIR)/test_remote_mpi := $(DIR)/test-remote-mpi.aer
 
-# include aer file as test binary
-REMOTE_TESTSRC += $(DIR)/test-remote-mock.aer $(DIR)/test-remote-mpi.aer
+REMOTE_TESTSRC += $(DIR)/test-remote-mpi.aer
 
 MODCFLAGS_$(DIR)/test-remote-mpi = $(MPICFLAGS)
 MODLDFLAGS_$(DIR)/test-remote-mpi = $(MPILDFLAGS)
 MODLIBS_$(DIR)/test-remote-mpi = $(MPILIBS)
 MODCC_$(DIR)/test-remote-mpi = $(MPICC)
 
-MODLIBS_$(DIR)/test-remote-mock = -lpthread
+endif # BUILD_MPI
+

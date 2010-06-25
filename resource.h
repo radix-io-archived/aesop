@@ -109,7 +109,7 @@ static inline void ae_ctl_init(struct ae_ctl *ctl, const char *name, ae_hints_t 
     ctl->cancelled = 0;
     triton_mutex_init(&ctl->mutex, NULL);
     triton_list_init(&ctl->children);
-    ctl->refcount = 0;
+    ctl->refcount = 1;
 }
 
 static inline int ae_ctl_refcount(struct ae_ctl *ctl)
@@ -153,8 +153,8 @@ triton_ret_t ae_cancel_branches(struct ae_ctl *ctl);
 int ae_count_branches(struct ae_ctl *ctl);
 
 #ifdef AESOP_PARSER
-#define aesop_cancel_branches() ae_cancel_branches(&ctl->gen)
-#define aesop_count_branches() ae_count_branches(&ctl->gen)
+#define aesop_cancel_branches() ae_cancel_branches(&ctl->parent->gen)
+#define aesop_count_branches() ae_count_branches(&ctl->parent->gen)
 #else
 static inline triton_ret_t aesop_cancel_branches(void) { return TRITON_ERR_NOSYS; }
 static inline int aesop_count_branches(void) { return -1; }

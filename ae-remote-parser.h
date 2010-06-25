@@ -243,7 +243,7 @@
 #define AER_MK_STUB_BLOCK(__fname__, __intype__, __inname__, __outtype__, __outname__) \
 { \
     headersize = aer_message_header_size(); \
-    insize = aer_encode_size_##__intype__(#__inname__, __inname__); \
+    insize = aer_encode_size_##__intype__(#__inname__, &__inname__); \
     ret = aer_message_init(&send_message, headersize+insize); \
     if(ret != TRITON_SUCCESS) \
     { \
@@ -401,6 +401,8 @@ __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_mes
 __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_message_t *out_message) \
 { \
     triton_ret_t ret; \
+    uint32_t headersize; \
+    uint32_t outsize; \
     __intype__ __inname__; \
     __outtype__ __outname__; \
     ret = aer_decode_##__incanontype__(&(in_message->buffer), NULL, &__inname__); \
@@ -409,6 +411,24 @@ __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_mes
         return ret; \
     } \
     ret = __fname__(&__inname__, &__outname__); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        return ret; \
+    } \
+    outsize = aer_encode_size_##__outcanontype__(#__outname__, &__outname__); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        return ret; \
+    } \
+    headersize = aer_message_header_size(); \
+    ret = aer_message_init(out_message, headersize+outsize); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        return ret; \
+    } \
+    out_message->header.tag = in_message->header.tag; \
+    out_message->header.op = in_message->header.op; \
+    ret = aer_message_encode_header(out_message); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \

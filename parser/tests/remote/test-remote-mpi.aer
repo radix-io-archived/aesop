@@ -114,6 +114,9 @@ int main(int argc, char *argv[])
     triton_ret_t ret;
     ae_op_id_t op_id;
 
+    ret = triton_zeroconf_init();
+    assert(ret == TRITON_SUCCESS);
+
     ret = ae_hints_init();
     assert(ret == TRITON_SUCCESS);
 
@@ -136,7 +139,11 @@ int main(int argc, char *argv[])
     ret = triton_msg_enable_method("mpi", &mpi_ctx);
     assert(ret == TRITON_SUCCESS);
 
-    /* triton_debug_enable("/dev/stdout", "all"); */
+    if(argc > 1)
+    {
+        triton_debug_enable("/dev/stdout", "all");
+        sleep(30);
+    }
 
     triton_zeroconf_set("aesop.remote.method", "mpi");
 
