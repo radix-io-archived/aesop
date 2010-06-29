@@ -16,8 +16,6 @@
 
 #include "src/remote/service.hae"
 
-#include "src/aesop/parser/tests/remote/test_remote_module.h"
-
 #include "mpi.h"
 
 
