@@ -2,6 +2,7 @@
 > import Language.C
 > import Language.C.System.GCC   -- preprocessor used
 > import Language.C.Pretty
+> import Language.C.Data.Ident
 > import System.Environment
 > import Data.Typeable
 > import Data.Maybe
@@ -21,7 +22,7 @@
 Registry for blocking operations.  Once we see a function declaration
 with the __blocking specifier, we add it to the registry.
  
-> type FunDecl = (String, ReturnType, [CDecl])
+> type FunDecl = (Ident, ReturnType, [CDecl])
 
 
 The FPType is either a function or a struct.  The FPFun is the
@@ -29,12 +30,12 @@ function pointer, declarated within a struct or simply declarated locally.
 
 The struct (FPStruct) is a struct with a function pointer as one of its fields.
 
-> data FPType = FPFun     { name :: String , ftype :: FunDecl }
->	      | FPStruct  { name :: String , field :: String, inner :: FPType }
+> data FPType = FPFun     { name :: Ident , ftype :: FunDecl }
+>	      | FPStruct  { name :: Ident , field :: Ident, inner :: FPType }
 
 > instance Show FPType where
->	show (FPFun n _) = "Fun: " ++ n
->	show (FPStruct n f t) = "Struct: " ++ n ++ ":"  ++ f ++ "[" ++ (show t) ++ "]"
+>	show (FPFun n _) = "Fun: " ++ (show n)
+>	show (FPStruct n f t) = "Struct: " ++ (show n) ++ ":"  ++ (show f) ++ "[" ++ (show t) ++ "]"
 
 > isFPStruct :: FPType -> Bool
 > isFPStruct (FPStruct _ _ _) = True
@@ -54,39 +55,38 @@ The struct (FPStruct) is a struct with a function pointer as one of its fields.
 
 > type FPTypeRegistry = [FPType]
 
-> type VarMap = HashTable String CDecl
+> type VarMap = HashTable Ident CDecl
 
 > data VarRegistry = VarRegistry { locals :: VarMap , globals :: VarMap }
 
 > newVarRegistry :: IO VarRegistry
 > newVarRegistry = do
->	l <- Data.HashTable.new (==) Data.HashTable.hashString
->	g <- Data.HashTable.new (==) Data.HashTable.hashString
+>	l <- Data.HashTable.new (==) (Data.HashTable.hashInt . hashIdent)
+>	g <- Data.HashTable.new (==) (Data.HashTable.hashInt . hashIdent)
 >	return $ VarRegistry l g
 
 > resetLocalVarsInRegistry :: VarRegistry -> IO VarRegistry
 > resetLocalVarsInRegistry v = do
->	l <- Data.HashTable.new (==) Data.HashTable.hashString
+>	l <- Data.HashTable.new (==) (Data.HashTable.hashInt . hashIdent)
 >	return $ VarRegistry l (globals v)
 
 > insertGlobalDeclsToVarRegistry :: [CDecl] -> VarRegistry -> IO ()
 > insertGlobalDeclsToVarRegistry decls v = do
 >	let alldecls = concatMap splitDecls decls
->	mapM_ (\d -> Data.HashTable.insert (globals v) (identToString . getCDeclName $ d) d) alldecls
+>	mapM_ (\d -> Data.HashTable.insert (globals v) (getCDeclName $ d) d) alldecls
 
 > insertLocalDeclsToVarRegistry :: [CDecl] -> VarRegistry -> IO ()
 > insertLocalDeclsToVarRegistry decls v = do
 >	let alldecls = concatMap splitDecls decls
->	    getDName d = identToString $ getCDeclName $ d
->	    insertD d = Data.HashTable.insert (locals v) (getDName d) d
+>	    insertD d = Data.HashTable.insert (locals v) (getCDeclName $ d) d
 >	mapM_ insertD alldecls
 
-> lookupInVarRegistry :: String -> VarRegistry -> IO (Maybe CDecl)
-> lookupInVarRegistry s v = do
->	res <- Data.HashTable.lookup (locals v) s
+> lookupInVarRegistry :: Ident -> VarRegistry -> IO (Maybe CDecl)
+> lookupInVarRegistry i v = do
+>	res <- Data.HashTable.lookup (locals v) i
 >	if isJust res
 >	  then return res
->	  else Data.HashTable.lookup (globals v) s
+>	  else Data.HashTable.lookup (globals v) i 
 
 The monad transformer that we thread through our functions
 
@@ -104,18 +104,31 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >	transExit :: (CStat -> CStat -> CStat),
 >	fpTypeReg :: FPTypeRegistry,
 >	fpTypeLocalReg :: FPTypeRegistry,
->	varReg :: VarRegistry
+>	varReg :: VarRegistry,
+>       blockingParser :: Maybe MacroParser
 > }
 
-> newWalkerState :: String -> [String] -> [(String, String)] -> (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) -> (Walker -> BlockingContext -> NodeInfo -> [CStat]) -> (CStat -> CStat -> CStat) -> IO Walker
-> newWalkerState fname includes defines errorWriter pbranchDone transExit = do
+> newWalkerState :: String -> [String] -> [(String, String)] -> (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) -> (Walker -> BlockingContext -> NodeInfo -> [CStat]) -> (CStat -> CStat -> CStat) -> FilePath -> IO Walker
+> newWalkerState fname includes defines errorWriter pbranchDone transExit macroHeader = do
 >	varReg <- newVarRegistry
->	return $ Walker fname includes defines ["ctl"] errorWriter pbranchDone transExit [] [] varReg
+>       bp <- mkParser includes defines macroHeader
+>	return $ Walker fname includes defines ["ctl"] errorWriter pbranchDone transExit [] [] varReg (Just bp) 
+
+> setBlockingParser :: MacroParser -> WalkerT ()
+> setBlockingParser b = do
+>       w <- get
+>       put $ w { blockingParser = Just b }
+
+> getBlockingParser :: WalkerT MacroParser
+> getBlockingParser = do
+>       w <- get
+>       let bp = blockingParser w
+>       return $ assert (isJust bp) (fromJust bp)
 
 > setErrorWriter :: (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) -> WalkerT ()
 > setErrorWriter ew = do
->	w@(Walker f is d ps _ pb t fr frl vr) <- get
->	put (Walker f is d ps ew pb t fr frl vr)
+>	w <- get
+>	put $ w { errorWriter = ew }
 
 > getErrorWriter :: WalkerT (String -> ReturnType -> String -> NodeInfo -> [CStat])
 > getErrorWriter = do
@@ -124,8 +137,8 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 
 > setPBDone :: (Walker -> BlockingContext -> NodeInfo -> [CStat]) -> WalkerT ()
 > setPBDone pb = do
->	(Walker f is d ps ew _ t fr frl vr) <- get
->	put (Walker f is d ps ew pb t fr frl vr)
+>	w <- get
+>	put $ w { pbranchDone = pb }
 
 > getPBDone :: WalkerT (BlockingContext -> NodeInfo -> [CStat])
 > getPBDone = do
@@ -134,8 +147,8 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 
 > setTransExit :: (CStat -> CStat -> CStat) -> WalkerT ()
 > setTransExit tr = do
->	(Walker f is d ps e pb _ fr frl v) <- get
->	put (Walker f is d ps e pb tr fr frl v)
+>	w <- get
+>	put $ w { transExit = tr }
 
 > getTransExit :: WalkerT (CStat -> CStat -> CStat)
 > getTransExit = do
@@ -144,13 +157,13 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 
 > pushPrefix :: String -> WalkerT ()
 > pushPrefix s = do
->	(Walker f is d ps e pb t fr frl v) <- get
->	put (Walker f is d (s:ps) e pb t fr frl v)
+>	w <- get
+>	put $ w { prefixes = s : (prefixes w) }
 
 > popPrefix :: WalkerT ()
 > popPrefix = do
->	(Walker f is d (s:ps) e pb t fr frl v) <- get
->	put (Walker f is d ps e pb t fr frl v)
+>       w <- get
+>       put $ w { prefixes = tail (prefixes w) }
 
 > getPrefix :: WalkerT String
 > getPrefix = do
@@ -165,8 +178,8 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 
 > setIncludeDirs :: [String] -> WalkerT ()
 > setIncludeDirs is = do
->	(Walker f _ d ps e pb t fr frl v) <- get
->       put (Walker f is d ps e pb t fr frl v)
+>	w <- get
+>       put w { includes = is }
 
 > getDefines :: WalkerT [(String, String)]
 > getDefines = do
@@ -187,14 +200,14 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 
 > clearLocalFunPtrRegistry :: WalkerT ()
 > clearLocalFunPtrRegistry = do
->	(Walker s is d pn e pb t fr frl v) <- get
->	put (Walker s is d pn e pb t fr [] v) 
+>	w <- get
+>	put $ w { fpTypeLocalReg = [] }
 
 > resetLocals :: WalkerT ()
 > resetLocals = do
->	(Walker f is d ps ew pb t fpr fr vr) <- get
->	newvr <- liftIO $ resetLocalVarsInRegistry vr 
->	put (Walker f is d ps ew pb t fpr fr newvr)
+>	w <- get
+>	newvr <- liftIO $ resetLocalVarsInRegistry $ varReg w
+>	put $ w { varReg = newvr }
 
 > addLocals :: [CDecl] -> WalkerT ()
 > addLocals ds = do
@@ -221,20 +234,20 @@ Turns into:
 
 (a, [b1, c1, d1])
 
-> lookupVar :: CExpr -> WalkerT (Maybe [String])
+> lookupVar :: CExpr -> WalkerT (Maybe [Ident])
 > lookupVar e@(CVar name _) = do
 >	w <- get
->	d <- liftIO $ lookupInVarRegistry (identToString name) $ varReg w
+>	d <- liftIO $ lookupInVarRegistry name $ varReg w
 >	if isNothing d
 >	    then return Nothing
 >	    else do
 >	        let t = getTypeSpecFromDecl $ fromJust d
 >		    r = case t of
->			  (CTypeDef tname _) -> Just [identToString tname]
->			  (CSUType (CStruct _ (Just tname) _ _ _) _) -> Just [identToString tname]
+>			  (CTypeDef tname _) -> Just [tname]
+>			  (CSUType (CStruct _ (Just tname) _ _ _) _) -> Just [tname]
 >			  _ -> Nothing
 >		if isFunDecl $ fromJust d
->		    then return $ Just [identToString $ getCDeclName $ fromJust d]
+>		    then return $ Just [getCDeclName $ fromJust d]
 >		    else if isJust r
 >		             then return r
 >		             else return Nothing
@@ -244,30 +257,29 @@ Turns into:
 >	inner <- lookupVar expr
 >	if isNothing inner
 >		then return Nothing
->		else return $ Just $ (fromJust inner) ++ [identToString name]
+>		else return $ Just $ (fromJust inner) ++ [name]
 
 > lookupVar e = do
 >	return Nothing
 
 > insertFP :: FPType -> WalkerT ()
 > insertFP fptype = do
->	(Walker f is d ps ew pb t fr frl vr) <- get
->	put (Walker f is d ps ew pb t (fptype:fr) frl vr)
+>	w <- get
+>	put $ w { fpTypeReg = fptype : (fpTypeReg w) }
 
 Registery a blocking function pointer.
 
 > registerBlocking :: FunDecl -> WalkerT ()
-> registerBlocking f = do
->	let (n, (rt, rd), p) = f
->	insertFP $ FPFun n f
->	let d = mkFunDecl n rt rd p
-
+> registerBlocking fd = do
+>	let (n, (rt, rd), p) =  fd
+>	insertFP $ FPFun n fd
+>       let d = mkIdentFunDecl n rt rd p
 >	addGlobals [d]
 
 Register a blocking struct based on the struct type (structName), the field
 with the function pointer, and type of the function pointer (function signature).
 
-> registerBlockingStruct :: String -> String -> FunDecl -> WalkerT ()
+> registerBlockingStruct :: Ident -> Ident -> FunDecl -> WalkerT ()
 > registerBlockingStruct structName fieldName funDecl = do
 >	let (n, (rt, rd), p) = funDecl
 >	insertFP $ FPStruct structName fieldName (FPFun n funDecl)
@@ -288,7 +300,7 @@ struct outer
 So we need a way to lookup if a field within a struct is a blocking struct, and
 if so, register the outer struct too.
 
-> lookupAndRegisterBlockingStruct :: String -> String -> String -> WalkerT ()
+> lookupAndRegisterBlockingStruct :: Ident -> Ident -> Ident -> WalkerT ()
 > lookupAndRegisterBlockingStruct structName fieldName fieldType = do
 >	w <- get
 >	let reg = fpTypeReg w
@@ -298,7 +310,7 @@ if so, register the outer struct too.
 >		mapM_ (\m -> insertFP $ FPStruct structName fieldName m) matching
 >	    else return ()
 
-> lookupAndRegisterBlockingTypedef :: String -> String -> WalkerT ()
+> lookupAndRegisterBlockingTypedef :: Ident -> Ident -> WalkerT ()
 > lookupAndRegisterBlockingTypedef structName typeName = do
 >	w <- get
 >	let reg = fpTypeReg w
@@ -312,9 +324,9 @@ if so, register the outer struct too.
 
 > registerLocalBlocking :: FunDecl -> WalkerT ()
 > registerLocalBlocking fd = do
->	(Walker f is d ps ew pb t fr frl vr) <- get
+>	w <- get
 >	let (n, _, _) = fd
->	put (Walker f is d ps ew pb t fr ((FPFun n fd):frl) vr)
+>	put $ w { fpTypeLocalReg = (FPFun n fd) : (fpTypeLocalReg w) }
 
 > getAllBlocking :: WalkerT [FPType]
 > getAllBlocking = do
@@ -331,7 +343,7 @@ if so, register the outer struct too.
 > tr :: [String] -> FPType -> String -> a -> a
 > tr ss st a = trace $ a ++ "::" ++ (show ss) ++ "::" ++ (show st)
 
-> matchFP :: [String] -> FPType -> Maybe FunDecl
+> matchFP :: [Ident] -> FPType -> Maybe FunDecl
 > matchFP ss@(s:p:seqs) st@(FPStruct n f t)
 >	| s == n && p == f && null seqs && isFPFun t = getFunDecl t
 >	| s == n && p == f = matchiFP seqs (fromJust (getInner t))
@@ -339,7 +351,7 @@ if so, register the outer struct too.
 
 > matchFP s f = matchiFP s f
 
-> matchiFP :: [String] -> FPType -> Maybe FunDecl
+> matchiFP :: [Ident] -> FPType -> Maybe FunDecl
 > matchiFP [] _ = Nothing
 
 > matchiFP ss@(s:[]) st@(FPFun n t) = if s == n then Just t else Nothing
@@ -352,7 +364,6 @@ if so, register the outer struct too.
 >     lookupBlocking e
 
 > lookupBlocking c = do
->	w <- get
 >	v <- lookupVar c
 >	if isNothing v
 >	    then return Nothing

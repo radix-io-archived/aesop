@@ -67,11 +67,12 @@
 
 #define AE_MK_PBREAK_STMTS(__prefix, __fname, __location) \
 { \
-    done_ctl->parent->hit_pbreak = 1; \
-    triton_list_del(&done_ctl->link); \
-    __ae_cancel_ret = ae_cancel_children(done_ctl->context, done_ctl->parent); \
+    done_ctl->parent->gen.hit_pbreak = 1; \
+    triton_list_del(&done_ctl->gen.link); \
+    __ae_cancel_ret = ae_cancel_children(done_ctl->gen.context, &done_ctl->parent->gen); \
     if(__ae_cancel_ret != TRITON_SUCCESS) \
     { \
+        triton_mutex_unlock(&done_ctl->parent->gen.mutex); \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: ae_cancel_cancel did not return success\n", #__fname, __location); \
         assert(__ae_cancel_ret == TRITON_SUCCESS); \
     } \
@@ -84,17 +85,28 @@
 #define AE_MK_PBRANCH_CB_START_STMTS(__prefix) \
 { \
     done_ctl = __prefix; \
-    triton_mutex_lock(&done_ctl->parent->mutex); \
+    triton_mutex_lock(&done_ctl->parent->gen.mutex); \
+}
+
+#define AE_MK_PBRANCH_POST_START_DECLS(__prefix, __ctl_name) \
+    int __ae_pwait_done; \
+    struct __ctl_name *done_ctl;
+
+#define AE_MK_PBRANCH_POST_START_STMTS(__prefix) \
+{ \
+    done_ctl = __prefix; \
+    triton_mutex_lock(&done_ctl->parent->gen.mutex); \
 }
 
 #define AE_MK_PBRANCH_DELETE_STMTS() \
-    triton_list_del(&done_ctl->link);
+    triton_list_del(&done_ctl->gen.link);
 
 #define AE_MK_PBRANCH_DONE_STMTS() \
 { \
-    done_ctl->parent->completed++; \
-    __ae_pwait_done = done_ctl->parent->allposted == 1 && done_ctl->parent->posted == done_ctl->parent->completed; \
-    triton_mutex_unlock(&done_ctl->parent->mutex); \
+    done_ctl->parent->gen.completed++; \
+    __ae_pwait_done = done_ctl->parent->gen.allposted == 1 && done_ctl->parent->gen.posted == done_ctl->parent->gen.completed; \
+    triton_mutex_unlock(&done_ctl->parent->gen.mutex); \
+    ae_hints_destroy(done_ctl->gen.hints); \
     free(done_ctl); \
 }
 
@@ -110,92 +122,114 @@
 #define AE_MK_CB_DONE_CTL_SET_STMTS(__prefix) \
     __prefix = done_ctl->parent;
 
-#define AE_MK_PWAIT_INIT_STMTS(__pwait_params, __ctl) \
+#define AE_MK_PWAIT_INIT_STMTS(__pwait_params, __ctl, __pwait_name) \
 { \
-    __ctl->posted = 0; \
-    __ctl->completed = 0; \
-    __ctl->allposted = 0; \
-    __ctl->hit_pbreak = 0; \
-    triton_mutex_init(&__ctl->mutex, NULL); \
     __ctl->parent = NULL; \
-    triton_list_init(&__ctl->children); \
-    __ctl->in_pwait = 1; \
+    __ctl->gen.in_pwait = 1; \
     __ctl->__pwait_params.shared_params = &__ctl->__pwait_params.shared; \
 }
 
 #define AE_MK_PWAIT_FINISH_STMTS(__ctl, __pwait_id) \
 { \
     int __ae_pwait_done; \
-    triton_mutex_lock(&__ctl->mutex); \
-    __ae_pwait_done = __ctl->posted == __ctl->completed; \
-    __ctl->allposted = 1; \
-    triton_mutex_unlock(&__ctl->mutex); \
+    triton_mutex_lock(&__ctl->gen.mutex); \
+    __ae_pwait_done = __ctl->gen.posted == __ctl->gen.completed; \
+    __ctl->gen.allposted = 1; \
+    triton_mutex_unlock(&__ctl->gen.mutex); \
     if(!__ae_pwait_done) goto __ae_pwait_##__pwait_id##_not_done; \
 }
 
 #define AE_MK_PWAIT_NOT_DONE_STMTS(__ctl, __pwait_id) \
     __ae_pwait_##__pwait_id##_not_done: {}
 
-#define AE_MK_POST_FUN_INIT_STMTS(__ctl) \
+#define AE_MK_POST_FUN_INIT_STMTS(__ctl, __fname) \
 { \
     __ctl = malloc(sizeof(*__ctl)); \
     if(__ctl == NULL) \
     { \
         return TRITON_ERR_NOMEM; \
     } \
+    ae_ctl_init(&__ctl->gen, #__fname, hints, context); \
     __ctl->params = &__ctl->fields; \
     __ctl->user_ptr = user_ptr; \
     __ctl->callback = callback; \
-    __ctl->hints = hints; \
-    __ctl->context = context; \
-    if(op_id) *op_id = ae_id_gen(0, (uint64_t)ctl); \
-    triton_mutex_init(&__ctl->mutex, NULL); \
+    if(op_id) *op_id = ae_id_gen(0, (intptr_t)ctl); \
 }
 
-#define AE_MK_PBRANCH_POST_DECLS(__ctl_type, __ctl) \
-    struct __ctl_type * __ctl;
+#define AE_MK_PBRANCH_POST_DECLS(__ctl_type) \
+    struct __ctl_type * child_ctl, *parent_ctl;
 
-#define AE_MK_PBRANCH_POST_STMTS(__pwait_ctl, __ctl, __parent_ctl, __ctl_type, __fname, __location, __pbranch_id) \
+#define AE_MK_PBRANCH_POST_STMTS(__pwait_ctl, __ctl_type, __fname, __location, __pbranch_id) \
 { \
-    __ctl = malloc(sizeof(*__ctl)); \
-    if(__ctl == NULL) \
+    parent_ctl = ctl; \
+    child_ctl = malloc(sizeof(*child_ctl)); \
+    if(child_ctl == NULL) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for control structure failed!\n", #__fname, __location); \
-        assert(__ctl != NULL); \
+        assert(child_ctl != NULL); \
         goto __ae_##__pbranch_id##_end; \
     } \
-    __ctl->parent = __parent_ctl; \
-    __ctl->context = __parent_ctl->context; \
-    __ctl->hints = __parent_ctl->hints; \
-    __ctl->params = __parent_ctl->params; \
-    memcpy(&__ctl->__pwait_ctl.private, &__parent_ctl->__pwait_ctl.private, sizeof(__ctl->__pwait_ctl.private)); \
-    __ctl->__pwait_ctl.shared_params = &__parent_ctl->__pwait_ctl.shared; \
-    triton_mutex_lock(&__ctl->parent->mutex); \
-    __ctl->parent->posted++; \
-    triton_list_link_clear(&__ctl->link); \
-    triton_queue_enqueue(&__ctl->link, &__ctl->parent->children); \
-    triton_mutex_unlock(&__ctl->parent->mutex); \
+    ae_ctl_init(&child_ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
+    child_ctl->parent = ctl; \
+    ae_hints_copy(ctl->gen.hints, &child_ctl->gen.hints); \
+    child_ctl->params = ctl->params; \
+    memcpy(&child_ctl->__pwait_ctl.private, &ctl->__pwait_ctl.private, sizeof(child_ctl->__pwait_ctl.private)); \
+    child_ctl->__pwait_ctl.shared_params = &ctl->__pwait_ctl.shared; \
+    ctl = child_ctl; \
+    triton_mutex_lock(&child_ctl->parent->gen.mutex); \
+    child_ctl->parent->gen.posted++; \
+    triton_list_link_clear(&child_ctl->gen.link); \
+    triton_queue_enqueue(&child_ctl->gen.link, &child_ctl->parent->gen.children); \
+    triton_mutex_unlock(&child_ctl->parent->gen.mutex); \
 }
 
+#define AE_MK_PBRANCH_POST_END_STMTS(__pwait_ctl, __ctl_type, __fname, __location, __pbranch_id) \
+{ \
+    ctl = parent_ctl; \
+}
+
+#define AE_MK_LONE_PBRANCH_POST_DECLS(__ctl_type) \
+    struct __ctl_type * child_ctl, *parent_ctl;
+
+#define AE_MK_LONE_PBRANCH_POST_STMTS(__ctl_type, __fname, __location, __pbranch_id) \
+{ \
+    parent_ctl = ctl; \
+    child_ctl = malloc(sizeof(*child_ctl)); \
+    if(child_ctl == NULL) \
+    { \
+        triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for control structure failed!\n", #__fname, __location); \
+        assert(child_ctl != NULL); \
+        goto __ae_##__pbranch_id##_end; \
+    } \
+    ae_ctl_init(&child_ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
+    child_ctl->parent = ctl; \
+    ae_hints_copy(ctl->gen.hints, &child_ctl->gen.hints); \
+    child_ctl->params = ctl->params; \
+    ctl = child_ctl; \
+    triton_list_link_clear(&child_ctl->gen.link); \
+    ae_lone_pbranches_add(&child_ctl->gen); \
+    ae_ctl_refinc(&child_ctl->parent->gen); \
+}
+
+#define AE_MK_LONE_PBRANCH_POST_END_STMTS(__ctl_type, __fname, __location, __pbranch_id) \
+{ \
+    ctl = parent_ctl; \
+}
+
+#define AE_MK_LONE_PBRANCH_DONE_STMTS() \
+{ \
+    int prc; \
+    ae_lone_pbranches_remove(&ctl->gen); \
+    prc = ae_ctl_refdec(&ctl->parent->gen); \
+    if(prc == 0) free(ctl->parent); \
+    free(ctl); \
+}
 #define AE_MK_PARENT_POINTER_DECL(__parent) \
     struct __parent##_ctl *parent;
 
 #define AE_MK_BLOCKING_PARAMS_FOR_STRUCT_DECLS() \
-    ae_op_id_t current_op_id; \
-    int cancelled; \
-    triton_mutex_t mutex; \
-    triton_list_t children; \
-    struct triton_list_link link; \
-    int posted; \
-    int completed; \
-    int allposted; \
-    int hit_pbreak; \
-    int in_pwait; \
-    void *user_ptr; \
-    ae_hints_t hints; \
-    ae_context_t context;
-    /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
-    /* __ret_type __ae_ret */
+    struct ae_ctl gen; \
+    void *user_ptr;
 
 #define AE_MK_BLOCKING_PARAMS_FOR_POST_DECLS() \
     void *user_ptr; \

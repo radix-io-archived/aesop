@@ -244,10 +244,11 @@
 > getParent b@(FunContext _ _ _ _ _) = b
 > getParent b = getParent $  fromJust $ parent b
 
-> findLoopParent :: BlockingContext -> BlockingContext
+> findLoopParent :: BlockingContext -> Maybe BlockingContext
 > findLoopParent b
->	| parentIsWhile b = fromJust $ parent b
->	| parentIsFor b = fromJust $ parent b
+>	| parentIsWhile b = parent b
+>	| parentIsFor b = parent b
+>       | isNothing $ parent b = Nothing
 >	| otherwise = findLoopParent $ fromJust $ parent b
 
 > getParentName :: BlockingContext -> String

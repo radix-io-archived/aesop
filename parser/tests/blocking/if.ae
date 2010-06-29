@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 
 	btest_init();
 	val = atoi(argv[1]);
-	run_if(basic_cb, myptr, NULL, NULL, &op_id);
+	ae_post_blocking(run_if, basic_cb, myptr, NULL, NULL, &op_id);
 
 	while(done == 0)
 	{

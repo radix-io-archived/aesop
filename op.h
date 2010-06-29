@@ -40,6 +40,7 @@ typedef struct ae_op
         (_op)->user_ptr = NULL;                 \
         (_op)->hints = NULL;                    \
         (_op)->ctx = NULL;                      \
+        (_op)->cache_id = 0;                    \
         ae_ops_link_clear(_op);                 \
     } while(0)
 

@@ -35,15 +35,10 @@ static ae_ops_t rlist;
 static ae_opcache_t test_opcache;
 static ae_opcache_t sleep_opcache;
 
-triton_ret_t ictest1(int *a,
-                      void (*callback)(void *ptr, int ret),
-                      void *up,
-                      ae_hints_t hints,
-                      ae_context_t ctx,
-                      ae_op_id_t *op_id)
+ae_define_post(int, ictest1, int *a)
 {
     ++(*a);
-    callback(up, 0);
+    callback(user_ptr, 0);
     return TRITON_SUCCESS;
 }
 
@@ -59,18 +54,13 @@ static void *tctest1_threadfun(void *ptr)
     return NULL;
 }
 
-triton_ret_t tctest1(int *a,
-                      void (*callback)(void *ptr, int ret),
-                      void *up,
-                      ae_hints_t hints,
-                      ae_context_t ctx,
-                      ae_op_id_t *op_id)
+ae_define_post(int, tctest1, int *a)
 {
     pthread_t tid;
     struct ae_op *op;
     struct btest_op *bop;
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, callback, up, hints, ctx);
+    ae_op_fill(op, callback, user_ptr, hints, ctx);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -81,18 +71,13 @@ triton_ret_t tctest1(int *a,
     return TRITON_SUCCESS;
 }
 
-triton_ret_t btest1(int *a,
-                     void (*callback)(void *ptr, int ret),
-                     void *up,
-                     ae_hints_t hints,
-                     ae_context_t ctx,
-                     ae_op_id_t *op_id)
+ae_define_post(int, btest1, int *a)
 {
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST1: %d\n", *a);
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, callback, up, hints, ctx);
+    ae_op_fill(op, callback, user_ptr, hints, ctx);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -102,18 +87,13 @@ triton_ret_t btest1(int *a,
     return TRITON_SUCCESS;
 }
 
-triton_ret_t btest2(int *a,
-                     void (*callback)(void *ptr, int ret),
-                     void *up,
-                     ae_hints_t hints,
-                     ae_context_t ctx,
-                     ae_op_id_t *op_id)
+ae_define_post(int, btest2, int *a)
 {
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST2: %d\n", *a);
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, callback, up, hints, ctx);
+    ae_op_fill(op, callback, user_ptr, hints, ctx);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -123,18 +103,13 @@ triton_ret_t btest2(int *a,
     return TRITON_SUCCESS;
 }
 
-triton_ret_t btest3(int *a,
-                     void (*callback)(void *ptr, int ret),
-                     void *up,
-                     ae_hints_t hints,
-                     ae_context_t ctx,
-                     ae_op_id_t *op_id)
+ae_define_post(int, btest3, int *a)
 {
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST3: %d\n", *a);
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, callback, up, hints, ctx);
+    ae_op_fill(op, callback, user_ptr, hints, ctx);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -144,18 +119,13 @@ triton_ret_t btest3(int *a,
     return TRITON_SUCCESS;
 }
 
-triton_ret_t btest_sleep(int secs,
-                          void (*callback)(void *ptr, int ret),
-                          void *up,
-                          ae_hints_t hints,
-                          ae_context_t ctx,
-                          ae_op_id_t *op_id)
+ae_define_post(int, btest_sleep, int secs)
 {
     struct ae_op *op;
     struct bsleep_op *bop;
     printf("BTEST SLEEP\n");
     op = ae_opcache_get(sleep_opcache);
-    ae_op_fill(op, callback, up, hints, ctx);
+    ae_op_fill(op, callback, user_ptr, hints, ctx);
     bop = ae_op_entry(op, struct bsleep_op, op);
     bop->sleep = secs;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -165,17 +135,13 @@ triton_ret_t btest_sleep(int secs,
     return TRITON_SUCCESS;
 }
 
-triton_ret_t btest_forever(void (*callback)(void *ptr, int ret),
-                            void *up,
-                            ae_hints_t hints,
-                            ae_context_t ctx,
-                            ae_op_id_t *op_id)
+ae_define_post(int, btest_forever)
 {
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST FOREVER\n");
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, callback, up, hints, ctx);
+    ae_op_fill(op, callback, user_ptr, hints, ctx);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = NULL;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -185,17 +151,13 @@ triton_ret_t btest_forever(void (*callback)(void *ptr, int ret),
     return TRITON_SUCCESS;
 }
 
-triton_ret_t btest_random(void (*callback)(void *ptr, int ret),
-                           void *up,
-                           ae_hints_t hints,
-                           ae_context_t ctx,
-                           ae_op_id_t *op_id)
+ae_define_post(int, btest_random)
 {
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST RANDOM\n");
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, callback, up, hints, ctx);
+    ae_op_fill(op, callback, user_ptr, hints, ctx);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = NULL;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -282,7 +244,7 @@ static triton_ret_t btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
    ae_ops_for_each(t, tmp, &flist)
    {
 	b = ae_op_entry(t, struct btest_op, op);
-	if(b->id == op_id)
+	if(ae_op_id_equal(b->id, op_id))
 	{
 	    ae_ops_del(t);
 	    printf("forever op cancelled\n");

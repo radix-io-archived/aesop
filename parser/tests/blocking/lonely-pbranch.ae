@@ -1,0 +1,79 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+#include "src/common/resources/timer/timer.hae"
+
+static __blocking void lonely_pbranch(void)
+{
+	int a = 0;
+	int ret1;
+        triton_ret_t tret;
+
+        pbranch
+        {
+                ret1 = btest1(&a);
+                if(ret1 != 0)
+                {
+                        printf("Error in branch 1.\n");
+                }
+
+                ret1 = btest2(&a);
+                if(ret1 != 0)
+                {
+                        printf("Error in branch 1.\n");
+                }
+                
+                tret = triton_timer(2000);
+                if(tret != TRITON_SUCCESS)
+                {
+                     printf("Error in branch 1 while sleeping\n");
+                }
+                printf("pbranch done!\n");
+        }
+
+        ret1 = btest1(&a);
+        if(ret1 != 0)
+        {
+            printf("Error in final btest1\n");
+        }
+
+        printf("lonely_pbranch done! returning...\n");
+}
+
+static int done = 0;
+static void basic_cb(void *ptr)
+{
+    printf("%p\n", ptr);
+    printf("done\n");
+    done = 1;
+}
+
+int main(int argc, char *argv[])
+{
+	ae_op_id_t op_id;
+	void *myptr = malloc(1);
+
+	btest_init();
+        triton_timer_init();
+	printf("%p\n", myptr);
+	ae_post_blocking(lonely_pbranch, basic_cb, myptr, NULL, NULL, &op_id);
+
+	while(done == 0 || ae_lone_pbranches_count() > 0)
+        {
+	    ae_poll(NULL, 0);
+        }
+
+	btest_finalize();
+	free(myptr);
+	return 0;
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
+

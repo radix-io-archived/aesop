@@ -28,36 +28,29 @@
 > import ContextGen
 > import Serialize
 > import Header
-		
-> mkStmtFromBlockingMacro :: Walker -> String -> [String] -> NodeInfo -> [CStat]
-> mkStmtFromBlockingMacro w macro params ni = mkStmtFromCPPMacro includePaths defs "ae-blocking-parser.h" ni macro params
->       where includePaths = includes w
->             defs = defines w
+> import System.Directory
 
 > mkStmtFromBlocking :: String -> [String] -> NodeInfo -> WalkerT [CStat]
 > mkStmtFromBlocking m p n = do
->       w <- get
->       return $ mkStmtFromBlockingMacro w m p n
-
-> mkDeclsFromBlockingMacro :: Walker -> String -> [String] -> NodeInfo -> [CDecl]
-> mkDeclsFromBlockingMacro w macro params ni = mkDeclsFromCPPMacro includePaths defs "ae-blocking-parser.h" ni macro params
->       where includePaths = includes w
->             defs = defines w
+>       bp <- getBlockingParser
+>       return $ mkStmtFromCPPMacro bp n m p
 
 > mkDeclsFromBlocking :: String -> [String] -> NodeInfo -> WalkerT [CDecl]
 > mkDeclsFromBlocking m p n = do
->       w <- get
->       return $ mkDeclsFromBlockingMacro w m p n
+>       bp <- getBlockingParser
+>       return $ mkDeclsFromCPPMacro bp n m p
 
 > mkErrorCBPostHandler :: Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]
 > mkErrorCBPostHandler w fname retType ctlName ni =
 >       let location = show $ posRow $ posOfNode ni
->       in mkStmtFromBlockingMacro w "AE_MK_POSTCB_STMT" [fname, (returnToString retType), ctlName, location] ni
+>           bp = assert (isJust $ blockingParser w) (fromJust $ blockingParser w)
+>       in mkStmtFromCPPMacro bp ni "AE_MK_POSTCB_STMT" [fname, (returnToString retType), ctlName, location]
 
 > mkErrorPostHandler :: Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]
 > mkErrorPostHandler w fname retType ctlName ni =
 >       let location = show $ posRow $ posOfNode ni
->       in mkStmtFromBlockingMacro w "AE_MK_POST_STMT" [fname, (returnToString retType), ctlName, location] ni
+>           bp = assert (isJust $ blockingParser w) (fromJust $ blockingParser w)
+>       in mkStmtFromCPPMacro bp ni "AE_MK_POST_STMT" [fname, (returnToString retType), ctlName, location]
 
 > mkPBreakStmts :: String -> NodeInfo -> WalkerT ([CDecl], [CStat])
 > mkPBreakStmts prefix ni = do
@@ -76,6 +69,12 @@ either from a pbreak, or from an external cancel call of the entire blocking fun
 >     ss <- mkStmtFromBlocking "AE_MK_PBRANCH_CB_START_STMTS" [prefix] ni
 >     return (ds, ss)
 
+> mkPBranchPostStartStmts :: String -> String -> NodeInfo -> WalkerT ([CDecl], [CStat])
+> mkPBranchPostStartStmts prefix funName ni = do
+>     ds <- mkDeclsFromBlocking "AE_MK_PBRANCH_POST_START_DECLS" [prefix, (mkStructCtlName funName)] ni
+>     ss <- mkStmtFromBlocking "AE_MK_PBRANCH_POST_START_STMTS" [prefix] ni
+>     return (ds, ss)
+
 > mkPBranchDeleteStmts :: NodeInfo -> WalkerT [CStat]
 > mkPBranchDeleteStmts ni = mkStmtFromBlocking "AE_MK_PBRANCH_DELETE_STMTS" [] ni
 
@@ -85,11 +84,14 @@ either from a pbreak, or from an external cancel call of the entire blocking fun
 
 > mkPBranchCBDoneStmts :: Walker -> BlockingContext -> NodeInfo -> [CStat]
 > mkPBranchCBDoneStmts w b ni =
->       mkStmtFromBlockingMacro w "AE_MK_PBRANCH_CB_DONE_STMTS" [] ni
+>       let mbp = blockingParser w
+>           bp = assert (isJust $ mbp) (fromJust $ mbp)
+>       in mkStmtFromCPPMacro bp ni "AE_MK_PBRANCH_CB_DONE_STMTS" []
 
 > mkPBranchPostDoneStmts :: Walker -> BlockingContext -> NodeInfo -> [CStat]
 > mkPBranchPostDoneStmts w pb ni = 
->       mkStmtFromBlockingMacro w "AE_MK_PBRANCH_POST_DONE_STMTS" [getPBranchId pb] ni
+>       let bp = assert (isJust $ blockingParser w) (fromJust $ blockingParser w)
+>       in mkStmtFromCPPMacro bp ni "AE_MK_PBRANCH_POST_DONE_STMTS" [getPBranchId pb]
 
 > mkDoneStmts :: NodeInfo -> WalkerT [CStat]
 > mkDoneStmts ni = mkStmtFromBlocking "AE_MK_CB_DONE_STMTS" [] ni
@@ -97,9 +99,9 @@ either from a pbreak, or from an external cancel call of the entire blocking fun
 > mkDoneCtlSetStmt :: String -> NodeInfo -> WalkerT [CStat]
 > mkDoneCtlSetStmt p ni = mkStmtFromBlocking "AE_MK_CB_DONE_CTL_SET_STMTS" [p] ni
 
-> mkPWaitInitStmts :: String -> String -> NodeInfo -> WalkerT [CStat]
-> mkPWaitInitStmts pwaitParams prefix ni = 
->       mkStmtFromBlocking "AE_MK_PWAIT_INIT_STMTS" [pwaitParams, prefix] ni
+> mkPWaitInitStmts :: String -> String -> String -> NodeInfo -> WalkerT [CStat]
+> mkPWaitInitStmts pwaitParams prefix pwaitName ni = 
+>       mkStmtFromBlocking "AE_MK_PWAIT_INIT_STMTS" [pwaitParams, prefix, pwaitName] ni
 
 > mkPWaitFinishStmts :: BlockingContext -> String -> WalkerT [CStat]
 > mkPWaitFinishStmts pw prefix = do
@@ -111,18 +113,31 @@ either from a pbreak, or from an external cancel call of the entire blocking fun
 >       let ni = getNI pw
 >       mkStmtFromBlocking "AE_MK_PWAIT_NOT_DONE_STMTS" [prefix, getPWaitId pw] ni
 
-> mkPostFunInitStmts :: String -> NodeInfo -> WalkerT [CStat]
-> mkPostFunInitStmts name ni =
->       mkStmtFromBlocking "AE_MK_POST_FUN_INIT_STMTS" [name] ni
+> mkPostFunInitStmts :: String -> String -> NodeInfo -> WalkerT [CStat]
+> mkPostFunInitStmts name fname ni =
+>       mkStmtFromBlocking "AE_MK_POST_FUN_INIT_STMTS" [name, fname] ni
 
 > mkPBranchPostStmts :: BlockingContext -> String -> String -> String -> String -> [CStat] -> NodeInfo -> WalkerT [CStat]
 > mkPBranchPostStmts pb pwaitName prefix parentPrefix fname stmts ni = do
 >       let location = show $ posRow $ posOfNode ni
 >       fileName <- getFileName
->       ds <- mkDeclsFromBlocking "AE_MK_PBRANCH_POST_DECLS" [mkStructCtlName fname, prefix] ni
+>       ds <- mkDeclsFromBlocking "AE_MK_PBRANCH_POST_DECLS" [mkStructCtlName fname] ni
 >       ss <- mkStmtFromBlocking  "AE_MK_PBRANCH_POST_STMTS"
->                                 [pwaitName, prefix, parentPrefix, mkStructCtlName fname, fileName, location, getPBranchId pb] ni
->	return [mkCompoundWithDecls Nothing ds (ss ++ stmts) ni]
+>                                 [pwaitName, mkStructCtlName fname, fileName, location, getPBranchId pb] ni
+>       es <- mkStmtFromBlocking  "AE_MK_PBRANCH_POST_END_STMTS"
+>                                 [pwaitName, mkStructCtlName fname, fileName, location, getPBranchId pb] ni
+>	return [mkCompoundWithDecls Nothing ds (ss ++ stmts ++ es) ni]
+
+> mkLonePBranchPostStmts :: BlockingContext -> String -> String -> [CStat] -> NodeInfo -> WalkerT [CStat]
+> mkLonePBranchPostStmts pb prefix fname stmts ni = do
+>       let location = show $ posRow $ posOfNode ni
+>       fileName <- getFileName
+>       ds <- mkDeclsFromBlocking "AE_MK_LONE_PBRANCH_POST_DECLS" [mkStructCtlName fname] ni
+>       ss <- mkStmtFromBlocking  "AE_MK_LONE_PBRANCH_POST_STMTS"
+>                                 [mkStructCtlName fname, fileName, location, getPBranchId pb] ni
+>       es <- mkStmtFromBlocking  "AE_MK_LONE_PBRANCH_POST_END_STMTS"
+>                                 [mkStructCtlName fname, fileName, location, getPBranchId pb] ni
+>	return [mkCompoundWithDecls Nothing ds (ss ++ stmts ++ es) ni]
 
 > mkBlockingParamsParallelFields :: String -> Bool -> NodeInfo -> WalkerT [CDecl]
 > mkBlockingParamsParallelFields _ False _ = return []
@@ -191,28 +206,28 @@ either from a pbreak, or from an external cancel call of the entire blocking fun
 > isBlockingField :: CDecl -> Bool
 > isBlockingField (CDecl s i n) = any isBlockingSpec s
 
-> mkAnonStructName :: NodeInfo -> String
-> mkAnonStructName ni = 
->       "anonstruct_" ++ (show $ posRow $ posOfNode $ ni) ++ "_" ++
->	(show $ posColumn $ posOfNode $ ni)
+> mkAnonStructName :: NodeInfo -> Ident
+> mkAnonStructName ni = newIdent n ni
+>       where n = "anonstruct_" ++ (show $ posRow $ posOfNode $ ni) ++ "_" ++
+>	          (show $ posColumn $ posOfNode $ ni)
 
-> lookupAndRegBlocking :: Maybe String -> CDecl -> WalkerT ()
+> lookupAndRegBlocking :: Maybe Ident -> CDecl -> WalkerT ()
 > lookupAndRegBlocking sname d@(CDecl s i n) = do
 >       let typeName = getTypeName d
 >           t = if isJust typeName then fromJust typeName else mkAnonStructName $ nodeInfo d
 >       assert (isJust sname) return ()
 >       lookupAndRegisterBlockingStruct (fromJust sname)
->			                (identToString $ getCDeclName d)
+>			                (getCDeclName d)
 >			                t
 
-> regBlockingStruct :: Maybe String -> CDecl -> WalkerT ()
+> regBlockingStruct :: Maybe Ident -> CDecl -> WalkerT ()
 > regBlockingStruct sname d = do
 >       assert (isJust sname) return ()
 >       registerBlockingStruct (fromJust sname)
->                              (identToString $ getCDeclName d)
+>                              (getCDeclName d)
 >                              (splitFunDecl d)
 
-> registerStruct :: CDecl -> Maybe String -> WalkerT ()
+> registerStruct :: CDecl -> Maybe Ident -> WalkerT ()
 > registerStruct d@(CDecl s i n) altSname = do
 >     when (structSpecHasFields (head $ filter isStructTypeSpec s)) $ do
 >         let si = getStructInfo d
@@ -226,7 +241,7 @@ either from a pbreak, or from an external cancel call of the entire blocking fun
 
 >         mapM_ (lookupAndRegBlocking sname) (filter isStructDecl notBlockingFields)
 
-> registerTypedefStruct :: CDecl -> Maybe String -> WalkerT ()
+> registerTypedefStruct :: CDecl -> Maybe Ident -> WalkerT ()
 > registerTypedefStruct d altSname = do
 >	let t = getStructTypeDefInfo d
 >	    (Just (sn, tname)) = t
@@ -338,10 +353,9 @@ gets called in the blocking function myblockingfun.
 >		let retType = getTypeSpec specifiers
 >		    (Just declr, _, _) = head initdecls
 >		    (CDeclr (Just f) derivedDeclrs _ _ _)  = declr
->		    fname = identToString f
 >		    (Just funDeclr) = find isFunDeclr derivedDeclrs
 >		    params = getCFunDeclrParams funDeclr
->	        registerLocalBlocking (fname, (retType, derivedDeclrs), params)
+>	        registerLocalBlocking (f, (retType, derivedDeclrs), params)
 >	| otherwise = return ()
 
 > declHasBlockingFunPtrParam :: CDecl -> Bool
@@ -368,7 +382,7 @@ gets called in the blocking function myblockingfun.
 >	    (CDeclr (Just (Ident fname _ _)) _ _ _ _) = declr
 >	    funDeclr = getDerivedFun declr
 >	    params = getCFunDeclrParams funDeclr
->	    postParams = params ++ bParams
+>	    postParams = bParams ++ params
 >	return $ mkFunPtrDecl fname ret postParams
 
 >   | otherwise = return fptr
@@ -478,13 +492,19 @@ gets called in the blocking function myblockingfun.
 >           $ invalid "return not allowed within pwait/pbranch context" ni
 >       return ()
 
-> getBlockingCallName :: CExpr -> WalkerT (Maybe String)
+> isValidLonePBranch :: CStat -> WalkerT ()
+> isValidLonePBranch (CPBranch stmts ni) = do
+>       when (containsReturn [stmts])
+>           $ invalid "return not allowed within lone pbranch" ni
+>       return ()
+
+> getBlockingCallName :: CExpr -> WalkerT (Maybe Ident)
 > getBlockingCallName (CCall e args _) =  do
 >	res <- lookupBlocking e 
 >	case res of { (Just (bname, _, _)) -> return $ Just bname ; Nothing -> return Nothing }
 > getBlockingCallName _ = return Nothing
 
-> findBlockingCall :: CStat -> WalkerT (Maybe String)
+> findBlockingCall :: CStat -> WalkerT (Maybe Ident)
 > findBlockingCall stmt = 
 > 	everything orElseMMaybe (mkQ (return Nothing) getBlockingCallName) $ stmt
 
@@ -709,12 +729,27 @@ runfun(ctl->fields.a, ctl->fields.b, ctl->fields.c, ctl->fields.d);
 > trPBranchLocals ctlPrefix bctx stmt
 >    | hasPBranchAncestor bctx =
 >	let pbranchCtx = getPBranchAncestor bctx
->	    pwaitCtx = getPWaitAncestor bctx
 >	    locals = join $ map getCDeclNames $ getPBranchDecls pbranchCtx
->	in (addParams2PtrPrefixes ctlPrefix
->			          ((mkPWaitName (getPWaitId pwaitCtx)) ++ "." ++ mkSharedPtrName)
->		                  (mkParamPBranchName (getPBranchId pbranchCtx))
->			          locals) stmt
+>           pwaitCtx = getPWaitAncestor bctx
+
+>       in if hasPWaitAncestor bctx then
+>          
+>              -- pbranch has a parameter struct in the pwait struct for the control struct
+>              -- myvar becomes:  ctl->pwait_100_23.pbranch_123_10.myvar
+>	       addParams2PtrPrefixes ctlPrefix
+>	   	                     ((mkPWaitName (getPWaitId pwaitCtx)) ++ "." ++ mkSharedPtrName)
+>		                     (mkParamPBranchName (getPBranchId pbranchCtx))
+>			             locals
+>                                    stmt
+
+>          else
+>              -- a lone pbranch has a parameter struct in the control struct
+>              -- myvar becomes:  ctl->pbranch_123_10.myvar
+>              addParamsPtrPrefixes ctlPrefix
+>                                   (mkParamPBranchName (getPBranchId pbranchCtx))
+>                                   locals
+>                                   stmt
+
 >    | otherwise = stmt
 
 > trPWaitLocals :: String -> BlockingContext -> CStat -> CStat
@@ -759,7 +794,7 @@ to calling the appropriate callback
 >               [CExpr (Just (CCall (CMember (mkVar "ctl" ni)
 >				             (newIdent "callback" ni) True ni)
 >		            	    ([constructExprFromC ni "ctl->user_ptr"] ++ retparam) ni)) ni,
->		 mkStmtFromC ni "free(ctl);",
+>                mkStmtFromC ni "if(ae_ctl_refdec(&ctl->gen) == 0) free(ctl);",
 >		 mkStmtFromC ni "return;"]) ni
 
 > swapReturnWithCallback e c = c
@@ -775,7 +810,7 @@ to calling the appropriate callback
 >                [(CExpr (Just (CCall (CMember (mkVar "ctl" ni)
 >				     	      (newIdent "callback" ni) True ni)
 >		            	     ([constructExprFromC ni "ctl->user_ptr"] ++ retparam) ni)) ni),
->		  mkStmtFromC ni "free(ctl);",
+>                 mkStmtFromC ni "if(ae_ctl_refdec(&ctl->gen) == 0) free(ctl);",
 >		  mkStmtFromC ni "return TRITON_SUCCESS;"]) ni
 > swapPostReturnWithCallback e c = c
 
@@ -800,7 +835,7 @@ params->val = val;
 > mkPostFunInit :: String -> BlockingContext -> [CDecl] -> [CDecl] -> WalkerT [CStat]
 > mkPostFunInit pname bctx fdecls pdecls = do
 >       -- default initialize statements for params
->	inits <- mkPostFunInitStmts pname (getNI bctx)
+>	inits <- mkPostFunInitStmts pname (getParentName bctx) (getNI bctx)
 >       startStmts <- mkStmtFromBlocking "AE_MK_START_OF_BLOCKING" [getParentName $ getFunContext bctx] (getNI bctx)
 
 >       -- get the function parameters, and set the parameters in the params struct to the values passed in
@@ -1003,7 +1038,21 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	isValidPWait pwaitDef
 >	getParallelStmts next tr
 
-> generatePostStmts (Just next@(PBranchContext _ _ _ _ _ _ _ _)) tr = return []
+> generatePostStmts (Just pb@(PBranchContext _ branchDef (b:branchStmts) _ _ _ _ _)) tr = do
+>       isValidLonePBranch branchDef
+>	let ni = getNI pb
+>           nbStmtsBeforePB = nbStmtsBefore pb
+>	    nbStmts = nbStmtsBefore b
+>	    pbDeclInits = getInitsFromDecls $ getLocalDeclarations branchDef
+>	    pbend = [mkLabel ("__ae_" ++ (getPBranchId pb) ++ "_end") [] ni]
+>           fname = getParentName b
+>       cp <- getPrefix
+>       lonePostStmts <- generatePostStmts (Just b) (pb : tr)
+>       loneStmts <- mkLonePBranchPostStmts pb cp (getParentName pb) lonePostStmts ni
+>       nextStmts <- generatePostStmts (next pb) tr
+>	tlNBBeforeFirstBlocking <- translateForCB pb $ nbStmtsBefore b
+>	afterPBStmts <- generateAfterStmts pb (pb : tr)
+>       return $ tlNBBeforeFirstBlocking ++ loneStmts ++ pbend ++ nextStmts ++ afterPBStmts
 
 > generatePostStmts (Just c) _ = error $ "generatePostStmts: " ++ (getCtxName c) ++ " not handled yet"
 
@@ -1029,25 +1078,47 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	    ctxInitStmts = getCtxInitStmts b
 >	    pwaitName = mkPWaitName (getPWaitId $ getPWaitAncestor pb)
 >	    pbend = [mkLabel ("__ae_" ++ (getPBranchId pb) ++ "_end") [] ni]
+>           fname = getParentName b
+>           pwaitCtx = getPWaitAncestor pb
+
+>       (pbreakDecls, pbreakStmts) <- mkPBreakStmts pp ni
+>       (pbranchDecls, pbranchStart) <- mkPBranchPostStartStmts "child_ctl" fname ni
+>       setDoneCtlStmt <- mkDoneCtlSetStmt pp ni
+>	afterPWaitStmts <- generateAfterStmts pwaitCtx []
+>       pbDone <- getPBDone
+>       tlBeforeStmts <- translateForCB b nbStmts
+
+>       let pbCheckDone = pbDone pb ni
+>           beforeStmts = swapPBreak (mkCompoundWithDecls Nothing
+>                                                         (pbranchDecls ++ pbreakDecls)
+>                                                         (pbranchStart ++
+>                                                          pbreakStmts ++
+>                                                          setDoneCtlStmt ++
+>                                                          pbCheckDone ++
+>                                                          afterPWaitStmts) ni) tlBeforeStmts
+
 >	afterPBranchNBStmts <- translateForCB pb (nbStmtsAfter pb)
 >	pushPrefix "child_ctl"
->	initStmts <- translateForCB b $ (pbDeclInits ++ nbStmts ++ ctxInitStmts)
+>	tlPBDeclInits <- translateForCB b pbDeclInits
+>       tlCtxInits <- translateForCB b ctxInitStmts
 >       setPBDone mkPBranchPostDoneStmts
 >	branchPostStmts <- generatePostStmts (Just b) [] 
 >	cp <- getPrefix
->	branchStmts <- mkPBranchPostStmts pb pwaitName cp pp (getParentName pb) (initStmts ++ branchPostStmts) (nodeInfo branchDef)
+>	branchStmts <- mkPBranchPostStmts pb pwaitName cp pp (getParentName pb) 
+>                          (tlPBDeclInits ++ beforeStmts ++ tlCtxInits ++ branchPostStmts) (nodeInfo branchDef)
 >	popPrefix
 >	return $ branchStmts ++ pbend ++ afterPBranchNBStmts
 
 > getParallelStmts pw@(PWaitContext _ waitDef waitStmts@(w:ws) before after parent next prev) tr = do
 >	let nbStmts = nbStmtsBefore w
 >	    pwaitDeclInits = getInitsFromDecls $ getLocalDeclarations waitDef
->           pwParamsName = mkPWaitName (getPWaitId pw)
+>           pwid = getPWaitId pw
+>           pwParamsName = mkPWaitName pwid
 >	firstStmts <- translateForCB w (pwaitDeclInits ++ nbStmts)
 >	pStmts <- liftM concat $ mapM (\b -> (getParallelStmts b tr)) waitStmts
 >	p <- getPrefix
 >	afterPWaitStmts <- generateAfterStmts pw tr
->       pwaitInitStmts <- mkPWaitInitStmts pwParamsName p $ getNI pw
+>       pwaitInitStmts <- mkPWaitInitStmts pwParamsName p pwid $ getNI pw
 >       pwaitFiniStmts <- mkPWaitFinishStmts pw p
 >       pwaitNotDoneStmts <- mkPWaitNotDoneStmts pw p
 >	return $ pwaitInitStmts ++ firstStmts ++ pStmts ++ pwaitFiniStmts ++ afterPWaitStmts ++ pwaitNotDoneStmts 
@@ -1122,12 +1193,11 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 
 > getStmtsAfter :: BlockingContext -> [CStat] -> WalkerT [CStat]
 > getStmtsAfter b bcallReturn
->	| containsBreak $ nbStmtsAfter b = do
->		let loopCtx = findLoopParent b
->		    ni = getNI b
->		breakStmts <- generateAfterStmts loopCtx []
+
+>	| (containsBreak $ nbStmtsAfter b) && (isJust $ findLoopParent b) = do
+>		breakStmts <- generateAfterStmts (fromJust $ findLoopParent b) []
 >	        tlAfter <- translateForCB b $ bcallReturn ++ (nbStmtsAfter b)
->		return $ swapBreak (mkCompoundStmt Nothing (breakStmts ++ [CReturn Nothing ni]) $ getNI b) tlAfter 
+>		return $ swapBreak (mkCompoundStmt Nothing (breakStmts ++ [CReturn Nothing (getNI b)]) $ getNI b) tlAfter 
 
 >	| (containsPBreak $ nbStmtsAfter b) && isLastContext b && parentIsPBranch b = do
 >		prefix <- getPrefix
@@ -1158,8 +1228,6 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >		return $ [mkCompoundWithDecls Nothing pbranchDecls
 >				(pbranchStart ++ afterStmts ++ setDoneCtlStmt ++
 >				 pbranchDelete ++ pbranchDone ++ pbCheckDone ++ afterPWaitStmts) $ getNI b]
-
-
 
 >	| containsPBreak $ nbStmtsAfter b = do
 >		prefix <- getPrefix
@@ -1206,20 +1274,26 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >		tlAfterLastBlocking <- translateForCB b $ bcallReturn ++ (nbStmtsAfter b)
 
 >		-- get statements after pwait context
->		let pwaitCtx = getPWaitAncestor b
->		    pbranchCtx = getPBranchAncestor b
->		afterPWaitStmts <- getStmtsAfter pwaitCtx []
->		pbDone <- getPBDone
+>               if hasPWaitAncestor b then do
+>		    let pwaitCtx = getPWaitAncestor b
+>		        pbranchCtx = getPBranchAncestor b
+>		    afterPWaitStmts <- getStmtsAfter pwaitCtx []
+>		    pbDone <- getPBDone
 
->		pbDoneStmts <- liftM concat $ sequence [mkPBranchDeleteStmts ni,
->				                        mkPBranchDoneStmts prefix pn ni]
->               let doneStmts = pbDone pbranchCtx ni
->		setDoneCtlStmt <- mkDoneCtlSetStmt prefix ni
->		(cbDecls, cbStmts) <- mkPBranchCallbackStartStmts prefix pn ni 
->	        return $ [mkCompoundWithDecls Nothing 
->					      cbDecls 
->					      (cbStmts ++ tlAfterLastBlocking ++ setDoneCtlStmt ++
->					       pbDoneStmts ++ doneStmts ++ afterPWaitStmts) $ getNI b]
+>		    pbDoneStmts <- liftM concat $ sequence [mkPBranchDeleteStmts ni,
+>				                            mkPBranchDoneStmts prefix pn ni]
+>                   let doneStmts = pbDone pbranchCtx ni
+>		    setDoneCtlStmt <- mkDoneCtlSetStmt prefix ni
+>		    (cbDecls, cbStmts) <- mkPBranchCallbackStartStmts prefix pn ni 
+>	            return $ [mkCompoundWithDecls Nothing 
+>					          cbDecls 
+>					          (cbStmts ++ tlAfterLastBlocking ++ setDoneCtlStmt ++
+>					          pbDoneStmts ++ doneStmts ++ afterPWaitStmts) ni]
+>                 else do
+>                   -- if there's no pwait, we handle the lone pbranch case
+>                   
+>                   ds <- mkStmtFromBlocking "AE_MK_LONE_PBRANCH_DONE_STMTS" [] ni
+>                   return $ [mkCompoundWithDecls Nothing [] (tlAfterLastBlocking ++ ds) ni]
 
 >	| otherwise = translateForCB b $ bcallReturn ++ (nbStmtsAfter b)
 
@@ -1258,7 +1332,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	| isLastContext b && parentIsIf b = 
 >               let res = findTransition $ fromJust $ parent b
 >               in assert (isJust $ parent b) res
->	| isLastContext b && parentIsPBranch b = findTransition $ getPWaitAncestor b
+>	| isLastContext b && parentIsPBranch b && hasPWaitAncestor b = findTransition $ getPWaitAncestor b
 >       | isLastContext b && parentIsCompound b =
 >               let res = findTransition $ fromJust $ parent b
 >               in assert (isJust $ parent b) res
@@ -1267,13 +1341,14 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 > mkPostCall :: BlockingContext -> String -> String -> CExpr -> (String -> [CStat]) -> [CStat]
 > mkPostCall b fname ctlName bcall@(CCall fexpr _ _) errorHandler =
 >	let ni = nodeInfo bcall
+>           extraParams = [mkVar fname ni,
+>                          mkVar ctlName ni, 
+>			   addStructPrefix ctlName "gen" $ mkVar "hints" ni,
+>			   addStructPrefix ctlName "gen" $ mkVar "context" ni,
+>			   addAddrOp $ addStructPrefix ctlName "gen" $ mkVar "current_op_id" ni]
 >	in [mkFunCall (mkVar "__ae_postret" ni)
 >		   fexpr
->		   ((map (fromJust . (trExpr ctlName b) . Just) $ getCallParams bcall)
->                      ++ [mkVar fname ni, mkVar ctlName ni, 
->			   addStructPtr ctlName $ mkVar "hints" ni,
->			   addStructPtr ctlName $ mkVar "context" ni,
->			   addAddrOp $ addStructPtr ctlName $ mkVar "current_op_id" ni])] ++
+>		   (extraParams ++ (map (fromJust . (trExpr ctlName b) . Just) $ getCallParams bcall))] ++
 >	    (errorHandler ctlName)
 
 Construct the statements for the post function.  First the declarations, next the initialization parts,
@@ -1302,38 +1377,38 @@ and finally the code up-to the first blocking call.
 >	[mkVoidFunPtr "callback"
 >		[constructDeclFromC ni "void *user_ptr;", mkCDecl (fst return) (snd return) "__ae_ret" ni]]
 
-> mkPostParams :: (String, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> WalkerT [CDecl]
+> mkPostParams :: (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> WalkerT [CDecl]
 > mkPostParams ((,,) fname ret params) = do
 >	let ni = nodeInfo $ fst ret
 
 >       txParams <- sequence $ map translateBlockingFunParam $ removeVoid params 
 >       bParams <- mkBlockingParamsForPost ret ni
 
->	return $ txParams ++ bParams
+>	return $ bParams ++ txParams
 
-> mkPostDecl :: (String, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> [CDeclSpec] -> WalkerT CDecl
+> mkPostDecl :: (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> [CDeclSpec] -> WalkerT CDecl
 > mkPostDecl f@((,,) fname ret params) declspecs = do
 >	let ni = nodeInfo $ fst ret
 >	fparams <- mkPostParams f
 >       ret <- mkPostRetType ni
 >	return $ mkFunDeclWithDeclSpecs
->		   fname
+>		   (identToString fname)
 >		   ret []
 >		   (filterStdDeclSpecs declspecs)
 >	           fparams
 
-> mkPostPtrDecl :: Bool -> (String, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> [CDeclSpec] -> WalkerT CDecl
+> mkPostPtrDecl :: Bool -> (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> [CDeclSpec] -> WalkerT CDecl
 > mkPostPtrDecl extern f@((,,) fname ret params) declspecs = do
 >	let ni = nodeInfo $ fst ret
 >	fparams <- mkPostParams f
 >       ret <- mkPostRetType ni
 >	return $ mkFunPtrDeclWithDeclSpecs
->		    fname
+>		    (identToString fname)
 >		    ret []
 >		    ((filterStdDeclSpecs declspecs) ++
 >		     (if extern then [CStorageSpec $ CExtern ni] else []))
 >		    fparams
->		    (if not extern then Just fname else Nothing)
+>		    (if not extern then Just (identToString $ fname) else Nothing)
 
 > mkPostFunction :: String -> BlockingContext -> CFunDef -> [CStat] -> WalkerT CExtDecl
 > mkPostFunction prefix bctx funDef postStmts = do
@@ -1346,7 +1421,7 @@ and finally the code up-to the first blocking call.
 >	return $ mkFunDef (ret, []) -- return type
 >		    (getStdDeclSpecs funDef) -- get the storage specifiers for the function
 >	            (mkPostFunName "params" $ getFunDefName funDef) -- function name
->	            (params ++ blockingParams)
+>	            (blockingParams ++ params)
 >	            stmts -- statements
 
 > mkCallbackInitStmts :: String -> BlockingContext -> [CStat]
@@ -1455,6 +1530,8 @@ CStat:  The blocking statement
 
 >	prefix <- getPrefix
 
+>       assert (isJust blockingCall) return ()
+
 >	-- finally, generate the actual callback function definition
 >	mkCallback prefix
 >		   b 
@@ -1518,7 +1595,7 @@ CStat:  The blocking statement
 >       isValidBlockingFunDef funDef
 
 >	-- register a blocking function with its parameters and return type
->	registerBlocking ((getFunDefName funDef), (getFunDefReturn funDef), (getFunDefParams funDef))
+>	registerBlocking ((getFunDefIdent funDef), (getFunDefReturn funDef), (getFunDefParams funDef))
 
 >	-- Find any blocking function pointers as parameters to the blocking function,
 >	-- and register them
@@ -1605,9 +1682,9 @@ CStat:  The blocking statement
 > printBlocking l (FPFun n f) = do
 >	let (bname, (rettype, derives), params) = f
 >           pstr = if null params then "" else (foldl1 ((++) . (++ ", ")) $ map (show . pretty) params)
->	liftIO $ print $ (take l $ repeat ' ') ++ bname ++ "( " ++ pstr ++ " ) = " ++ (show . pretty $ rettype)
+>	liftIO $ print $ (take l $ repeat ' ') ++ (show bname) ++ "( " ++ pstr ++ " ) = " ++ (show . pretty $ rettype)
 > printBlocking l (FPStruct n f i) = do
->	liftIO $ print $ (take l $ repeat ' ') ++ "( " ++ n ++ " )->" ++ f
+>	liftIO $ print $ (take l $ repeat ' ') ++ "( " ++ (show n) ++ " )->" ++ (show f)
 >	printBlocking (l + 4) i
 
 > printRegisteredBlockingCalls :: WalkerT ()
@@ -1634,18 +1711,20 @@ CStat:  The blocking statement
 > parseHeader :: FilePath -> [String] -> [(String, String)] -> Maybe FilePath -> FilePath -> IO ()
 > parseHeader headerfile includes defs report outfile = do
 >	let r = if isJust report then fromJust report else headerfile
->	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts
+>	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h"
 >	ctu <- generateAST headerfile
 >	(pairs, w) <- runStateT (getBlockingHeaderDecls ctu) w
 >	writeFile outfile "\n\n/* This is an auto-generated file created by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
 >	outputHeader r outfile pairs
 >	appendFile outfile "\n\n"
+>       assert (isJust $ blockingParser w) return ()
+>       removeFile $ macheader $ fromJust $ blockingParser w
 >	return ()
 
 > parseFile :: Bool -> [String] -> [(String, String)] -> FilePath -> Maybe FilePath -> FilePath -> IO ()
 > parseFile p includes defs outfile report f = do
 >	let r = if isJust report then fromJust report else f
-> 	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts
+> 	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h"
 > 	ctu <- generateAST f
 >	(ctuWithPostDecls, w) <- runStateT (registerBlockingFunDecls ctu) w
 >       -- runStateT (printRegisteredBlockingCalls) w
@@ -1655,6 +1734,8 @@ CStat:  The blocking statement
 >	if p then ((appendFile outfile) . show . pretty) transCTU
 >	  else ((appendFile outfile) . show . serialize) transCTU
 >	appendFile outfile "\n\n"
+>       assert (isJust $ blockingParser w) return ()
+>       removeFile $ macheader $ fromJust $ blockingParser w
 > 	return ()
 
 > data ParserOpts = Pretty | Help | Include String | Report String | Outfile String | Header | Define (String, String)

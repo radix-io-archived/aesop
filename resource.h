@@ -3,6 +3,7 @@
 
 #include "src/common/triton-thread.h"
 #include "src/common/triton-list.h"
+#include "src/aesop/hints.h"
 
 #define AE_MAX_RESOURCES 255
 #define AE_MAX_CONTEXTS 1024
@@ -11,11 +12,29 @@
 #define AE_GET_RESOURCE_MASK(resource_id) (AE_RESOURCE_MASK&(((uint64_t)resource_id)<<56))
 #define AE_GET_RESOURCE_ID(op_id) (((op_id&AE_RESOURCE_MASK)>>56)&0xFF)
 
+/* ae_post_blocking allows us to post a blocking function from normal C code and if we're doing a syntax
+ * check with the normal compiler (GCC), we don't get a 'too many arguments to function' error.
+ */
+#ifdef AESOP_PARSER
+#define ae_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) \
+    __fname(__callback, __user_ptr, __hints, __resource_ctx, __op_id, ##__fargs)
+#else
+#define ae_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) TRITON_SUCCESS
+#endif
+
+#define ae_define_post(__ret_type, __fname, __fargs...) \
+    triton_ret_t __fname(void (*callback)(void *ptr, __ret_type ret), \
+                         void *user_ptr, \
+                         ae_hints_t hints, \
+                         ae_context_t ctx, \
+                         ae_op_id_t *op_id, \
+                         ##__fargs)
+
 typedef struct ae_context *ae_context_t;
 
-typedef struct ae_hints *ae_hints_t;
+typedef uint128_t ae_op_id_t;
 
-typedef uint64_t ae_op_id_t;
+#define ae_op_id_equal(id1, id2) !memcmp(&id1, &id2, sizeof(ae_op_id_t))
 
 ae_op_id_t ae_id_gen(int resource_id, uint64_t ptr);
 uint64_t ae_id_lookup(ae_op_id_t id, int *resource_id);
@@ -61,6 +80,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
  */
 struct ae_ctl
 {
+    const char *name;
     ae_op_id_t current_op_id;
     int cancelled;
     triton_mutex_t mutex;
@@ -71,11 +91,75 @@ struct ae_ctl
     int allposted;
     int hit_pbreak;
     int in_pwait;    
+    ae_hints_t hints;
+    ae_context_t context;
+    int refcount;
 };
 
+static inline void ae_ctl_init(struct ae_ctl *ctl, const char *name, ae_hints_t hints, ae_context_t context)
+{
+    ctl->name = name;
+    ctl->posted = 0;
+    ctl->completed = 0;
+    ctl->allposted = 0;
+    ctl->hit_pbreak = 0;
+    ctl->in_pwait = 0;
+    ctl->hints = hints;
+    ctl->context = context;
+    ctl->cancelled = 0;
+    triton_mutex_init(&ctl->mutex, NULL);
+    triton_list_init(&ctl->children);
+    ctl->refcount = 1;
+}
+
+static inline int ae_ctl_refcount(struct ae_ctl *ctl)
+{
+    int rc;
+    triton_mutex_lock(&ctl->mutex);
+    rc = ctl->refcount;
+    triton_mutex_unlock(&ctl->mutex);
+    return rc;
+}
+
+static inline int ae_ctl_refinc(struct ae_ctl *ctl)
+{
+    int rc;
+    triton_mutex_lock(&ctl->mutex);
+    rc = ++ctl->refcount;
+    triton_mutex_unlock(&ctl->mutex);
+    return rc;
+}
+
+static inline int ae_ctl_refdec(struct ae_ctl *ctl)
+{
+    int rc;
+    triton_mutex_lock(&ctl->mutex);
+    rc = --ctl->refcount;
+    triton_mutex_unlock(&ctl->mutex);
+    return rc;
+}
+
 /* internal function -- used by generated code */
-triton_ret_t ae_cancel_children(ae_context_t ctx, void *ptr);
+triton_ret_t ae_cancel_children(ae_context_t ctx, struct ae_ctl *ctl);
 
 void ae_backtrace(void);
+
+void ae_lone_pbranches_add(struct ae_ctl *ctl);
+void ae_lone_pbranches_remove(struct ae_ctl *ctl);
+int ae_lone_pbranches_count(void);
+
+triton_ret_t ae_cancel_branches(struct ae_ctl *ctl);
+
+int ae_count_branches(struct ae_ctl *ctl);
+
+#ifdef AESOP_PARSER
+#define aesop_cancel_branches() ae_cancel_branches(&ctl->parent->gen)
+#define aesop_count_branches() ae_count_branches(&ctl->parent->gen)
+#else
+static inline triton_ret_t aesop_cancel_branches(void) { return TRITON_ERR_NOSYS; }
+static inline int aesop_count_branches(void) { return -1; }
+#endif
+
+
 
 #endif /* __AE_RESOURCE_H__ */
