@@ -115,8 +115,8 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
         op = (struct ae_op *)(((char *)cache->array[aind]) +
                               (count * cache->typesize) +
                               cache->member_offset);
-        op->cache_id = (aind << 25) | count;
         ae_op_clear(op);
+        op->cache_id = (aind << 25) | count;
         ++cache->count;
     }
     else

@@ -10,6 +10,9 @@
 #include "src/net/mock/mock-method.h"
 #include "src/common/resources/scheduling/sched.hae"
 #include "src/common/resources/timer/timer.hae"
+#include "src/zeroconf/zeroconf.h"
+#include "src/net/mpi/mpi.hae"
+#include "src/net/mpi/mpi-method.h"
 
 #include "src/remote/service.hae"
 
@@ -17,13 +20,16 @@
 
 #include "mpi.h"
 
-static triton_msg_ctx_t mpi_ctx;
+
+static triton_msg_ctx_t mpi_msg_ctx;
 
 __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out);
 
 __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
 {
-    triton_ret_t ret, ret1, ret2;
+    triton_ret_t ret,
+                 ret1 = TRITON_SUCCESS,
+                 ret2 = TRITON_SUCCESS;
     triton_node_t from, self, n1, n2;
     triton_string_t fromstr, selfstr;
     int rank, r1, r2, size;
@@ -33,14 +39,24 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    r1 = rank * 2;
-    if(r1 % 2 == 1) ++r1;
-    r2 = r1 + 2;
+    printf("scatter_gather: rank=%d, input=%d\n", rank, in);
 
-    sprintf(n1str, "%s", r1);
-    n1 = triton_node_lookup(mpi_ctx, n1str);
-    sprintf(n2str, "%s", r2);
-    n2 = triton_node_lookup(mpi_ctx, n2str);
+    if(rank == 0)
+    {
+        r1 = 1;
+        r2 = 2;
+    }
+    else
+    {
+        r1 = rank * 2;
+        if(rank % 2 == 1) ++r1;
+        r2 = r1 + 2;
+    }
+
+    sprintf(n1str, "%d", r1);
+    n1 = triton_node_lookup(mpi_msg_ctx, n1str);
+    sprintf(n2str, "%d", r2);
+    n2 = triton_node_lookup(mpi_msg_ctx, n2str);
 
     pwait
     {
@@ -48,11 +64,13 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
         {
             pbranch
             {
+                printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r1, in);
                 ret1 = remote_scatter_gather(n1, in, &res1);
                 if(ret1 != TRITON_SUCCESS)
                 {
                     pbreak;
                 }
+                printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d) done!\n", rank, r1, in);
             }
         }
 
@@ -60,18 +78,21 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
         {
             pbranch
             {
+                printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r2, in);
                 ret2 = remote_scatter_gather(n2, in, &res2);
                 if(ret2 != TRITON_SUCCESS)
                 {
                     pbreak;
                 }
+                printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d) done!\n", rank, r2, in);
             }
         }
     }
 
     if(ret1 == TRITON_SUCCESS && ret2 == TRITON_SUCCESS)
     {
-        *out = res1 + res2 + rank;
+        *out = res1 + res2 + rank + in;
+        printf("scatter_gather: rank=%d => out=%d\n", rank, in, *out);
         ret = TRITON_SUCCESS;
     }
     else
@@ -92,8 +113,18 @@ __blocking void do_remote_test(void)
 
     if(rank == 0)
     {
+        /* need a good way to wait for all the processes, so that
+         * we know the aer_service_requests calls have been started
+         * and will be able to receive messages.  For now, we just sleep
+         * for a sec.
+         */
+        ret = triton_timer(1000);
+        assert(ret == TRITON_SUCCESS);
+
         /* rank 0 calls local scatter_gather, which starts everything */
         ret = scatter_gather(50, &result);
+        assert(ret == TRITON_SUCCESS);
+        printf("FINAL RESULT: %d\n", result);
 
     }
     else
@@ -113,6 +144,7 @@ int main(int argc, char *argv[])
 {
     triton_ret_t ret;
     ae_op_id_t op_id;
+    ae_context_t mpi_resource_ctx;
 
     ret = triton_zeroconf_init();
     assert(ret == TRITON_SUCCESS);
@@ -133,15 +165,18 @@ int main(int argc, char *argv[])
     ret = triton_msg_init();
     assert(ret == TRITON_SUCCESS);
 
-    ret = triton_msg_mpi_init();
+    ret = triton_mpi_init();
     assert(ret == TRITON_SUCCESS);
 
-    ret = triton_msg_enable_method("mpi", &mpi_ctx);
+    triton_msg_mpi_init();
     assert(ret == TRITON_SUCCESS);
 
     if(argc > 1)
     {
         triton_debug_enable("/dev/stdout", "all");
+    }
+    if(argc > 2)
+    {
         sleep(30);
     }
 
@@ -150,15 +185,23 @@ int main(int argc, char *argv[])
     ret = aer_service_init();
     assert(ret == TRITON_SUCCESS);
 
+    /* we need the mpi context so that we can lookup nodes */
+    mpi_msg_ctx = aer_service_get_context();
+    assert(mpi_msg_ctx);
+
     ret = aer_remote_register_test_remote_mpi();
     assert(ret == TRITON_SUCCESS);
 
-    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, NULL, &op_id);
+    ae_context_create(&mpi_resource_ctx, 3, "mpi", "sched", "timer");
+    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mpi_resource_ctx, &op_id);
     while(!done)
     {
-        ae_poll(NULL, 0);
+        ae_poll(mpi_resource_ctx, 0);
     }
 
+    aer_service_finalize();
+    triton_msg_mpi_finalize();
+    triton_mpi_finalize();
     return 0;
 }
 
