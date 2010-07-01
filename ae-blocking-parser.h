@@ -157,30 +157,29 @@
 }
 
 #define AE_MK_PBRANCH_POST_DECLS(__ctl_type) \
-    struct __ctl_type * child_ctl, *parent_ctl;
+    struct __ctl_type *parent_ctl;
 
 #define AE_MK_PBRANCH_POST_STMTS(__pwait_ctl, __ctl_type, __fname, __location, __pbranch_id) \
 { \
     parent_ctl = ctl; \
-    child_ctl = malloc(sizeof(*child_ctl)); \
-    if(child_ctl == NULL) \
+    ctl = malloc(sizeof(*ctl)); \
+    if(ctl == NULL) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for control structure failed!\n", #__fname, __location); \
-        assert(child_ctl != NULL); \
+        assert(ctl != NULL); \
         goto __ae_##__pbranch_id##_end; \
     } \
-    ae_ctl_init(&child_ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
-    child_ctl->parent = ctl; \
-    ae_hints_copy(ctl->gen.hints, &child_ctl->gen.hints); \
-    child_ctl->params = ctl->params; \
-    memcpy(&child_ctl->__pwait_ctl.private, &ctl->__pwait_ctl.private, sizeof(child_ctl->__pwait_ctl.private)); \
-    child_ctl->__pwait_ctl.shared_params = &ctl->__pwait_ctl.shared; \
-    ctl = child_ctl; \
-    triton_mutex_lock(&child_ctl->parent->gen.mutex); \
-    child_ctl->parent->gen.posted++; \
-    triton_list_link_clear(&child_ctl->gen.link); \
-    triton_queue_enqueue(&child_ctl->gen.link, &child_ctl->parent->gen.children); \
-    triton_mutex_unlock(&child_ctl->parent->gen.mutex); \
+    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
+    ctl->parent = parent_ctl; \
+    ae_hints_copy(parent_ctl->gen.hints, &ctl->gen.hints); \
+    ctl->params = ctl->params; \
+    memcpy(&ctl->__pwait_ctl.private, &ctl->__pwait_ctl.private, sizeof(ctl->__pwait_ctl.private)); \
+    ctl->__pwait_ctl.shared_params = &ctl->__pwait_ctl.shared; \
+    triton_mutex_lock(&ctl->parent->gen.mutex); \
+    ctl->parent->gen.posted++; \
+    triton_list_link_clear(&ctl->gen.link); \
+    triton_queue_enqueue(&ctl->gen.link, &ctl->parent->gen.children); \
+    triton_mutex_unlock(&ctl->parent->gen.mutex); \
 }
 
 #define AE_MK_PBRANCH_POST_END_STMTS(__pwait_ctl, __ctl_type, __fname, __location, __pbranch_id) \
@@ -189,26 +188,25 @@
 }
 
 #define AE_MK_LONE_PBRANCH_POST_DECLS(__ctl_type) \
-    struct __ctl_type * child_ctl, *parent_ctl;
+    struct __ctl_type *parent_ctl;
 
 #define AE_MK_LONE_PBRANCH_POST_STMTS(__ctl_type, __fname, __location, __pbranch_id) \
 { \
     parent_ctl = ctl; \
-    child_ctl = malloc(sizeof(*child_ctl)); \
-    if(child_ctl == NULL) \
+    ctl = malloc(sizeof(*ctl)); \
+    if(ctl == NULL) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for control structure failed!\n", #__fname, __location); \
-        assert(child_ctl != NULL); \
+        assert(ctl != NULL); \
         goto __ae_##__pbranch_id##_end; \
     } \
-    ae_ctl_init(&child_ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
-    child_ctl->parent = ctl; \
-    ae_hints_copy(ctl->gen.hints, &child_ctl->gen.hints); \
-    child_ctl->params = ctl->params; \
-    ctl = child_ctl; \
-    triton_list_link_clear(&child_ctl->gen.link); \
-    ae_lone_pbranches_add(&child_ctl->gen); \
-    ae_ctl_refinc(&child_ctl->parent->gen); \
+    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
+    ctl->parent = parent_ctl; \
+    ae_hints_copy(parent_ctl->gen.hints, &ctl->gen.hints); \
+    ctl->params = parent_ctl->params; \
+    triton_list_link_clear(&ctl->gen.link); \
+    ae_lone_pbranches_add(&ctl->gen); \
+    ae_ctl_refinc(&ctl->parent->gen); \
 }
 
 #define AE_MK_LONE_PBRANCH_POST_END_STMTS(__ctl_type, __fname, __location, __pbranch_id) \

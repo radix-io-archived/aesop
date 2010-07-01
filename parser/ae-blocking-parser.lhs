@@ -1082,7 +1082,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >           pwaitCtx = getPWaitAncestor pb
 
 >       (pbreakDecls, pbreakStmts) <- mkPBreakStmts pp ni
->       (pbranchDecls, pbranchStart) <- mkPBranchPostStartStmts "child_ctl" fname ni
+>       (pbranchDecls, pbranchStart) <- mkPBranchPostStartStmts "ctl" fname ni
 >       setDoneCtlStmt <- mkDoneCtlSetStmt pp ni
 >	afterPWaitStmts <- generateAfterStmts pwaitCtx []
 >       pbDone <- getPBDone
@@ -1098,7 +1098,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >                                                          afterPWaitStmts) ni) tlBeforeStmts
 
 >	afterPBranchNBStmts <- translateForCB pb (nbStmtsAfter pb)
->	pushPrefix "child_ctl"
+>	-- pushPrefix "child_ctl"
 >	tlPBDeclInits <- translateForCB b pbDeclInits
 >       tlCtxInits <- translateForCB b ctxInitStmts
 >       setPBDone mkPBranchPostDoneStmts
@@ -1106,7 +1106,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	cp <- getPrefix
 >	branchStmts <- mkPBranchPostStmts pb pwaitName cp pp (getParentName pb) 
 >                          (tlPBDeclInits ++ beforeStmts ++ tlCtxInits ++ branchPostStmts) (nodeInfo branchDef)
->	popPrefix
+>	-- popPrefix
 >	return $ branchStmts ++ pbend ++ afterPBranchNBStmts
 
 > getParallelStmts pw@(PWaitContext _ waitDef waitStmts@(w:ws) before after parent next prev) tr = do

@@ -15,7 +15,7 @@ static __blocking void run_parfor(
 
     pwait
     {
-        int i;
+        pprivate int i;
         for (i = 0; i < 2; ++i)
         {
             pbranch
