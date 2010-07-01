@@ -1,7 +1,7 @@
 #include <unistd.h>
 
 #include "src/common/triton-types.h"
-#include "src/common/triton-hints.h"
+#include "src/aesop/hints.h"
 #include "src/aesop/aesop.h"
 #include "src/remote/encoding.h"
 #include "src/remote/remote.hae"
