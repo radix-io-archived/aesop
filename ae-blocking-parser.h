@@ -172,9 +172,9 @@
     ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
     ctl->parent = parent_ctl; \
     ae_hints_copy(parent_ctl->gen.hints, &ctl->gen.hints); \
-    ctl->params = ctl->params; \
-    memcpy(&ctl->__pwait_ctl.private, &ctl->__pwait_ctl.private, sizeof(ctl->__pwait_ctl.private)); \
-    ctl->__pwait_ctl.shared_params = &ctl->__pwait_ctl.shared; \
+    ctl->params = parent_ctl->params; \
+    memcpy(&ctl->__pwait_ctl.private, &parent_ctl->__pwait_ctl.private, sizeof(ctl->__pwait_ctl.private)); \
+    ctl->__pwait_ctl.shared_params = &parent_ctl->__pwait_ctl.shared; \
     triton_mutex_lock(&ctl->parent->gen.mutex); \
     ctl->parent->gen.posted++; \
     triton_list_link_clear(&ctl->gen.link); \
