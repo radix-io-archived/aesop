@@ -92,7 +92,13 @@ inline int ae_opcache_size(ae_opcache_t cache)
 
 inline int ae_opcache_count(ae_opcache_t cache)
 {
-    return cache->count;
+    int count;
+
+    triton_mutex_lock(&cache->mutex);
+    count = cache->count;
+    triton_mutex_unlock(&cache->mutex);
+
+    return count;
 }
 
 struct ae_op *ae_opcache_get(ae_opcache_t cache)
