@@ -169,7 +169,7 @@
         assert(ctl != NULL); \
         goto __ae_##__pbranch_id##_end; \
     } \
-    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
+    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context); \
     ctl->parent = parent_ctl; \
     ae_hints_copy(parent_ctl->gen.hints, &ctl->gen.hints); \
     ctl->params = parent_ctl->params; \
@@ -200,7 +200,7 @@
         assert(ctl != NULL); \
         goto __ae_##__pbranch_id##_end; \
     } \
-    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, ctl->gen.context); \
+    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context); \
     ctl->parent = parent_ctl; \
     ae_hints_copy(parent_ctl->gen.hints, &ctl->gen.hints); \
     ctl->params = parent_ctl->params; \
