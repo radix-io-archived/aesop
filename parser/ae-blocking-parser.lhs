@@ -284,6 +284,7 @@ Or fields that are structs with blocking function pointers: struct b { struct a 
 etc. etc.
 
 >     | isStructDecl d = do
+>           addGlobals [d]
 >	    registerStruct d Nothing
 >	    if ph then 
 >		liftM ((:[]) . CDeclExt) $ everywhereM (mkM translateBlockingFunParam) d
@@ -321,8 +322,10 @@ We only need to do the transformation here to get the type signature right, we d
          if ph then return [CDeclExt newd]
            else return []
         
-> registerBlockingDecl True c = return [c]
-> registerBlockingDecl False c = return []
+> registerBlockingDecl True c = do
+>       return [c]
+> registerBlockingDecl False c = do
+>       return []
  
 Registers all the blocking declarations present in the CTranslUnit
 

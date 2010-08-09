@@ -256,7 +256,8 @@ Turns into:
 >	w <- get
 >	inner <- lookupVar expr
 >	if isNothing inner
->		then return Nothing
+>		then do
+>                       return Nothing
 >		else return $ Just $ (fromJust inner) ++ [name]
 
 > lookupVar e = do
@@ -366,12 +367,15 @@ if so, register the outer struct too.
 > lookupBlocking c = do
 >	v <- lookupVar c
 >	if isNothing v
->	    then return Nothing
+>	    then do
+>               return Nothing
 >	    else do
 >		all <- getAllBlocking
 >		let fs = mapMaybe (matchFP $ fromJust v) $ all
->	        if null fs then return Nothing 
->                 else return $ Just $ head fs
+>	        if null fs then do
+>                       return Nothing 
+>                 else do
+>                       return $ Just $ head fs
 
 Utility lift the print function into the WalkerT monad transformer
 
