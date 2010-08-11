@@ -14,15 +14,23 @@ MODLIBS_$(DIR)/test-remote-mock = -lpthread
 ifneq (,$(BUILD_MPI))
 
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mpi
-
 REMOTE_TESTMODSRC_$(DIR)/test_remote_mpi := $(DIR)/test-remote-mpi.aer
-
 REMOTE_TESTSRC += $(DIR)/test-remote-mpi.aer
 
 MODCFLAGS_$(DIR)/test-remote-mpi = $(MPICFLAGS)
 MODLDFLAGS_$(DIR)/test-remote-mpi = $(MPILDFLAGS)
 MODLIBS_$(DIR)/test-remote-mpi = $(MPILIBS)
 MODCC_$(DIR)/test-remote-mpi = $(MPICC)
+
+REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_fault
+REMOTE_TESTMODSRC_$(DIR)/test_remote_fault := $(DIR)/test-remote-fault-injector.aer
+REMOTE_TESTSRC += $(DIR)/test-remote-fault-injector.aer
+
+MODCFLAGS_$(DIR)/test-remote-fault-injector = $(MPICFLAGS)
+MODLDFLAGS_$(DIR)/test-remote-fault-injector = $(MPILDFLAGS)
+MODLIBS_$(DIR)/test-remote-fault-injector = $(MPILIBS)
+MODCC_$(DIR)/test-remote-fault-injector = $(MPICC)
+
 
 endif # BUILD_MPI
 
