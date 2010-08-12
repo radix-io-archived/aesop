@@ -21,6 +21,7 @@
 
 
 static triton_msg_ctx_t mpi_msg_ctx;
+static float failure_rate = 0;
 
 __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out);
 
@@ -110,6 +111,10 @@ __blocking void do_remote_test(void)
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    printf("Setting msg failure rate on rank %d to %f\n", rank, (double)failure_rate);
+    triton_msg_fault_set_failure_rate(failure_rate);
+
+
     if(rank == 0)
     {
         /* need a good way to wait for all the processes, so that
@@ -144,6 +149,28 @@ int main(int argc, char *argv[])
     triton_ret_t ret;
     ae_op_id_t op_id;
     ae_context_t mpi_resource_ctx;
+    int scan_ret;
+
+    if(argc != 2)
+    {
+        fprintf(stderr, 
+            "Usage: test-remote-fault-injector <failure rate (%%)>\n");
+        return(-1);
+    }
+
+    scan_ret = sscanf(argv[1], "%f", &failure_rate);
+    if(scan_ret != 1)
+    {
+        fprintf(stderr, 
+            "Usage: test-remote-fault-injector <failure rate (%%)>\n");
+        return(-1);
+    }
+    if(failure_rate > 100 || failure_rate < 0)
+    {
+        fprintf(stderr, 
+            "Usage: test-remote-fault-injector <failure rate (%%)>\n");
+        return(-1);
+    }
 
     ret = triton_zeroconf_init();
     assert(ret == TRITON_SUCCESS);
@@ -152,6 +179,7 @@ int main(int argc, char *argv[])
     assert(ret == TRITON_SUCCESS);
 
     triton_debug_init();
+    triton_debug_stderr_enable("all");
 
     aesop_init();
 
@@ -172,15 +200,6 @@ int main(int argc, char *argv[])
 
     triton_msg_fault_init("mpi");
     assert(ret == TRITON_SUCCESS);
-
-    if(argc > 1)
-    {
-        triton_debug_enable("/dev/stdout", "all");
-    }
-    if(argc > 2)
-    {
-        sleep(30);
-    }
 
     triton_zeroconf_set("aesop.remote.method", "fault-injector");
 
