@@ -1,0 +1,130 @@
+#include <unistd.h>
+
+#include "src/common/triton-types.h"
+#include "src/aesop/hints.h"
+#include "src/aesop/aesop.h"
+#include "src/remote/encoding.h"
+#include "src/remote/remote.hae"
+#include "src/net/triton-message.hae"
+#include "src/net/triton-message-method.hae"
+#include "src/net/mock/mock-method.h"
+#include "src/common/resources/scheduling/sched.hae"
+#include "src/common/resources/timer/timer.hae"
+#include "src/zeroconf/zeroconf.h"
+#include "src/net/mpi/mpi.hae"
+#include "src/net/mpi/mpi-method.h"
+
+#include "src/remote/service.hae"
+
+#include "mpi.h"
+
+__remote __blocking triton_ret_t foobar(int32_t in, int32_t *out);
+
+__remote __blocking triton_ret_t foobar(int32_t in, int32_t *out)
+{
+    triton_timer(10);
+    *out = in + 1;
+
+    return TRITON_SUCCESS;
+}
+
+
+static triton_msg_ctx_t mpi_msg_ctx;
+
+__blocking void do_remote_test(void)
+{
+    pwait
+    {
+        pbranch
+        {
+            aer_service_engine_start();
+        }
+        pbranch
+        {
+            triton_timer(5000);
+            aer_service_engine_stop();
+        }
+    }
+
+    return;
+}
+
+static int done = 0;
+static void cb(void *up)
+{
+    done=1;
+}
+
+int main(int argc, char *argv[])
+{
+    triton_ret_t ret;
+    ae_op_id_t op_id;
+    ae_context_t mpi_resource_ctx;
+
+    ret = triton_zeroconf_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = ae_hints_init();
+    assert(ret == TRITON_SUCCESS);
+
+    triton_debug_init();
+
+    aesop_init();
+
+    ret = triton_sched_resource_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_timer_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_msg_init();
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_mpi_init();
+    assert(ret == TRITON_SUCCESS);
+
+    triton_msg_mpi_init();
+    assert(ret == TRITON_SUCCESS);
+
+    if(argc > 1)
+    {
+        triton_debug_enable("/dev/stdout", "all");
+    }
+    if(argc > 2)
+    {
+        sleep(30);
+    }
+
+    triton_zeroconf_set("aesop.remote.method", "mpi");
+
+    ret = aer_service_init();
+    assert(ret == TRITON_SUCCESS);
+
+    /* we need the mpi context so that we can lookup nodes */
+    mpi_msg_ctx = aer_service_get_context();
+    assert(mpi_msg_ctx);
+
+    ret = aer_remote_register_test_remote_service_stop();
+    assert(ret == TRITON_SUCCESS);
+
+    ae_context_create(&mpi_resource_ctx, 3, "mpi", "sched", "timer");
+    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mpi_resource_ctx, &op_id);
+    while(!done)
+    {
+        ae_poll(mpi_resource_ctx, 0);
+    }
+
+    aer_service_finalize();
+    triton_msg_mpi_finalize();
+    triton_mpi_finalize();
+    return 0;
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ts=8 sts=4 sw=4 expandtab
+ */

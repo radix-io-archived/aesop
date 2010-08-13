@@ -31,6 +31,15 @@ MODLDFLAGS_$(DIR)/test-remote-fault-injector = $(MPILDFLAGS)
 MODLIBS_$(DIR)/test-remote-fault-injector = $(MPILIBS)
 MODCC_$(DIR)/test-remote-fault-injector = $(MPICC)
 
+REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_service_stop
+REMOTE_TESTMODSRC_$(DIR)/test_remote_service_stop := $(DIR)/test-remote-service-stop.aer
+REMOTE_TESTSRC += $(DIR)/test-remote-service-stop.aer
+
+MODCFLAGS_$(DIR)/test-remote-service-stop = $(MPICFLAGS)
+MODLDFLAGS_$(DIR)/test-remote-service-stop = $(MPILDFLAGS)
+MODLIBS_$(DIR)/test-remote-service-stop = $(MPILIBS)
+MODCC_$(DIR)/test-remote-service-stop = $(MPICC)
+
 
 endif # BUILD_MPI
 
