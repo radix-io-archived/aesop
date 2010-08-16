@@ -66,11 +66,22 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
     int resource_id, ridx;
     triton_ret_t ret, saved;
 
+    if(triton_uint128_iszero(op_id))
+    {
+        return TRITON_SUCCESS;
+    }
+
     ae_id_lookup(op_id, &resource_id);
 
     if(resource_id == 0)
     {
 	ctl = (struct ae_ctl *)(intptr_t)ae_id_lookup(op_id, NULL);
+        if(!ctl)
+        {
+            /* No blocking operation associated with this op_id.  Nothing to cancel. */
+            return TRITON_SUCCESS;
+        }
+
 	triton_mutex_lock(&ctl->mutex);
 	if(ctl->cancelled)
 	{

@@ -68,6 +68,7 @@
 #define AE_MK_PBREAK_STMTS(__prefix, __fname, __location) \
 { \
     done_ctl->parent->gen.hit_pbreak = 1; \
+    triton_uint128_setzero(done_ctl->gen.current_op_id); \
     triton_list_del(&done_ctl->gen.link); \
     __ae_cancel_ret = ae_cancel_children(done_ctl->gen.context, &done_ctl->parent->gen); \
     if(__ae_cancel_ret != TRITON_SUCCESS) \

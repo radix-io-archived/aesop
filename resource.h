@@ -110,6 +110,7 @@ static inline void ae_ctl_init(struct ae_ctl *ctl, const char *name, ae_hints_t 
     triton_mutex_init(&ctl->mutex, NULL);
     triton_list_init(&ctl->children);
     ctl->refcount = 1;
+    triton_uint128_setzero(ctl->current_op_id);
 }
 
 static inline int ae_ctl_refcount(struct ae_ctl *ctl)
