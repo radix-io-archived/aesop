@@ -72,10 +72,13 @@
 >                       removeFile errorFP
 >                       return outFile
 >               ExitFailure e -> do
+>                       isOpen <- hIsOpen errorH
+>                       errorH <- if not isOpen then openFile errorFP ReadMode else return errorH
 >                       errs <- hGetContents errorH
->                       hClose errorH
 >                       removeFile errorFP
 >                       trace ("Preprocessor failed with return code: " ++ (show e) ++ "\n" ++ errs ++ "\n\n") $ assert False $ return "dummy_file.c"
+>                       hClose errorH
+>                       return "dummy_file.c"
                        
 
 > type ReturnType = (CTypeSpec, [CDerivedDeclr])
@@ -138,7 +141,7 @@ Functions to generate AST objects from C template code
 > mkParser :: [FilePath] -> [(String, String)] -> FilePath -> IO MacroParser
 > mkParser idirs defines macheader = do
 >       types <- getTypeIdents idirs defines macheader
->       result <- myCPP idirs defines Nothing ["-imacros", macheader, "-fdirectives-only", "-P"] (Left "\n")
+>       result <- myCPP idirs defines Nothing ["-imacros", macheader, "-E", "-dM", "-P"] (Left "\n")
 >       return $ MacroParser result types
 
 > doCPPWithParser :: MacroParser -> NodeInfo -> String -> IO String
