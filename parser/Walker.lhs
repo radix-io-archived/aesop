@@ -318,7 +318,10 @@ if so, register the outer struct too.
 >	    matching = filter (\f -> (isFPStruct f && ((name f) == structName))) reg
 >	if not $ null matching
 >	    then do
->		assert ((length matching) == 1) return ()
+>               -- when ((length matching) /= 1) $ do
+>                   -- putStrLnW $ identToString structName
+>                   -- mapM_ (putStrLnW . show) matching
+>		-- assert ((length matching) == 1) return ()
 >		let mkFP (FPStruct s f fpt) = FPStruct typeName f fpt
 >		mapM_ (insertFP . mkFP) matching
 >	  else return ()
