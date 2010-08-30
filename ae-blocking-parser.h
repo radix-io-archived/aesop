@@ -108,7 +108,7 @@
     __ae_pwait_done = done_ctl->parent->gen.allposted == 1 && done_ctl->parent->gen.posted == done_ctl->parent->gen.completed; \
     triton_mutex_unlock(&done_ctl->parent->gen.mutex); \
     ae_hints_destroy(done_ctl->gen.hints); \
-    free(done_ctl); \
+    ae_ctl_destroy(done_ctl, &done_ctl->gen); \
 }
 
 #define AE_MK_PBRANCH_CB_DONE_STMTS(__id) \
@@ -220,8 +220,9 @@
     int prc; \
     ae_lone_pbranches_remove(&ctl->gen); \
     prc = ae_ctl_refdec(&ctl->parent->gen); \
-    if(prc == 0) free(ctl->parent); \
-    free(ctl); \
+    if(prc == 0) ae_ctl_destroy(ctl->parent, &ctl->parent->gen); \
+    ae_hints_destroy(ctl->gen.hints); \
+    ae_ctl_destroy(ctl, &ctl->gen); \
 }
 #define AE_MK_PARENT_POINTER_DECL(__parent) \
     struct __parent##_ctl *parent;
@@ -254,5 +255,29 @@ __ae_post_end: \
 { \
                    return __ae_postret; \
 } \
+
+#define AE_MK_NULL_RETURN_CALLBACK() \
+    ctl->callback(ctl->user_ptr); \
+    if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    return;
+
+#define AE_MK_RETURN_CALLBACK(__ret_param_expr) \
+    ctl->callback(ctl->user_ptr, __ret_param_expr); \
+    if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    return;
+
+#define AE_MK_NULL_POST_RETURN_CALLBACK() \
+{ \
+    ctl->callback(ctl->user_ptr); \
+    if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    return TRITON_SUCCESS; \
+}
+
+#define AE_MK_POST_RETURN_CALLBACK(__ret_param_expr) \
+{ \
+    ctl->callback(ctl->user_ptr, __ret_param_expr); \
+    if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    return TRITON_SUCCESS; \
+}
 
 #endif

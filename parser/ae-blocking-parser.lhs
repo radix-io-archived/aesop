@@ -788,38 +788,32 @@ to calling the appropriate callback
 >	p <- getPrefix
 >       endStmts <- mkStmtFromBlocking "AE_MK_END_OF_BLOCKING" [getParentName $ getFunContext b] (getNI b)
 >	transformExits <- getTransExit
->	return $ map ((trLocals p b) . (transformExits (mkCompoundStmt Nothing endStmts (getNI b)))) stmts
+>       unprefixed <- mapM (transformExits (mkCompoundStmt Nothing endStmts (getNI b))) stmts
+>	return $ map (trLocals p b) unprefixed
 
-> swapReturnWithCallback :: CStat -> CStat -> CStat
-> swapReturnWithCallback endStmt (CReturn retexpr ni) = compoundStmt
->	where retparam = if isNothing retexpr then [] else [fromJust retexpr]
->	      compoundStmt = mkCompoundStmt Nothing (endStmt :
->               [CExpr (Just (CCall (CMember (mkVar "ctl" ni)
->				             (newIdent "callback" ni) True ni)
->		            	    ([constructExprFromC ni "ctl->user_ptr"] ++ retparam) ni)) ni,
->                mkStmtFromC ni "if(ae_ctl_refdec(&ctl->gen) == 0) free(ctl);",
->		 mkStmtFromC ni "return;"]) ni
+> swapReturnWithCallback :: CStat -> CStat -> WalkerT CStat
+> swapReturnWithCallback endStmt (CReturn retexpr ni) = do
+>       stmts <- if isNothing retexpr then mkStmtFromBlocking "AE_MK_NULL_RETURN_CALLBACK" [] ni
+>                  else mkStmtFromBlocking "AE_MK_RETURN_CALLBACK" [show $ pretty $ fromJust retexpr] ni
+>       return $ mkCompoundStmt Nothing stmts ni
 
-> swapReturnWithCallback e c = c
+> swapReturnWithCallback e c = return c
 
-> transformFuncReturnStmts :: CStat -> CStat -> CStat
+> transformFuncReturnStmts :: CStat -> CStat -> WalkerT CStat
 > transformFuncReturnStmts endStmt stmt =
->	everywhere (mkT $ swapReturnWithCallback endStmt) stmt
+>	everywhereM (mkM $ swapReturnWithCallback endStmt) stmt
 
-> swapPostReturnWithCallback :: CStat -> CStat -> CStat
-> swapPostReturnWithCallback endStmt (CReturn retexpr ni) = compoundStmt
->	where retparam = if isNothing retexpr then [] else [fromJust retexpr]
->	      compoundStmt = mkCompoundStmt Nothing (endStmt :
->                [(CExpr (Just (CCall (CMember (mkVar "ctl" ni)
->				     	      (newIdent "callback" ni) True ni)
->		            	     ([constructExprFromC ni "ctl->user_ptr"] ++ retparam) ni)) ni),
->                 mkStmtFromC ni "if(ae_ctl_refdec(&ctl->gen) == 0) free(ctl);",
->		  mkStmtFromC ni "return TRITON_SUCCESS;"]) ni
-> swapPostReturnWithCallback e c = c
+> swapPostReturnWithCallback :: CStat -> CStat -> WalkerT CStat
+> swapPostReturnWithCallback endStmt (CReturn retexpr ni) = do
+>       stmts <- if isNothing retexpr then mkStmtFromBlocking "AE_MK_NULL_POST_RETURN_CALLBACK" [] ni
+>                  else mkStmtFromBlocking "AE_MK_POST_RETURN_CALLBACK" [show $ pretty $ fromJust retexpr] ni
+>       return $ mkCompoundStmt Nothing stmts ni
 
-> transformPostFuncReturnStmts :: CStat -> CStat -> CStat
+> swapPostReturnWithCallback e c = return c
+
+> transformPostFuncReturnStmts :: CStat -> CStat -> WalkerT CStat
 > transformPostFuncReturnStmts endStmt stmt =
->	everywhere (mkT $ swapPostReturnWithCallback endStmt) stmt
+>	everywhereM (mkM $ swapPostReturnWithCallback endStmt) stmt
 
 > getFuncLocalDecls :: CFunDef -> [CDecl]
 > getFuncLocalDecls funDef = (getFunDefParams funDef) ++ (getFunLocalDeclarations funDef)

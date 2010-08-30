@@ -13,6 +13,3 @@ HSBINSRC += $(DIR)/ae-blocking-parser.lhs $(DIR)/ae-remote-parser.lhs
 
 MODNAME_$(DIR)/ae-blocking-parser.lhs = BlockingParser
 MODNAME_$(DIR)/ae-remote-parser.lhs = RemoteParser
-
-clean::
-	rm -rf *.o *.hi src/aesop/parser/ae-blocking-parser src/aesop/parser/ae-remote-parser

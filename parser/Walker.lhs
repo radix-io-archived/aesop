@@ -101,14 +101,14 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >	prefixes :: [String],
 >       errorWriter :: (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]),
 >       pbranchDone :: (Walker -> BlockingContext -> NodeInfo -> [CStat]),
->	transExit :: (CStat -> CStat -> CStat),
+>	transExit :: (CStat -> CStat -> WalkerT CStat),
 >	fpTypeReg :: FPTypeRegistry,
 >	fpTypeLocalReg :: FPTypeRegistry,
 >	varReg :: VarRegistry,
 >       blockingParser :: Maybe MacroParser
 > }
 
-> newWalkerState :: String -> [String] -> [(String, String)] -> (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) -> (Walker -> BlockingContext -> NodeInfo -> [CStat]) -> (CStat -> CStat -> CStat) -> FilePath -> IO Walker
+> newWalkerState :: String -> [String] -> [(String, String)] -> (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) -> (Walker -> BlockingContext -> NodeInfo -> [CStat]) -> (CStat -> CStat -> WalkerT CStat) -> FilePath -> IO Walker
 > newWalkerState fname includes defines errorWriter pbranchDone transExit macroHeader = do
 >	varReg <- newVarRegistry
 >       bp <- mkParser includes defines macroHeader
@@ -145,12 +145,12 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >	w <- get
 >	return $ (pbranchDone w) w
 
-> setTransExit :: (CStat -> CStat -> CStat) -> WalkerT ()
+> setTransExit :: (CStat -> CStat -> WalkerT CStat) -> WalkerT ()
 > setTransExit tr = do
 >	w <- get
 >	put $ w { transExit = tr }
 
-> getTransExit :: WalkerT (CStat -> CStat -> CStat)
+> getTransExit :: WalkerT (CStat -> CStat -> WalkerT CStat)
 > getTransExit = do
 >	w <- get
 >	return $ transExit w

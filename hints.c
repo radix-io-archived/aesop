@@ -258,7 +258,6 @@ void ae_hints_destroy(ae_hints_t h)
 {
     struct ae_hints *tmp, *next;
 
-
     next = h;
     while(next)
     {

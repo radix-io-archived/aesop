@@ -113,6 +113,11 @@ static inline void ae_ctl_init(struct ae_ctl *ctl, const char *name, ae_hints_t 
     triton_uint128_setzero(ctl->current_op_id);
 }
 
+static inline void ae_ctl_destroy(void *tctl, struct ae_ctl *ctl)
+{
+    free(tctl);
+}
+
 static inline int ae_ctl_refcount(struct ae_ctl *ctl)
 {
     int rc;
