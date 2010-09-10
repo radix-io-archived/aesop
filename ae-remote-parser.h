@@ -6,6 +6,7 @@
 #include "src/common/triton-error.h"
 #include "src/common/triton-log.h"
 #include "src/remote/remote.hae"
+#include "src/remote/error-encoding.h"
 
 /**
  * The remote parser generates encoding/decoding functions for every type (struct, typedef, etc.) with
@@ -231,12 +232,12 @@
 #define AER_MK_DESTROY_STMTS_END() 
 
 #define AER_MK_STUB_DECL(__ret__, __fname__, params...) \
-    __blocking __ret__ remote_##__fname__(triton_node_t id, ##params);
+    __blocking __ret__ remote_##__fname__(aer_remote_ctx_t *ctx, triton_node_t id, ##params);
 
 #define AER_MK_STUB_DECLS(__fname__) \
     aer_message_t send_message; \
     aer_message_t recv_message; \
-    triton_ret_t ret; \
+    triton_ret_t ret, sret; \
     uint64_t insize; \
     uint64_t headersize;
 
@@ -244,13 +245,12 @@
 { \
     headersize = aer_message_header_size(); \
     insize = aer_encode_size_##__intype__(#__inname__, &__inname__); \
-    ret = aer_message_init(&send_message, headersize+insize); \
+    ret = aer_message_init(ctx, &send_message, AER_MESSAGE_REQUEST, insize, __get_op_id_##__fname__()); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
-    send_message.header.op = __get_op_id_##__fname__(); \
-    ret = aer_message_encode_header(&send_message); \
+    ret = aer_message_encode(ctx, &send_message); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
@@ -258,48 +258,60 @@
     ret = aer_encode_##__intype__(&(send_message.buffer), #__inname__, &__inname__); \
     if(ret != TRITON_SUCCESS) \
     { \
-        aer_message_destroy(&send_message); \
+        aer_message_destroy(ctx, &send_message); \
         return ret; \
     } \
     triton_buffer_fix_size(&send_message.buffer); \
-    ret = aer_message_init(&recv_message, AE_REMOTE_MAX_RESPONSE_SIZE); \
+    ret = aer_message_init(ctx, &recv_message, AER_MESSAGE_RESPONSE, AE_REMOTE_MAX_RESPONSE_SIZE, __get_op_id_##__fname__()); \
     if(ret != TRITON_SUCCESS) \
     { \
-        aer_message_destroy(&send_message); \
+        aer_message_destroy(ctx, &send_message); \
         return ret; \
     } \
     recv_message.header.op = __get_op_id_##__fname__(); \
-    ret = aer_message_sendrecv(id, &send_message, &recv_message); \
+    ret = aer_message_sendrecv(ctx, id, &send_message, &recv_message); \
     if(ret != TRITON_SUCCESS) \
     { \
-        aer_message_destroy(&send_message); \
-        aer_message_destroy(&recv_message); \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
-    ret = aer_message_decode_header(&recv_message); \
+    ret = aer_message_decode(ctx, &recv_message); \
     if(ret != TRITON_SUCCESS) \
     { \
-        aer_message_destroy(&send_message); \
-        aer_message_destroy(&recv_message); \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
-    ret = aer_decode_##__outtype__(&(recv_message.buffer), NULL, __outname__); \
-    aer_message_destroy(&send_message); \
-    aer_message_destroy(&recv_message); \
-    return ret; \
+    ret = aer_decode_triton_ret_t(&(recv_message.buffer), NULL, &sret); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
+        return ret; \
+    } \
+    if(sret == TRITON_SUCCESS) \
+    { \
+        ret = aer_decode_##__outtype__(&(recv_message.buffer), NULL, __outname__); \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
+        if(ret != TRITON_SUCCESS) \
+        { \
+            return ret; \
+        } \
+    } \
+    return sret; \
 }
 
 #define AER_MK_STUB_PTR_BLOCK(__fname__, __intype__, __inname__, __outtype__, __outname__) \
 { \
-    headersize = aer_message_header_size(); \
     insize = aer_encode_size_##__intype__(#__inname__, __inname__); \
-    ret = aer_message_init(&send_message, headersize+insize); \
+    ret = aer_message_init(ctx, &send_message, AER_MESSAGE_REQUEST, insize, __get_op_id_##__fname__()); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
-    send_message.header.op = __get_op_id_##__fname__(); \
-    ret = aer_message_encode_header(&send_message); \
+    ret = aer_message_encode(ctx, &send_message); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
@@ -307,35 +319,49 @@
     ret = aer_encode_##__intype__(&(send_message.buffer), #__inname__, __inname__); \
     if(ret != TRITON_SUCCESS) \
     { \
-        aer_message_destroy(&send_message); \
+        aer_message_destroy(ctx, &send_message); \
         return ret; \
     } \
     triton_buffer_fix_size(&send_message.buffer); \
-    ret = aer_message_init(&recv_message, AE_REMOTE_MAX_RESPONSE_SIZE); \
+    ret = aer_message_init(ctx, &recv_message, AER_MESSAGE_RESPONSE, AE_REMOTE_MAX_RESPONSE_SIZE, __get_op_id_##__fname__()); \
     if(ret != TRITON_SUCCESS) \
     { \
-        aer_message_destroy(&send_message); \
+        aer_message_destroy(ctx, &send_message); \
         return ret; \
     } \
     recv_message.header.op = __get_op_id_##__fname__(); \
-    ret = aer_message_sendrecv(id, &send_message, &recv_message); \
+    ret = aer_message_sendrecv(ctx, id, &send_message, &recv_message); \
     if(ret != TRITON_SUCCESS) \
     { \
-        aer_message_destroy(&send_message); \
-        aer_message_destroy(&recv_message); \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
-    ret = aer_message_decode_header(&recv_message); \
+    ret = aer_message_decode(ctx, &recv_message); \
     if(ret != TRITON_SUCCESS) \
     { \
-        aer_message_destroy(&send_message); \
-        aer_message_destroy(&recv_message); \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
-    ret = aer_decode_##__outtype__(&(recv_message.buffer), NULL, __outname__); \
-    aer_message_destroy(&send_message); \
-    aer_message_destroy(&recv_message); \
-    return ret; \
+    ret = aer_decode_triton_ret_t(&(recv_message.buffer), NULL, &sret); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
+        return ret; \
+    } \
+    if(sret == TRITON_SUCCESS) \
+    { \
+        ret = aer_decode_##__outtype__(&(recv_message.buffer), NULL, __outname__); \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
+        if(ret != TRITON_SUCCESS) \
+        { \
+            return ret; \
+        } \
+    } \
+    return sret; \
 }
 
 #define AER_MK_SERVICE_DECL(__fname__) \
@@ -350,7 +376,7 @@
                              __outname__) \
 __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_message_t *out_message) \
 { \
-    triton_ret_t ret; \
+    triton_ret_t ret, sret; \
     uint32_t headersize; \
     uint32_t outsize; \
     __intype__ __inname__; \
@@ -360,25 +386,23 @@ __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_mes
     { \
         return ret; \
     } \
-    ret = __fname__(__inname__, &__outname__); \
-    if(ret != TRITON_SUCCESS) \
+    sret = __fname__(__inname__, &__outname__); \
+    if(sret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
+    retsize = aer_encode_size_triton_ret_t("error", &ret); \
     outsize = aer_encode_size_##__outcanontype__(#__outname__, &__outname__); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
-    headersize = aer_message_header_size(); \
-    ret = aer_message_init(out_message, headersize+outsize); \
+    ret = aer_message_init(ctx, out_message, AER_MESSAGE_RESPONSE, retsize+outsize, __get_op_id_##__fname__()); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
-    out_message->header.tag = in_message->header.tag; \
-    out_message->header.op = in_message->header.op; \
-    ret = aer_message_encode_header(out_message); \
+    ret = aer_message_encode(ctx, out_message); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
@@ -400,7 +424,7 @@ __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_mes
                                    __outname__) \
 __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_message_t *out_message) \
 { \
-    triton_ret_t ret; \
+    triton_ret_t ret, sret; \
     uint32_t headersize; \
     uint32_t outsize; \
     __intype__ __inname__; \
@@ -410,33 +434,37 @@ __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_mes
     { \
         return ret; \
     } \
-    ret = __fname__(&__inname__, &__outname__); \
+    sret = __fname__(&__inname__, &__outname__); \
+    retsize = aer_encode_size_triton_ret_t("error", &sret); \
+    outsize = 0; \
+    if(sret == TRITON_SUCCESS) \
+    { \
+        outsize = aer_encode_size_##__outcanontype__(#__outname__, &__outname__); \
+    } \
+    ret = aer_message_init(ctx, out_message, AER_MESSAGE_RESPONSE, retsize+outsize, __get_op_id_##__fname__()); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
-    outsize = aer_encode_size_##__outcanontype__(#__outname__, &__outname__); \
+    ret = aer_message_encode(ctx, out_message); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        aer_message_destroy(ctx, out_message); \
+        return ret; \
+    } \
+    ret = aer_encode_triton_ret_t(&(out_message->buffer), "error", &sret); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
-    headersize = aer_message_header_size(); \
-    ret = aer_message_init(out_message, headersize+outsize); \
-    if(ret != TRITON_SUCCESS) \
+    if(sret == TRITON_SUCCESS) \
     { \
-        return ret; \
-    } \
-    out_message->header.tag = in_message->header.tag; \
-    out_message->header.op = in_message->header.op; \
-    ret = aer_message_encode_header(out_message); \
-    if(ret != TRITON_SUCCESS) \
-    { \
-        return ret; \
-    } \
-    ret = aer_encode_##__outcanontype__(&(out_message->buffer), #__outname__, &__outname__); \
-    if(ret != TRITON_SUCCESS) \
-    { \
-        return ret; \
+        ret = aer_encode_##__outcanontype__(&(out_message->buffer), #__outname__, &__outname__); \
+        if(ret != TRITON_SUCCESS) \
+        { \
+            aer_message_destroy(ctx, out_message); \
+            return ret; \
+        } \
     } \
     return ret; \
 }

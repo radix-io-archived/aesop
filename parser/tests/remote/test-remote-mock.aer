@@ -12,6 +12,7 @@
 #include "src/common/resources/timer/timer.hae"
 
 #include "src/remote/service.hae"
+#include "src/zeroconf/zeroconf.h"
 
 static triton_msg_ctx_t mock_ctx;
 
@@ -101,7 +102,8 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
         return ret;
     }
 
-    printf("remotefun2 invoked from (%s -> %s):  in: (%d,%d) out: (%d,%d)\n", fromstr.string, selfstr.string, in->t1, in->ut1, out->t1, out->ut1);
+    printf("remotefun2 invoked from (%s -> %s):  in: (%d,%llu) out: (%d,%llu)\n",
+           fromstr.string, selfstr.string, in->t1, llu(in->ut1), out->t1, llu(out->ut1));
 
     triton_string_destroy(&fromstr);
 
