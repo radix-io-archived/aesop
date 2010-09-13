@@ -108,7 +108,7 @@ Functions to generate AST objects from C template code
 >		        -- parse succeeded, so we return the declaration
 >			(Right (CDeclExt decl)) -> decl
 >		        -- parse failed, so we assert fail for now.  The CDecl empty constructor is needed to match types
->			(Left pe) -> assert False (CDecl [] [] ni)
+>			(Left pe) -> trace ("Parse Error in:\n\n" ++ ("mkStmtFromC failed: " ++ s) ++ (show pe)) $ assert False (CDecl [] [] ni)
 
 > mkStmtFromC :: NodeInfo -> String -> CStat
 > mkStmtFromC ni s =
@@ -125,9 +125,9 @@ Functions to generate AST objects from C template code
 
 > data MacroParser = MacroParser { macheader :: FilePath, typedefs :: [Ident] }
 
-> getTypeIdents :: [FilePath] -> [(String, String)] -> FilePath -> IO [Ident]
-> getTypeIdents idirs defines macheader = do
->       rfile <- myCPP idirs defines (Just macheader) [] (Left "\n")
+> getTypeIdents :: [FilePath] -> [(String, String)] -> FilePath -> [String] -> IO [Ident]
+> getTypeIdents idirs defines macheader gccopts = do
+>       rfile <- myCPP idirs defines (Just macheader) gccopts (Left "\n")
 >       result <- readFile rfile
 >       removeFile rfile
 >       -- run the C parser on the result stream
@@ -136,12 +136,12 @@ Functions to generate AST objects from C template code
 >       case parsed of
 >               (Right (CTranslUnit [] _)) -> return []
 >               (Right (CTranslUnit decls _)) -> return $ getTypedefIdentsFromDecls decls
->               (Left pe) -> trace ("Error parsing declarations from header " ++ macheader) (assert False (return []))
+>               (Left pe) -> trace ("Error parsing declarations from header " ++ macheader ++ ": " ++ (show pe)) (assert False (return []))
 
-> mkParser :: [FilePath] -> [(String, String)] -> FilePath -> IO MacroParser
-> mkParser idirs defines macheader = do
->       types <- getTypeIdents idirs defines macheader
->       result <- myCPP idirs defines Nothing ["-imacros", macheader, "-dM", "-P"] (Left "\n")
+> mkParser :: [FilePath] -> [(String, String)] -> FilePath -> [String] -> IO MacroParser
+> mkParser idirs defines macheader gccopts = do
+>       types <- getTypeIdents idirs defines macheader gccopts
+>       result <- myCPP idirs defines Nothing (["-imacros", macheader, "-dM", "-P"] ++ gccopts) (Left "\n")
 >       (errorFP, errorH) <- tmpHandle
 >       (outFile, outH) <- tmpHandle
 >       pid <- runProcess "grep" ["-v", "__STDC", result] Nothing Nothing Nothing (Just outH) (Just errorH)
@@ -283,7 +283,7 @@ Functions to generate AST objects from C template code
 >		case result of
 >			-- parse succeeded, so we return the expression
 >			(Right expr) -> expr
->			(Left pe) -> assert False (CVar (newIdent "blah" ni) ni)
+>			(Left pe) -> trace ("Error constructing expression:\n" ++ s ++ (show pe)) (assert False (CVar (newIdent "blah" ni) ni))
 
 funDefDecl creates the return type declaration for a given function.  The parameters to funDefDecl are
 the function definition and the name of the return type.  For example, a function defined as:

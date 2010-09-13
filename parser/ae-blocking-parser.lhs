@@ -1695,20 +1695,20 @@ CStat:  The blocking statement
 >	input_stream <- readInputStream input_file
 >	let parse_result = parseC input_stream (position 0 input_file 1 1)
 >       case parse_result of
->         Left parse_err -> error (show parse_err)
+>         Left parse_err -> error $ "Parse failed for input file: " ++ input_file ++ ": " ++ (show parse_err)
 >         Right ast      -> return ast
 
 > generateASTWithCPP :: FilePath -> [String] -> IO CTranslUnit
 > generateASTWithCPP input_file includes = do
 >	parseResult <- parseCFile (newGCC "gcc") Nothing (("-x c"):includes) input_file
 >	case parseResult of
->		Left p -> error (show p)
+>		Left p -> error $ "CPP/Parse failed for input file: " ++ input_file ++ ": " ++ (show p)
 >		Right ast -> return ast
 
-> parseHeader :: FilePath -> [String] -> [(String, String)] -> Maybe FilePath -> FilePath -> IO ()
-> parseHeader headerfile includes defs report outfile = do
+> parseHeader :: FilePath -> [String] -> [(String, String)] -> Maybe FilePath  -> FilePath -> [String]-> IO ()
+> parseHeader headerfile includes defs report outfile gccopts = do
 >	let r = if isJust report then fromJust report else headerfile
->	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h"
+>	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts
 >	ctu <- generateAST headerfile
 >	(pairs, w) <- runStateT (getBlockingHeaderDecls ctu) w
 >	writeFile outfile "\n\n/* This is an auto-generated file created by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
@@ -1718,10 +1718,10 @@ CStat:  The blocking statement
 >       removeFile $ macheader $ fromJust $ blockingParser w
 >	return ()
 
-> parseFile :: Bool -> [String] -> [(String, String)] -> FilePath -> Maybe FilePath -> FilePath -> IO ()
-> parseFile p includes defs outfile report f = do
+> parseFile :: Bool -> [String] -> [(String, String)] -> FilePath -> Maybe FilePath -> [String] -> FilePath -> IO ()
+> parseFile p includes defs outfile report gccopts f = do
 >	let r = if isJust report then fromJust report else f
-> 	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h"
+> 	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts
 > 	ctu <- generateAST f
 >	(ctuWithPostDecls, w) <- runStateT (registerBlockingFunDecls ctu) w
 >       -- runStateT (printRegisteredBlockingCalls) w
@@ -1735,7 +1735,7 @@ CStat:  The blocking statement
 >       removeFile $ macheader $ fromJust $ blockingParser w
 > 	return ()
 
-> data ParserOpts = Pretty | Help | Include String | Report String | Outfile String | Header | Define (String, String)
+> data ParserOpts = Pretty | Help | Include String | Report String | Outfile String | Header | Define (String, String) | GCCOpt String
 
 > getIncludes :: [ParserOpts] -> [String]
 > getIncludes ((Include s):ps) = s:(getIncludes ps)
@@ -1765,6 +1765,11 @@ CStat:  The blocking statement
 > getDefs (_:ps) = getDefs ps
 > getDefs [] = []
 
+> getGCCOpts :: [ParserOpts] -> [String]
+> getGCCOpts ((GCCOpt s):ps) = s:(getGCCOpts ps)
+> getGCCOpts (_:ps) = getGCCOpts ps
+> getGCCOpts [] = []
+
 > parserOpts :: [OptDescr ParserOpts]
 > parserOpts =
 >    [ Option ['p'] ["pretty"] (NoArg Pretty)
@@ -1781,6 +1786,8 @@ CStat:  The blocking statement
 >		"parse header file instead of source"
 >    , Option ['D'] ["define"] (ReqArg (\s -> newDefine s) "<cpp def>")
 >               "define a CPP macro or variable"
+>    , Option ['g'] ["gccopt"] (ReqArg (\s -> GCCOpt s) "<gcc option>")
+>               "pass the option to invocations of gcc"
 >    ]
 
 > optPretty :: ParserOpts -> Bool
@@ -1806,11 +1813,12 @@ CStat:  The blocking statement
 >	outfile = getOutfile opts
 >	pheader = any optHeader opts
 >       defines = getDefs opts
+>       gccopts = getGCCOpts opts
 >	header = "Usage: ae-blocking-parser [OPTIONS...] files..."
 >   when (not $ null errs) $ ioError $ userError ((concat errs) ++
 >			     	                  (usageInfo header parserOpts))
 >   when help $ do { putStrLn $ usageInfo header parserOpts ; exitWith (ExitFailure 1) } 
 >   when (isNothing outfile) $ ioError $ userError "No output file specified."
->   when pheader $ do { mapM_ (\f -> parseHeader f includes defines report (fromJust outfile)) files ; exitWith (ExitSuccess) }
->   mapM_ (parseFile pretty includes defines (fromJust outfile) report) files
+>   when pheader $ do { mapM_ (\f -> parseHeader f includes defines report (fromJust outfile) gccopts) files ; exitWith (ExitSuccess) }
+>   mapM_ (parseFile pretty includes defines (fromJust outfile) report gccopts) files
 

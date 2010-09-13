@@ -108,10 +108,19 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >       blockingParser :: Maybe MacroParser
 > }
 
-> newWalkerState :: String -> [String] -> [(String, String)] -> (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) -> (Walker -> BlockingContext -> NodeInfo -> [CStat]) -> (CStat -> CStat -> WalkerT CStat) -> FilePath -> IO Walker
-> newWalkerState fname includes defines errorWriter pbranchDone transExit macroHeader = do
+> newWalkerState :: String ->
+>                   [String] ->
+>                   [(String, String)] ->
+>                   (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) ->
+>                   (Walker -> BlockingContext -> NodeInfo -> [CStat]) ->
+>                   (CStat -> CStat -> WalkerT CStat) ->
+>                   FilePath ->
+>                   [String] ->
+>                   IO Walker
+
+> newWalkerState fname includes defines errorWriter pbranchDone transExit macroHeader gccopts = do
 >	varReg <- newVarRegistry
->       bp <- mkParser includes defines macroHeader
+>       bp <- mkParser includes defines macroHeader gccopts
 >	return $ Walker fname includes defines ["ctl"] errorWriter pbranchDone transExit [] [] varReg (Just bp) 
 
 > setBlockingParser :: MacroParser -> WalkerT ()

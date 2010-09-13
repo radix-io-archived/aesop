@@ -138,10 +138,10 @@ is set to true.
 >       when (isJust res) $ invalid (s ++ " already has encoding functions defined.\n") ni
 >       liftIO $ Data.HashTable.insert (typeReg r) s (True, True, True, True, True)
 
-> newRemoteState :: String -> [FilePath] -> [(String, String)] -> FilePath -> IO Remote
-> newRemoteState fname includes defs macroHeader = do
+> newRemoteState :: String -> [FilePath] -> [(String, String)] -> FilePath -> [String] -> IO Remote
+> newRemoteState fname includes defs macroHeader gccopts = do
 >       r <- Data.HashTable.new (==) Data.HashTable.hashString
->       bp <- mkParser includes defs macroHeader
+>       bp <- mkParser includes defs macroHeader gccopts
 >       return $ Remote fname r [] includes defs (Just bp)
 
 > getRemoteTypeName :: CTypeSpec -> Maybe String
@@ -538,7 +538,7 @@ CTypeOfType CDecl NodeInfo
 >       newdecls <- liftM concat $ sequence $ map registerRemoteDecl decls
 >       return $ CTranslUnit newdecls ni
 
-> data ParserOpts = Pretty | Help | Include String | Report String | Outfile String | Header | ServiceName String | RegistryDir String | Define (String, String)
+> data ParserOpts = Pretty | Help | Include String | Report String | Outfile String | Header | ServiceName String | RegistryDir String | Define (String, String) | GCCOpt String
 
 > newDefine :: String -> ParserOpts
 > newDefine s = Define $ parseDef ([], []) s
@@ -578,6 +578,11 @@ CTypeOfType CDecl NodeInfo
 > getIncludeOpts (_:ps) = getIncludeOpts ps
 > getIncludeOpts [] = []
                              
+> getGCCOpts :: [ParserOpts] -> [String]
+> getGCCOpts ((GCCOpt o):ps) = o:(getGCCOpts ps)
+> getGCCOpts (_:ps) = getGCCOpts ps
+> getGCCOpts [] = []
+
 > parserOpts :: [OptDescr ParserOpts]
 > parserOpts =
 >    [ Option ['p'] ["pretty"] (NoArg Pretty)
@@ -598,6 +603,8 @@ CTypeOfType CDecl NodeInfo
 >               "registry directory path to use for generated service files"
 >    , Option ['D'] ["define"] (ReqArg (\s -> newDefine s) "<cpp define>")
 >               "define a CPP macro or variable"
+>    , Option ['g'] ["gccopt"] (ReqArg (\s -> GCCOpt s) "<gcc option>")
+>               "pass this gcc option when gcc is invoked"
 >    ]
 
 > optPretty :: ParserOpts -> Bool
@@ -779,7 +786,7 @@ CTypeOfType CDecl NodeInfo
 >	input_stream <- readInputStream input_file
 >	let parse_result = parseC input_stream (position 0 input_file 1 1)
 >       case parse_result of
->         Left parse_err -> error (show parse_err)
+>         Left parse_err -> error $ "Parse failed for input file: " ++ input_file ++ ": " ++ (show parse_err)
 >         Right ast      -> return ast
 
 > getRegistryDecl :: String -> NodeInfo -> CTranslUnit
@@ -842,6 +849,7 @@ CTypeOfType CDecl NodeInfo
 >           sname = getServiceName opts
 >           regdir = getRegistryDir opts
 >           defs = getDefs opts
+>           gccopts = getGCCOpts opts
 >           header = "Usage: ae-remote-parser [OPTIONS...] files..."
 >       
 >       when (not $ null errs) $ ioError $ userError ((concat errs) ++
@@ -851,7 +859,8 @@ CTypeOfType CDecl NodeInfo
 >       when (isNothing outfile && isNothing sname) $ ioError $ userError "No output file specified."
 
 >       when pheader $ do { mapM_ (\f -> parseRemoteHeader f report (fromJust outfile)) files ; exitWith (ExitSuccess) }
->       r <- newRemoteState "" includes defs "src/aesop/ae-remote-parser.h" -- empty string here because the parseRemote function sets the filename for each file
+>       -- empty string here because the parseRemote function sets the filename for each file
+>       r <- newRemoteState "" includes defs "src/aesop/ae-remote-parser.h" gccopts
 >       let remotes = map (\f -> parseRemote pretty includes outfile report f) files :: [RemoteT ()]
 >       r <- foldM (flip execStateT) r remotes
 >       when (isJust sname) $ do { runStateT (writeRegistryFiles (fromJust sname) regdir) r; return () }
