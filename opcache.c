@@ -85,12 +85,12 @@ void ae_opcache_destroy(ae_opcache_t cache)
     return;
 }
 
-inline int ae_opcache_size(ae_opcache_t cache)
+int ae_opcache_size(ae_opcache_t cache)
 {
     return cache->size;
 }
 
-inline int ae_opcache_count(ae_opcache_t cache)
+int ae_opcache_count(ae_opcache_t cache)
 {
     int count;
 

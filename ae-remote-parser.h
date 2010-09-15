@@ -232,18 +232,16 @@
 #define AER_MK_DESTROY_STMTS_END() 
 
 #define AER_MK_STUB_DECL(__ret__, __fname__, params...) \
-    __blocking __ret__ remote_##__fname__(aer_remote_ctx_t *ctx, triton_node_t id, ##params);
+    __blocking __ret__ remote_##__fname__(aer_remote_ctx_t ctx, triton_node_t id, ##params);
 
 #define AER_MK_STUB_DECLS(__fname__) \
     aer_message_t send_message; \
     aer_message_t recv_message; \
     triton_ret_t ret, sret; \
-    uint64_t insize; \
-    uint64_t headersize;
+    uint64_t insize;
 
 #define AER_MK_STUB_BLOCK(__fname__, __intype__, __inname__, __outtype__, __outname__) \
 { \
-    headersize = aer_message_header_size(); \
     insize = aer_encode_size_##__intype__(#__inname__, &__inname__); \
     ret = aer_message_init(ctx, &send_message, AER_MESSAGE_REQUEST, insize, __get_op_id_##__fname__()); \
     if(ret != TRITON_SUCCESS) \
@@ -268,7 +266,6 @@
         aer_message_destroy(ctx, &send_message); \
         return ret; \
     } \
-    recv_message.header.op = __get_op_id_##__fname__(); \
     ret = aer_message_sendrecv(ctx, id, &send_message, &recv_message); \
     if(ret != TRITON_SUCCESS) \
     { \
@@ -329,7 +326,6 @@
         aer_message_destroy(ctx, &send_message); \
         return ret; \
     } \
-    recv_message.header.op = __get_op_id_##__fname__(); \
     ret = aer_message_sendrecv(ctx, id, &send_message, &recv_message); \
     if(ret != TRITON_SUCCESS) \
     { \
@@ -365,7 +361,7 @@
 }
 
 #define AER_MK_SERVICE_DECL(__fname__) \
-    __blocking triton_ret_t __service_##__fname__(aer_message_t *send_message, aer_message_t *recv_message);
+    __blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_t *send_message, aer_message_t *recv_message);
 
 #define AER_MK_SERVICE_FNDEF(__fname__, \
                              __intype__, \
@@ -374,11 +370,10 @@
                              __outtype__, \
                              __outcanontype__, \
                              __outname__) \
-__blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_message_t *out_message) \
+__blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_t *in_message, aer_message_t *out_message) \
 { \
     triton_ret_t ret, sret; \
-    uint32_t headersize; \
-    uint32_t outsize; \
+    uint32_t outsize, retsize; \
     __intype__ __inname__; \
     __outtype__ __outname__; \
     ret = aer_decode_##__incanontype__(&(in_message->buffer), NULL, &__inname__); \
@@ -422,11 +417,10 @@ __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_mes
                                    __outtype__, \
                                    __outcanontype__, \
                                    __outname__) \
-__blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_message_t *out_message) \
+__blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_t *in_message, aer_message_t *out_message) \
 { \
     triton_ret_t ret, sret; \
-    uint32_t headersize; \
-    uint32_t outsize; \
+    uint32_t outsize, retsize; \
     __intype__ __inname__; \
     __outtype__ __outname__; \
     ret = aer_decode_##__incanontype__(&(in_message->buffer), NULL, &__inname__); \
@@ -499,9 +493,7 @@ __blocking triton_ret_t __service_##__fname__(aer_message_t *in_message, aer_mes
 #define AER_MK_REG_CTOR_FNDEF(__service_name__) \
 static __attribute__((constructor)) void aer_remote_static_initializer_##__service_name__(void) \
 { \
-    triton_ret_t ret; \
-    ret = aer_remote_register_##__service_name__(); \
-    assert(ret == TRITON_SUCCESS); \
+    triton_init_register("aesop.remote.__service_name__", aer_remote_register_##__service_name__(), NULL, 1, "triton.remote.service"); \
 }
 
 #endif

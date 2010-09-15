@@ -655,7 +655,7 @@ CTypeOfType CDecl NodeInfo
 >      return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), []) -- return type
 >                  newspecs -- get the storage specs for the function
 >                  ("remote_" ++ fname) -- the function name for the stub
->                  ((mkCDecl (CTypeDef (newIdent "aer_remote_ctx_t" ni) ni) [(CPtrDeclr [] ni)] "ctx" ni) :
+>                  ((genCDecl "aer_remote_ctx_t" "ctx" ni) :
 >                  ((genCDecl "triton_node_t" "id" ni) : params)) -- parameters
 >                  stubStmts
 
@@ -776,9 +776,9 @@ CTypeOfType CDecl NodeInfo
 >       opidDecls <- mkOpIdDecls ni
 >       sDecls <- mkServiceDecls ni
 >       regf <- mkRegFun sname ni
->       -- ctor <- mkRegCtorFun sname ni
->       -- return $ CTranslUnit (opidDecls ++ sDecls ++ [regf, ctor]) ni
->       return $ CTranslUnit (opidDecls ++ sDecls ++ [regf]) ni
+>       ctor <- mkRegCtorFun sname ni
+>       return $ CTranslUnit (opidDecls ++ sDecls ++ [regf, ctor]) ni
+>       -- return $ CTranslUnit (opidDecls ++ sDecls ++ [regf]) ni
 
 
 > generateAST :: FilePath -> IO CTranslUnit
