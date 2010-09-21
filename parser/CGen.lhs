@@ -373,10 +373,11 @@ mkCDecl (CTypeDef "myType") [CPtrDeclr] "baz"
 > addBlockingTQ :: CDecl -> CDecl
 > addBlockingTQ (CDecl specs inits ni) = CDecl (CTypeQual ((CBlocking ni)):specs) inits ni
 
-> mkFunPtrsStruct :: String -> String -> [(String, String)] -> NodeInfo -> CExtDecl
-> mkFunPtrsStruct stype sname fields ni = CDeclExt decl
->     where decl = CDecl [tspec] declrs ni
+> mkFunPtrsStruct :: String -> String -> [(String, String)] -> Bool -> NodeInfo -> CExtDecl
+> mkFunPtrsStruct stype sname fields static ni = CDeclExt decl
+>     where decl = CDecl ([tspec] ++ staticSpec) declrs ni
 >           tspec = CTypeSpec (CSUType (CStruct CStructTag (Just $ newIdent stype ni) Nothing [] ni) ni)
+>           staticSpec = if static then [CStorageSpec $ CStatic ni] else []
 >           declrs = [(Just vname, Just inits, Nothing)]
 >           vname = CDeclr (Just (newIdent sname ni)) [] Nothing [] ni
 >           inits = CInitList [ ( [CMemberDesig (newIdent field ni) ni], CInitExpr (CVar (newIdent fun ni) ni) ni ) | (field, fun) <- fields ] ni
