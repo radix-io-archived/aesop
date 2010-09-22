@@ -375,7 +375,7 @@ mkCDecl (CTypeDef "myType") [CPtrDeclr] "baz"
 
 > mkFunPtrsStruct :: String -> String -> [(String, String)] -> Bool -> NodeInfo -> CExtDecl
 > mkFunPtrsStruct stype sname fields static ni = CDeclExt decl
->     where decl = CDecl ([tspec] ++ staticSpec) declrs ni
+>     where decl = CDecl (staticSpec ++ [tspec]) declrs ni
 >           tspec = CTypeSpec (CSUType (CStruct CStructTag (Just $ newIdent stype ni) Nothing [] ni) ni)
 >           staticSpec = if static then [CStorageSpec $ CStatic ni] else []
 >           declrs = [(Just vname, Just inits, Nothing)]

@@ -1718,18 +1718,32 @@ CStat:  The blocking statement
 >       removeFile $ macheader $ fromJust $ blockingParser w
 >	return ()
 
+> isAesopInit :: CExtDecl -> Bool
+> isAesopInit (CDeclExt d) = any ((== "aesop_init") . identToString) $ getCDeclNames d
+> isAesopInit _ = False
+
+> splitExtDeclsAtAesop :: CTranslUnit -> (CTranslUnit, CTranslUnit)
+> splitExtDeclsAtAesop (CTranslUnit extDecls ni) =
+>       let (before, after) = break isAesopInit extDecls
+>       in (CTranslUnit before ni, CTranslUnit after ni)
+
+> mergeCTUs :: CTranslUnit -> CTranslUnit -> CTranslUnit
+> mergeCTUs (CTranslUnit das ni) (CTranslUnit dbs _) = (CTranslUnit (das ++ dbs) ni)
+
 > parseFile :: Bool -> [String] -> [(String, String)] -> FilePath -> Maybe FilePath -> [String] -> FilePath -> IO ()
 > parseFile p includes defs outfile report gccopts f = do
 >	let r = if isJust report then fromJust report else f
 > 	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts
 > 	ctu <- generateAST f
->	(ctuWithPostDecls, w) <- runStateT (registerBlockingFunDecls ctu) w
+>       let extDecls (CTranslUnit d _) = d
+>       let (preBlockingCTU, mainCTU) = splitExtDeclsAtAesop ctu
+>	(ctuWithPostDecls, w) <- runStateT (registerBlockingFunDecls mainCTU) w
 >       -- runStateT (printRegisteredBlockingCalls) w
 >	(transCTU, w) <- runStateT (transform ctuWithPostDecls) w
 >       writeFile outfile $ "\n\n\
 >                           \/* This is an auto-generated source file create by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
->	if p then ((appendFile outfile) . show . pretty) transCTU
->	  else ((appendFile outfile) . show . serialize) transCTU
+>	if p then ((appendFile outfile) . show . pretty) (mergeCTUs preBlockingCTU transCTU)
+>	  else ((appendFile outfile) . show . serialize) (mergeCTUs preBlockingCTU transCTU)
 >	appendFile outfile "\n\n"
 >       assert (isJust $ blockingParser w) return ()
 >       removeFile $ macheader $ fromJust $ blockingParser w
