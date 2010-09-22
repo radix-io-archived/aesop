@@ -5,15 +5,15 @@
 #include "src/aesop/hints.h"
 #include "src/remote/encoding.h"
 #include "src/remote/remote.hae"
+#include "src/net/triton-addr.h"
 #include "src/net/triton-message.hae"
 #include "src/net/triton-message-method.hae"
 #include "src/net/mock/mock-method.h"
 #include "src/common/resources/scheduling/sched.hae"
 #include "src/common/resources/timer/timer.hae"
+#include "src/zeroconf/zeroconf.h"
 
 #include "src/remote/service.hae"
-
-static triton_msg_ctx_t mock_ctx;
 
 __remote struct myremotes
 {
@@ -26,7 +26,7 @@ __remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out);
 __remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out)
 {
     triton_ret_t ret;
-    triton_node_t from, self;
+    triton_addr_t from, self;
     triton_string_t fromstr, selfstr;
 
     /* do a blocking call here just so we have something */
@@ -39,7 +39,7 @@ __remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out)
     {
         return ret;
     }
-    ret = triton_node_to_string(mock_ctx, self, &selfstr);
+    ret = triton_addr_to_string(self, &selfstr);
     if(ret != TRITON_SUCCESS)
     {
         return ret;
@@ -51,7 +51,7 @@ __remote __blocking triton_ret_t remotefun1(int32_t in, int32_t *out)
     {
         return ret;
     }
-    ret = triton_node_to_string(mock_ctx, from, &fromstr);
+    ret = triton_addr_to_string(from, &fromstr);
     if(ret != TRITON_SUCCESS)
     {
         return ret;
@@ -70,7 +70,7 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
 __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremotes *out)
 {
     triton_ret_t ret;
-    triton_node_t from, self;
+    triton_addr_t from, self;
     triton_string_t fromstr, selfstr;
 
     /* do a blocking call here just so we have something */
@@ -84,7 +84,7 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
     {
         return ret;
     }
-    ret = triton_node_to_string(mock_ctx, self, &selfstr);
+    ret = triton_addr_to_string(self, &selfstr);
     if(ret != TRITON_SUCCESS)
     {
         return ret;
@@ -95,13 +95,15 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
     {
         return ret;
     }
-    ret = triton_node_to_string(mock_ctx, from, &fromstr);
+    ret = triton_addr_to_string(from, &fromstr);
     if(ret != TRITON_SUCCESS)
     {
         return ret;
     }
 
-    printf("remotefun2 invoked from (%s -> %s):  in: (%d,%d) out: (%d,%d)\n", fromstr.string, selfstr.string, in->t1, in->ut1, out->t1, out->ut1);
+    printf("remotefun2 invoked from (%s -> %s):  in: (%d,%llu) out: (%d,%llu)\n",
+           fromstr.string, selfstr.string,
+           in->t1, (unsigned long long)in->ut1, out->t1, (unsigned long long)out->ut1);
 
     triton_string_destroy(&fromstr);
 
@@ -116,7 +118,7 @@ __blocking void do_remote_clients(int count)
 
     pwait
     {
-        pprivate triton_node_t self, node0;
+        pprivate triton_addr_t self, node0;
         pprivate int i;
         pprivate char nodestr[100];
 
@@ -124,12 +126,19 @@ __blocking void do_remote_clients(int count)
         {
             pbranch
             {
-                sprintf(nodestr, "%d", i);
-                self = triton_node_lookup(mock_ctx, nodestr);
+                /* kind of a hack, we setup the nodes here by doing a lookup of a node string
+                 * in the mock method and then for this pbranch, tell the mock method what its
+                 * current address is using hints.
+                 * Future triton_addr_self() calls will return this addr.
+                 */ 
+                sprintf(nodestr, "mock://%d", i);
+                ret = triton_addr_lookup(nodestr, &self);
+                assert(ret == TRITON_SUCCESS);
                 ret = aesop_hints_put("triton.mock.self", sizeof(self), &self);
                 assert(ret == TRITON_SUCCESS);
 
-                node0 = triton_node_lookup(mock_ctx, "0");
+                ret = triton_addr_lookup("mock://0", &node0);
+                assert(ret == TRITON_SUCCESS);
 
                 ret = remote_remotefun1(node0, 10, &fun1res);
                 assert(ret == TRITON_SUCCESS);
@@ -153,11 +162,14 @@ __blocking void do_remote_test(int count)
 
     pwait
     {
-        pprivate triton_node_t self;
+        pprivate triton_addr_t self;
 
         pbranch
         {
-            self = triton_node_lookup(mock_ctx, "0");
+            /* tell the server what its address is */
+
+            ret = triton_addr_lookup("0", &self);
+            assert(ret == TRITON_SUCCESS);
             ret = aesop_hints_put("triton.mock.self", sizeof(self), &self);
             assert(ret == TRITON_SUCCESS);
 
@@ -214,7 +226,7 @@ int main(int argc, char *argv[])
     ret = triton_msg_mock_init();
     assert(ret == TRITON_SUCCESS);
 
-    ret = triton_msg_enable_method("mock", &mock_ctx);
+    ret = triton_msg_enable_method("mock");
     assert(ret == TRITON_SUCCESS);
 
     if(argc > 2)

@@ -231,7 +231,7 @@
 #define AER_MK_DESTROY_STMTS_END() 
 
 #define AER_MK_STUB_DECL(__ret__, __fname__, params...) \
-    __blocking __ret__ remote_##__fname__(triton_node_t id, ##params);
+    __blocking __ret__ remote_##__fname__(triton_addr_t id, ##params);
 
 #define AER_MK_STUB_DECLS(__fname__) \
     aer_message_t send_message; \

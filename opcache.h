@@ -32,9 +32,9 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache);
 
 void ae_opcache_put(ae_opcache_t cache, struct ae_op *op);
 
-inline int ae_opcache_size(ae_opcache_t cache);
+int ae_opcache_size(ae_opcache_t cache);
 
-inline int ae_opcache_count(ae_opcache_t cache);
+int ae_opcache_count(ae_opcache_t cache);
 
 struct ae_op *ae_opcache_lookup(ae_opcache_t cache, int id);
 

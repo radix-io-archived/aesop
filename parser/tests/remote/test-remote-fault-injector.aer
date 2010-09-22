@@ -20,7 +20,6 @@
 #include "mpi.h"
 
 
-static triton_msg_ctx_t mpi_msg_ctx;
 static float failure_rate = 0;
 
 __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out);
@@ -30,7 +29,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     triton_ret_t ret,
                  ret1 = TRITON_SUCCESS,
                  ret2 = TRITON_SUCCESS;
-    triton_node_t from, self, n1, n2;
+    triton_addr_t from, self, n1, n2;
     triton_string_t fromstr, selfstr;
     int rank, r1, r2, size;
     char n1str[100], n2str[100];
@@ -53,10 +52,12 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
         r2 = r1 + 2;
     }
 
-    sprintf(n1str, "%d", r1);
-    n1 = triton_node_lookup(mpi_msg_ctx, n1str);
-    sprintf(n2str, "%d", r2);
-    n2 = triton_node_lookup(mpi_msg_ctx, n2str);
+    sprintf(n1str, "mpi://%d", r1);
+    ret = triton_addr_lookup(n1str, &n1);
+    assert(ret == TRITON_SUCCESS);
+    sprintf(n2str, "mpi://%d", r2);
+    ret = triton_addr_lookup(n2str, &n2);
+    assert(ret == TRITON_SUCCESS);
 
     pwait
     {
@@ -205,10 +206,6 @@ int main(int argc, char *argv[])
 
     ret = aer_service_init();
     assert(ret == TRITON_SUCCESS);
-
-    /* we need the mpi context so that we can lookup nodes */
-    mpi_msg_ctx = aer_service_get_context();
-    assert(mpi_msg_ctx);
 
     ret = aer_remote_register_test_remote_fault();
     assert(ret == TRITON_SUCCESS);

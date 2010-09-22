@@ -69,7 +69,7 @@ static inline ae_op_t *ae_ops_peek(ae_ops_t *queue)
     return ae_op_from_link(llink);
 }
 
-#define ae_ops_for_each(_pos, _safe, _ops) triton_list_for_each_entry(_pos, _safe, _ops, link)
+#define ae_ops_for_each(_pos, _safe, _ops) triton_list_for_each_entry(_pos, _safe, _ops, struct ae_op, link)
 #define ae_ops_exists(_ops, _op) triton_list_exists(_ops, _op)
 #define ae_ops_count(_ops) triton_list_count(_ops)
 #define ae_ops_find(_ops, _compare, _ptr) triton_list_find(_ops, _compare, _ptr)
