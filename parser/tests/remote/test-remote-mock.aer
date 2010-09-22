@@ -168,7 +168,7 @@ __blocking void do_remote_test(int count)
         {
             /* tell the server what its address is */
 
-            ret = triton_addr_lookup("0", &self);
+            ret = triton_addr_lookup("mock://0", &self);
             assert(ret == TRITON_SUCCESS);
             ret = aesop_hints_put("triton.mock.self", sizeof(self), &self);
             assert(ret == TRITON_SUCCESS);
