@@ -1342,7 +1342,8 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >                          mkVar ctlName ni, 
 >			   addStructPrefix ctlName "gen" $ mkVar "hints" ni,
 >			   addStructPrefix ctlName "gen" $ mkVar "context" ni,
->			   addAddrOp $ addStructPrefix ctlName "gen" $ mkVar "current_op_id" ni]
+>			   addAddrOp $ addStructPrefix ctlName "gen" $ mkVar "current_op_id" ni,
+>                          CConst (CIntConst (cInteger 0) ni)]
 >	in [mkFunCall (mkVar "__ae_postret" ni)
 >		   fexpr
 >		   (extraParams ++ (map (fromJust . (trExpr ctlName b) . Just) $ getCallParams bcall))] ++
@@ -1369,9 +1370,9 @@ and finally the code up-to the first blocking call.
 
 > mkCBParam :: (CTypeSpec, [CDerivedDeclr]) -> NodeInfo -> [CDecl]
 > mkCBParam (CVoidType _, []) ni = 
->	[mkVoidFunPtr "callback" [constructDeclFromC ni "void *user_ptr;"]]
+>	[mkVoidFunPtr "__ae_callback" [constructDeclFromC ni "void *user_ptr;"]]
 > mkCBParam return ni = 
->	[mkVoidFunPtr "callback"
+>	[mkVoidFunPtr "__ae_callback"
 >		[constructDeclFromC ni "void *user_ptr;", mkCDecl (fst return) (snd return) "__ae_ret" ni]]
 
 > mkPostParams :: (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> WalkerT [CDecl]

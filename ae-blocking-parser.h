@@ -150,11 +150,11 @@
     { \
         return TRITON_ERR_NOMEM; \
     } \
-    ae_ctl_init(&__ctl->gen, #__fname, hints, context); \
+    ae_ctl_init(&__ctl->gen, #__fname, __ae_hints, __ae_context, __ae_internal, __ae_user_ptr); \
     __ctl->params = &__ctl->fields; \
-    __ctl->user_ptr = user_ptr; \
-    __ctl->callback = callback; \
-    if(op_id) *op_id = ae_id_gen(0, (intptr_t)ctl); \
+    __ctl->user_ptr = __ae_user_ptr; \
+    __ctl->__ae_callback = __ae_callback; \
+    if(__ae_op_id) *__ae_op_id = ae_id_gen(0, (intptr_t)ctl); \
 }
 
 #define AE_MK_PBRANCH_POST_DECLS(__ctl_type) \
@@ -170,7 +170,7 @@
         assert(ctl != NULL); \
         goto __ae_##__pbranch_id##_end; \
     } \
-    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context); \
+    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context, 1, parent_ctl); \
     ctl->parent = parent_ctl; \
     ae_hints_copy(parent_ctl->gen.hints, &ctl->gen.hints); \
     ctl->params = parent_ctl->params; \
@@ -201,7 +201,7 @@
         assert(ctl != NULL); \
         goto __ae_##__pbranch_id##_end; \
     } \
-    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context); \
+    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context, 1, parent_ctl); \
     ctl->parent = parent_ctl; \
     ae_hints_copy(parent_ctl->gen.hints, &ctl->gen.hints); \
     ctl->params = parent_ctl->params; \
@@ -232,17 +232,19 @@
     void *user_ptr;
 
 #define AE_MK_BLOCKING_PARAMS_FOR_POST_DECLS() \
-    void *user_ptr; \
-    ae_hints_t hints; \
-    ae_context_t context; \
-    ae_op_id_t *op_id;
+    void *__ae_user_ptr; \
+    ae_hints_t __ae_hints; \
+    ae_context_t __ae_context; \
+    ae_op_id_t *__ae_op_id; \
+    int __ae_internal;
     /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
 
 #define AE_MK_BLOCKING_PARAMS_FUN_PTR_DECLS() \
-    void *user_ptr; \
-    ae_hints_t hints; \
-    ae_context_t context; \
-    ae_op_id_t *op_id;
+    void *__ae_user_ptr; \
+    ae_hints_t __ae_hints; \
+    ae_context_t __ae_context; \
+    ae_op_id_t *__ae_op_id; \
+    int __ae_internal;
     /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
 
 
@@ -257,25 +259,25 @@ __ae_post_end: \
 } \
 
 #define AE_MK_NULL_RETURN_CALLBACK() \
-    ctl->callback(ctl->user_ptr); \
+    ctl->__ae_callback(ctl->user_ptr); \
     if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
     return;
 
 #define AE_MK_RETURN_CALLBACK(__ret_param_expr) \
-    ctl->callback(ctl->user_ptr, __ret_param_expr); \
+    ctl->__ae_callback(ctl->user_ptr, __ret_param_expr); \
     if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
     return;
 
 #define AE_MK_NULL_POST_RETURN_CALLBACK() \
 { \
-    ctl->callback(ctl->user_ptr); \
+    ctl->__ae_callback(ctl->user_ptr); \
     if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
     return TRITON_SUCCESS; \
 }
 
 #define AE_MK_POST_RETURN_CALLBACK(__ret_param_expr) \
 { \
-    ctl->callback(ctl->user_ptr, __ret_param_expr); \
+    ctl->__ae_callback(ctl->user_ptr, __ret_param_expr); \
     if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
     return TRITON_SUCCESS; \
 }

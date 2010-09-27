@@ -17,17 +17,18 @@
  */
 #ifdef AESOP_PARSER
 #define ae_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) \
-    __fname(__callback, __user_ptr, __hints, __resource_ctx, __op_id, ##__fargs)
+    __fname(__callback, __user_ptr, __hints, __resource_ctx, __op_id, 0, ##__fargs)
 #else
 #define ae_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) TRITON_SUCCESS
 #endif
 
 #define ae_define_post(__ret_type, __fname, __fargs...) \
-    triton_ret_t __fname(void (*callback)(void *ptr, __ret_type ret), \
-                         void *user_ptr, \
-                         ae_hints_t hints, \
-                         ae_context_t ctx, \
-                         ae_op_id_t *op_id, \
+    triton_ret_t __fname(void (*__ae_callback)(void *ptr, __ret_type ret), \
+                         void *__ae_user_ptr, \
+                         ae_hints_t __ae_hints, \
+                         ae_context_t __ae_ctx, \
+                         ae_op_id_t *__ae_op_id, \
+                         int __ae_internal, \
                          ##__fargs)
 
 typedef struct ae_context *ae_context_t;
@@ -81,6 +82,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
 struct ae_ctl
 {
     const char *name;
+    struct ae_ctl *parent;
     ae_op_id_t current_op_id;
     int cancelled;
     triton_mutex_t mutex;
@@ -96,7 +98,12 @@ struct ae_ctl
     int refcount;
 };
 
-static inline void ae_ctl_init(struct ae_ctl *ctl, const char *name, ae_hints_t hints, ae_context_t context)
+static inline void ae_ctl_init(struct ae_ctl *ctl,
+                               const char *name,
+                               ae_hints_t hints,
+                               ae_context_t context,
+                               int internal,
+                               void *user_ptr)
 {
     ctl->name = name;
     ctl->posted = 0;
@@ -111,6 +118,8 @@ static inline void ae_ctl_init(struct ae_ctl *ctl, const char *name, ae_hints_t 
     triton_list_init(&ctl->children);
     ctl->refcount = 1;
     triton_uint128_setzero(ctl->current_op_id);
+    if(internal) ctl->parent = (struct ae_ctl *)user_ptr;
+    else ctl->parent = NULL;
 }
 
 static inline void ae_ctl_destroy(void *tctl, struct ae_ctl *ctl)
@@ -166,6 +175,26 @@ static inline triton_ret_t aesop_cancel_branches(void) { return TRITON_ERR_NOSYS
 static inline int aesop_count_branches(void) { return -1; }
 #endif
 
+static void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
+{
+    int i = 0, top;
+    char *stack[512];
+    do
+    {
+        stack[i++] = strdup(ctl->name);
+        ctl = ctl->parent;
+    } while(ctl);
 
+    top = 0;
+    for(--i; i >= 0; --i)
+    {
+        fprintf(outstream, "%d: %s\n", top++, stack[i]);
+    }
 
+    for(i = 0; i < top; ++i)
+    {
+        free(stack[i]);
+    }
+}
+    
 #endif /* __AE_RESOURCE_H__ */
