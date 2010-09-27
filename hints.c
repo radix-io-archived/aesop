@@ -69,6 +69,13 @@ static void ae_hint_info_destroy(void * hi)
     free(info);
 }
 
+#include "src/common/triton-init.h"
+
+__attribute__((constructor)) void ae_hints_register(void)
+{
+    triton_init_register("aesop.hints", ae_hints_init, ae_hints_finalize, 0);
+}
+
 
 triton_ret_t ae_hints_init(void)
 {

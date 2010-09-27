@@ -14,6 +14,10 @@
 #include "src/zeroconf/zeroconf.h"
 
 #include "src/remote/service.hae"
+#include "src/zeroconf/zeroconf.h"
+#include "src/common/triton-init.h"
+
+static aer_remote_ctx_t remote_ctx;
 
 __remote struct myremotes
 {
@@ -102,8 +106,7 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
     }
 
     printf("remotefun2 invoked from (%s -> %s):  in: (%d,%llu) out: (%d,%llu)\n",
-           fromstr.string, selfstr.string,
-           in->t1, (unsigned long long)in->ut1, out->t1, (unsigned long long)out->ut1);
+           fromstr.string, selfstr.string, in->t1, llu(in->ut1), out->t1, llu(out->ut1));
 
     triton_string_destroy(&fromstr);
 
@@ -140,13 +143,13 @@ __blocking void do_remote_clients(int count)
                 ret = triton_addr_lookup("mock://0", &node0);
                 assert(ret == TRITON_SUCCESS);
 
-                ret = remote_remotefun1(node0, 10, &fun1res);
+                ret = remote_remotefun1(remote_ctx, node0, 10, &fun1res);
                 assert(ret == TRITON_SUCCESS);
                 assert(fun1res == 10);
 
                 in.t1 = 100;
                 in.ut1 = 0;
-                ret = remote_remotefun2(node0, &in, &out);
+                ret = remote_remotefun2(remote_ctx, node0, &in, &out);
                 assert(ret == TRITON_SUCCESS);
                 assert(out.t1 == 100);
                 assert(out.ut1 == 100);
@@ -204,29 +207,7 @@ int main(int argc, char *argv[])
     }
     assert(argc > 1);
 
-    ret = triton_zeroconf_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = ae_hints_init();
-    assert(ret == TRITON_SUCCESS);
-
-    triton_debug_init();
-
-    aesop_init();
-
-    ret = triton_sched_resource_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_timer_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_msg_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_msg_mock_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_msg_enable_method("mock");
+    ret = triton_init();
     assert(ret == TRITON_SUCCESS);
 
     if(argc > 2)
@@ -234,13 +215,13 @@ int main(int argc, char *argv[])
         triton_debug_enable("/dev/stdout", "all");
     }
 
-    ret = aer_service_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = aer_remote_register_test_remote_mock();
-    assert(ret == TRITON_SUCCESS);
-
     ret = ae_hints_type_register("triton.mock.self", 0, NULL);
+    assert(ret == TRITON_SUCCESS);
+
+    ret = triton_msg_enable_method("mock", &mock_ctx);
+    assert(ret == TRITON_SUCCESS);
+
+    ret = aer_remote_ctx_init(&remote_ctx, "retry", "mock");
     assert(ret == TRITON_SUCCESS);
 
     ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, NULL, &op_id, atoi(argv[1]));

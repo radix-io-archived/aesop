@@ -32,8 +32,19 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache);
 
 void ae_opcache_put(ae_opcache_t cache, struct ae_op *op);
 
+/**
+ * Size of the opcache array.  This is the total size of the cache.  As
+ * more in-use ops are pulled from the cache (ae_opcache_get), the cache
+ * will double in size on demand.  
+ */
 int ae_opcache_size(ae_opcache_t cache);
 
+/**
+ * Count of the entries used in the arrays of the cache.  Once ops are given
+ * back to the cache, they get put on a free list, so this count only
+ * gets larger, and does not reflect the actual amount of current ops available
+ * in the cache without needing to double the size.
+ */
 int ae_opcache_count(ae_opcache_t cache);
 
 struct ae_op *ae_opcache_lookup(ae_opcache_t cache, int id);

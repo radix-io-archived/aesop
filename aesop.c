@@ -5,6 +5,11 @@ triton_debug_mask_t ae_debug_blocking_funs;
 
 static int initialized = 0;
 
+__attribute__((constructor)) void aesop_init_register(void)
+{
+    triton_init_register("aesop.control", aesop_init, aesop_finalize, 1, "triton.debug");
+}
+
 triton_ret_t aesop_init(void)
 {
     triton_ret_t ret;
@@ -21,4 +26,3 @@ void aesop_finalize(void)
 {
     initialized--;
 }
-
