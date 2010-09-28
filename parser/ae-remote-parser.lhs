@@ -656,7 +656,7 @@ CTypeOfType CDecl NodeInfo
 >                  newspecs -- get the storage specs for the function
 >                  ("remote_" ++ fname) -- the function name for the stub
 >                  ((genCDecl "aer_remote_ctx_t" "ctx" ni) :
->                  ((genCDecl "triton_addr_t" "id" ni) : params) -- parameters
+>                  ((genCDecl "triton_addr_t" "id" ni) : params)) -- parameters
 >                  stubStmts
 
 > mkServiceFun :: CFunDef -> RemoteT CExtDecl

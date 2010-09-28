@@ -31,6 +31,10 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     int rank, r1, r2, size;
     char n1str[100], n2str[100];
     int32_t res1 = 0, res2 = 0;
+    aer_remote_ctx_t rctx;
+
+    ret = aer_remote_ctx_init(&rctx, "retry", "mpi");
+    assert(ret == TRITON_SUCCESS);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -64,7 +68,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
             pbranch
             {
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r1, in);
-                ret1 = remote_scatter_gather(n1, in, &res1);
+                ret1 = remote_scatter_gather(rctx, n1, in, &res1);
                 if(ret1 != TRITON_SUCCESS)
                 {
                     pbreak;
@@ -78,7 +82,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
             pbranch
             {
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r2, in);
-                ret2 = remote_scatter_gather(n2, in, &res2);
+                ret2 = remote_scatter_gather(rctx, n2, in, &res2);
                 if(ret2 != TRITON_SUCCESS)
                 {
                     pbreak;
@@ -107,6 +111,7 @@ __blocking void do_remote_test(void)
     triton_ret_t ret;
     int32_t result;
     int rank;
+    aer_remote_ctx_t rctx;
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -128,8 +133,11 @@ __blocking void do_remote_test(void)
     }
     else
     {
+        ret = aer_remote_ctx_init(&rctx, "retry", "mpi");
+        assert(ret == TRITON_SUCCESS);
+
         /* service a single scatter/gather request */
-        ret = aer_service_requests(1);
+        ret = aer_service_requests(rctx, 1);
     }
 }
 

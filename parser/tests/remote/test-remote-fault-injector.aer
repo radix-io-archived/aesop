@@ -35,6 +35,12 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     char n1str[100], n2str[100];
     int32_t res1 = 0, res2 = 0;
 
+    /* we need to get the remote context from the hints, since
+     * we call the remote_scatter_gather stub function locally.
+     */
+    aer_remote_ctx_t rctx;
+
+
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
@@ -59,6 +65,9 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     ret = triton_addr_lookup(n2str, &n2);
     assert(ret == TRITON_SUCCESS);
 
+    ret = aesop_hints_get("triton.remote.context", sizeof(rctx), &rctx);
+    assert(ret == TRITON_SUCCESS);
+
     pwait
     {
         if(r1 < size)
@@ -66,10 +75,10 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
             pbranch
             {
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r1, in);
-                ret1 = remote_scatter_gather(n1, in, &res1);
+                ret1 = remote_scatter_gather(rctx, n1, in, &res1);
                 if(ret1 != TRITON_SUCCESS)
                 {
-                    pbreak;
+                    aesop_cancel_branches();
                 }
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d) done!\n", rank, r1, in);
             }
@@ -80,10 +89,10 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
             pbranch
             {
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r2, in);
-                ret2 = remote_scatter_gather(n2, in, &res2);
+                ret2 = remote_scatter_gather(rctx, n2, in, &res2);
                 if(ret2 != TRITON_SUCCESS)
                 {
-                    pbreak;
+                    aesop_cancel_branches();
                 }
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d) done!\n", rank, r2, in);
             }
@@ -110,6 +119,9 @@ __blocking void do_remote_test(void)
     int32_t result;
     int rank;
 
+    /* used by service side */
+    aer_remote_ctx_t rctx;
+
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     printf("Setting msg failure rate on rank %d to %f\n", rank, (double)failure_rate);
@@ -134,8 +146,9 @@ __blocking void do_remote_test(void)
     }
     else
     {
+        aer_remote_ctx_init(&rctx, "retry", "mpi");
         /* service a single scatter/gather request */
-        ret = aer_service_requests(1);
+        ret = aer_service_requests(rctx, 1);
     }
 }
 

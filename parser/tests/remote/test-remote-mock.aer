@@ -160,8 +160,12 @@ __blocking void do_remote_clients(int count)
 
 __blocking void do_remote_test(int count)
 {
+    aer_remote_ctx_t rctx;
     triton_string_t selfstr;
     triton_ret_t ret;
+
+    ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "triton.net.mpi");
+    assert(ret == TRITON_SUCCESS);
 
     pwait
     {
@@ -177,7 +181,7 @@ __blocking void do_remote_test(int count)
             assert(ret == TRITON_SUCCESS);
 
             /* start server */
-            aer_service_engine_start();
+            aer_service_engine_start(rctx);
         }
 
         pbranch
@@ -218,7 +222,7 @@ int main(int argc, char *argv[])
     ret = ae_hints_type_register("triton.mock.self", 0, NULL);
     assert(ret == TRITON_SUCCESS);
 
-    ret = triton_msg_enable_method("mock", &mock_ctx);
+    ret = triton_msg_enable_method("mock");
     assert(ret == TRITON_SUCCESS);
 
     ret = aer_remote_ctx_init(&remote_ctx, "retry", "mock");

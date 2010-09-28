@@ -232,18 +232,25 @@
 #define AER_MK_DESTROY_STMTS_END() 
 
 #define AER_MK_STUB_DECL(__ret__, __fname__, params...) \
-    __blocking __ret__ remote_##__fname__(aer_remote_ctx_t ctx, triton_node_t id, ##params);
+    __blocking __ret__ remote_##__fname__(aer_remote_ctx_t ctx, triton_addr_t id, ##params);
 
 #define AER_MK_STUB_DECLS(__fname__) \
     aer_message_t send_message; \
     aer_message_t recv_message; \
     triton_ret_t ret, sret; \
-    uint64_t insize;
+    uint64_t insize; \
+    uint64_t op;
 
 #define AER_MK_STUB_BLOCK(__fname__, __intype__, __inname__, __outtype__, __outname__) \
 { \
     insize = aer_encode_size_##__intype__(#__inname__, &__inname__); \
-    ret = aer_message_init(ctx, &send_message, AER_MESSAGE_REQUEST, insize, __get_op_id_##__fname__()); \
+    ret = aer_message_init(ctx, &send_message, AER_MESSAGE_REQUEST, insize); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        return ret; \
+    } \
+    op = __get_op_id_##__fname__(); \
+    ret = aer_message_attr_set(ctx, &send_message, &op); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
@@ -260,7 +267,7 @@
         return ret; \
     } \
     triton_buffer_fix_size(&send_message.buffer); \
-    ret = aer_message_init(ctx, &recv_message, AER_MESSAGE_RESPONSE, AE_REMOTE_MAX_RESPONSE_SIZE, __get_op_id_##__fname__()); \
+    ret = aer_message_init(ctx, &recv_message, AER_MESSAGE_RESPONSE, AE_REMOTE_MAX_RESPONSE_SIZE); \
     if(ret != TRITON_SUCCESS) \
     { \
         aer_message_destroy(ctx, &send_message); \
@@ -303,7 +310,13 @@
 #define AER_MK_STUB_PTR_BLOCK(__fname__, __intype__, __inname__, __outtype__, __outname__) \
 { \
     insize = aer_encode_size_##__intype__(#__inname__, __inname__); \
-    ret = aer_message_init(ctx, &send_message, AER_MESSAGE_REQUEST, insize, __get_op_id_##__fname__()); \
+    ret = aer_message_init(ctx, &send_message, AER_MESSAGE_REQUEST, insize); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        return ret; \
+    } \
+    op = __get_op_id_##__fname__(); \
+    ret = aer_message_attr_set(ctx, &send_message, &op); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
@@ -320,7 +333,7 @@
         return ret; \
     } \
     triton_buffer_fix_size(&send_message.buffer); \
-    ret = aer_message_init(ctx, &recv_message, AER_MESSAGE_RESPONSE, AE_REMOTE_MAX_RESPONSE_SIZE, __get_op_id_##__fname__()); \
+    ret = aer_message_init(ctx, &recv_message, AER_MESSAGE_RESPONSE, AE_REMOTE_MAX_RESPONSE_SIZE); \
     if(ret != TRITON_SUCCESS) \
     { \
         aer_message_destroy(ctx, &send_message); \
@@ -392,7 +405,7 @@ __blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_
     { \
         return ret; \
     } \
-    ret = aer_message_init(ctx, out_message, AER_MESSAGE_RESPONSE, retsize+outsize, __get_op_id_##__fname__()); \
+    ret = aer_message_init(ctx, out_message, AER_MESSAGE_RESPONSE, retsize+outsize); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
@@ -435,7 +448,7 @@ __blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_
     { \
         outsize = aer_encode_size_##__outcanontype__(#__outname__, &__outname__); \
     } \
-    ret = aer_message_init(ctx, out_message, AER_MESSAGE_RESPONSE, retsize+outsize, __get_op_id_##__fname__()); \
+    ret = aer_message_init(ctx, out_message, AER_MESSAGE_RESPONSE, retsize+outsize); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
