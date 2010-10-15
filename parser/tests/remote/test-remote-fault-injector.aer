@@ -165,6 +165,8 @@ int main(int argc, char *argv[])
     ae_context_t mpi_resource_ctx;
     int scan_ret;
 
+    triton_init();
+
     if(argc != 2)
     {
         fprintf(stderr, 
@@ -185,40 +187,10 @@ int main(int argc, char *argv[])
             "Usage: test-remote-fault-injector <failure rate (%%)>\n");
         return(-1);
     }
+    triton_zeroconf_set("triton.net.fault_injector.failure_rate", argv[1]);
+    triton_zeroconf_set("triton.net.fault_injector.base_method", "mpi");
 
-    ret = triton_zeroconf_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = ae_hints_init();
-    assert(ret == TRITON_SUCCESS);
-
-    triton_debug_init();
     triton_debug_stderr_enable("all");
-
-    aesop_init();
-
-    ret = triton_sched_resource_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_timer_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_msg_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_mpi_init();
-    assert(ret == TRITON_SUCCESS);
-
-    triton_msg_mpi_init();
-    assert(ret == TRITON_SUCCESS);
-
-    triton_msg_fault_init("mpi");
-    assert(ret == TRITON_SUCCESS);
-
-    triton_zeroconf_set("aesop.remote.method", "fault-injector");
-
-    ret = aer_service_init();
-    assert(ret == TRITON_SUCCESS);
 
     ret = aer_remote_register_test_remote_fault();
     assert(ret == TRITON_SUCCESS);
@@ -230,10 +202,7 @@ int main(int argc, char *argv[])
         ae_poll(mpi_resource_ctx, 0);
     }
 
-    aer_service_finalize();
-    triton_msg_fault_finalize();
-    triton_msg_mpi_finalize();
-    triton_mpi_finalize();
+    triton_finalize();
     return 0;
 }
 

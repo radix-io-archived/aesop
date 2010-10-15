@@ -880,6 +880,7 @@ This is called on a blocking statement that will translate to a post call within
 
 > generatePostStmts (Just b@(BlockingStmt stmt nbBefore _ _ _ _)) _ = do
 
+>       wdebug $ "[generatePostStmts]: BlockingStmt: " ++ (show $ pretty stmt)
 >	-- pull out just the blocking call from a complex expression
 >	(Just blockingCall) <- findBlockingCallExpr $ stmt
 
@@ -895,12 +896,15 @@ This is called on a blocking statement that will translate to a post call within
 >	pname <- getPrefix
 >	fname <- getFileName
 >	errorWriter <- getErrorWriter
+>       wdebug $ "[generatePostStmts]: returning: " ++ callbackFunName
 >	return (mkPostCall b callbackFunName pname blockingCall (\s -> errorWriter fname parentRetType s (getNI b)))
 
 > generatePostStmts (Just (FunContext _ (first:stmts) _ _ _)) tracer = error "generatePostStmts(FunContext): Invalid"
 
 > generatePostStmts (Just ifCtx@(IfContext ifDef (bif:ifStmts) (Just (belse:elseStmts)) nbBefore _ _ _ _)) tr = do
 >	isValidBlockingIf ifDef
+
+>       wdebug $ "[generatePostStmts]: IfContext: " ++ (show $ getNI ifCtx)
 >	if (any (ifCtx ==) tr) then return []
 >	  else do
 >	    let tracer = ifCtx : tr
@@ -925,6 +929,9 @@ has blocking calls, because otherwise the IfContext wouldn't have been created.
 
 > generatePostStmts (Just ifCtx@(IfContext ifDef [] (Just (belse:elseStmts)) nbBefore nbAfter _ next _)) tr = do
 >	isValidBlockingIf ifDef
+
+>       wdebug $ "[generatePostStmts]: IfContext: " ++ (show $ getNI ifCtx)
+
 >	if (any (ifCtx ==) tr) then return []
 >	  else do
 > 	    let tracer = ifCtx : tr
@@ -951,6 +958,9 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 
 > generatePostStmts (Just ifCtx@(IfContext ifDef (bif:ifStmts) (Just []) nbBefore nbAfter _ next _)) tr = do
 >	isValidBlockingIf ifDef
+
+>       wdebug $ "[generatePostStmts]: IfContext: " ++ (show $ getNI ifCtx)
+
 >	if (any (ifCtx ==) tr) then return []
 >	  else do
 > 	    let tracer = ifCtx : tr
@@ -973,11 +983,14 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 
 >	    return [mkIfElseStmt tlIfExpr ifStmts elseStmts]
 
-> generatePostStmts (Just ifCtx@(IfContext ifDef (bif:ifStmts) Nothing before after parent next prev)) tr = 
+> generatePostStmts (Just ifCtx@(IfContext ifDef (bif:ifStmts) Nothing before after parent next prev)) tr =  do
+>       wdebug $ "[generatePostStmts]: IfContext: " ++ (show $ getNI ifCtx)
 >	generatePostStmts (Just (IfContext ifDef (bif:ifStmts) (Just []) before after parent next prev)) tr
 
 > generatePostStmts (Just forCtx@(ForContext forDef (firstB:forStmts) nbBefore nbAfter _ forNext _)) tr = do
 >	isValidBlockingFor forDef
+
+>       wdebug $ "[generatePostStmts]: ForContext: " ++ (show $ getNI forCtx)
 
 >	if (any (forCtx ==) tr) then return [mkGoto (mkLoopStartLabelStr forCtx) (getNI forCtx)]
 >	  else do
@@ -1000,6 +1013,8 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 > generatePostStmts (Just whileCtx@(WhileContext whileDef (bwhile:whileStmts) nbBefore nbAfter _ _ _)) tr = do
 >	isValidBlockingWhile whileDef
 
+>       wdebug $ "[generatePostStmts]: WhileContext: " ++ (show $ getNI whileCtx)
+
 >	if (any (whileCtx ==) tr) then return [mkGoto (mkLoopStartLabelStr whileCtx) (getNI whileCtx)]
 >	  else do
 
@@ -1020,6 +1035,8 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 
 > generatePostStmts (Just compoundCtx@(CompoundContext cDef (b:bs) nbBefore nbAfter _ _ _)) tr = do
 
+>       wdebug $ "[generatePostStmts]: CompoundContext: " ++ (show $ getNI compoundCtx)
+
 >	if (any (compoundCtx ==) tr) then return [mkGoto (mkLoopStartLabelStr compoundCtx) (getNI compoundCtx)]
 >	  else do
 
@@ -1033,10 +1050,12 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 
 > generatePostStmts (Just next@(PWaitContext _ pwaitDef stmts before after _ _ _)) tr = do
 >	isValidPWait pwaitDef
+>       wdebug $ "[generatePostStmts]: PWaitContext: " ++ (show $ getNI next)
 >	getParallelStmts next tr
 
 > generatePostStmts (Just pb@(PBranchContext _ branchDef (b:branchStmts) _ _ _ _ _)) tr = do
 >       isValidLonePBranch branchDef
+>       wdebug $ "[generatePostStmts]: PBranchContext: " ++ (show $ getNI pb)
 >	let ni = getNI pb
 >           nbStmtsBeforePB = nbStmtsBefore pb
 >	    nbStmts = nbStmtsBefore b
@@ -1055,6 +1074,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 
 > generateAfterStmts :: BlockingContext -> [BlockingContext] -> WalkerT [CStat]
 > generateAfterStmts b tracer = do
+>    wdebug $ "[generateAfterStmts]: " ++ (show $ getNI b)
 >    let transCtx = findTransition b
 >    afterLoopPostStmts <- generatePostStmts transCtx tracer
 >    stmtsAfter <- getStmtsAfter b []
@@ -1077,11 +1097,12 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	    pbend = [mkLabel ("__ae_" ++ (getPBranchId pb) ++ "_end") [] ni]
 >           fname = getParentName b
 >           pwaitCtx = getPWaitAncestor pb
+>       wdebug $ "[getParallelStmts]: PBranchContext: " ++ (show ni)
 
 >       (pbreakDecls, pbreakStmts) <- mkPBreakStmts pp ni
 >       (pbranchDecls, pbranchStart) <- mkPBranchPostStartStmts "ctl" fname ni
 >       setDoneCtlStmt <- mkDoneCtlSetStmt pp ni
->	afterPWaitStmts <- generateAfterStmts pwaitCtx []
+>	afterPWaitStmts <- generateAfterStmts pwaitCtx tr
 >       pbDone <- getPBDone
 >       tlBeforeStmts <- translateForCB b nbStmts
 
@@ -1099,7 +1120,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	tlPBDeclInits <- translateForCB b pbDeclInits
 >       tlCtxInits <- translateForCB b ctxInitStmts
 >       setPBDone mkPBranchPostDoneStmts
->	branchPostStmts <- generatePostStmts (Just b) [] 
+>	branchPostStmts <- generatePostStmts (Just b) tr
 >	cp <- getPrefix
 >	branchStmts <- mkPBranchPostStmts pb pwaitName cp pp (getParentName pb) 
 >                          (tlPBDeclInits ++ beforeStmts ++ tlCtxInits ++ branchPostStmts) (nodeInfo branchDef)
@@ -1111,6 +1132,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	    pwaitDeclInits = getInitsFromDecls $ getLocalDeclarations waitDef
 >           pwid = getPWaitId pw
 >           pwParamsName = mkPWaitName pwid
+>       wdebug $ "[getParallelStmts]: PWaitContext: " ++ (show $ getNI pw)
 >	firstStmts <- translateForCB w (pwaitDeclInits ++ nbStmts)
 >	pStmts <- liftM concat $ mapM (\b -> (getParallelStmts b tr)) waitStmts
 >	p <- getPrefix
@@ -1121,6 +1143,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	return $ pwaitInitStmts ++ firstStmts ++ pStmts ++ pwaitFiniStmts ++ afterPWaitStmts ++ pwaitNotDoneStmts 
 
 > getParallelStmts b@(ForContext forDef forStmts@(f:fs) nbBefore nbAfter parent next prev) tr = do
+>       wdebug $ "[getParallelStmts]: ForContext: " ++ (show $ getNI b)
 >	p <- getPrefix
 >	pStmts <- liftM concat $ mapM (\f1 -> (getParallelStmts f1 tr)) forStmts
 >	let (CFor (Left init) expr2 expr3 _ ni) = forDef
@@ -1134,6 +1157,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >		        (mkCompoundStmt Nothing (trb ++ pStmts) ni) ni)] ++ afterForNBStmts
 
 > getParallelStmts b@(WhileContext whileDef whileStmts@(w:ws) nbBefore nbAfter parent next prev) tr = do
+>       wdebug $ "[getParallelStmts]: WhileContext: " ++ (show $ getNI b)
 >	p <- getPrefix
 >	pStmts <- liftM concat $ mapM (\w1 -> (getParallelStmts w1 tr)) whileStmts
 >	let (CWhile expr stmts isDoWhile ni) = whileDef
@@ -1145,6 +1169,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >		     ++ afterWhileNBStmts
 
 > getParallelStmts b@(IfContext ifDef ifStmts@(if1:ifs) (Just (e1:elseStmts)) nbBefore nbAfter parent next prev) tr = do
+>       wdebug $ "[getParallelStmts]: IfContext: " ++ (show $ getNI b)
 >	p <- getPrefix
 >	ifPStmts <- liftM concat $ mapM (\i -> (getParallelStmts i tr)) ifStmts
 >	elsePStmts <- liftM concat $ mapM (\e -> (getParallelStmts e tr)) elseStmts
@@ -1157,6 +1182,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	return $ [(CIf transExpr (mkCompoundStmt Nothing (iftrb ++ ifPStmts) ni) (Just (mkCompoundStmt Nothing (elsetrb ++ elsePStmts) ni)) ni)] ++ afterIfNBStmts
 
 > getParallelStmts b@(IfContext ifDef ifStmts@(if1:ifs) Nothing nbBefore nbAfter parent next prev) tr = do
+>       wdebug $ "[getParallelStmts]: IfContext: " ++ (show $ getNI b)
 >	p <- getPrefix
 >	ifPStmts <- liftM concat $ mapM (\i -> (getParallelStmts i tr)) ifStmts
 >	let (CIf expr _ _ ni) = ifDef
@@ -1194,7 +1220,7 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >	| (containsBreak $ nbStmtsAfter b) && (isJust $ findLoopParent b) = do
 >		breakStmts <- generateAfterStmts (fromJust $ findLoopParent b) []
 >	        tlAfter <- translateForCB b $ bcallReturn ++ (nbStmtsAfter b)
->		return $ swapBreak (mkCompoundStmt Nothing (breakStmts ++ [CReturn Nothing (getNI b)]) $ getNI b) tlAfter 
+>		return $ swapBreak (mkCompoundStmt Nothing breakStmts $ getNI b) tlAfter 
 
 >	| (containsPBreak $ nbStmtsAfter b) && isLastContext b && parentIsPBranch b = do
 >		prefix <- getPrefix
@@ -1502,6 +1528,8 @@ CStat:  The blocking statement
 >	-- verify that the blocking call exists
 >	assert (isJust blockingCall) return ()
 
+>       wdebug $ "[generateCallbackForBlocking]: call: " ++ (show $ getCallName $ fromJust blockingCall)
+
 >	-- create a callback parameter that matches the return type of the blocking call
 >	let callbackRetParam = mkCallbackRetParam (getCallName $ fromJust blockingCall) (getCallNodeInfo $ fromJust blockingCall)
 
@@ -1530,6 +1558,8 @@ CStat:  The blocking statement
 
 >       assert (isJust blockingCall) return ()
 
+>       wdebug $ "[generateCallbackForBlocking]: fun: " ++ (show bname)
+
 >	-- finally, generate the actual callback function definition
 >	mkCallback prefix
 >		   b 
@@ -1544,10 +1574,12 @@ CStat:  The blocking statement
 >	-- verify that the blocking call exists
 >	assert (isJust blockingCall) return ()
 >	
+>       wdebug $ "[generateCallbackDeclForBlocking]: call: " ++ (show $ getCallName $ fromJust blockingCall)
 >	blockingFun <- lookupBlocking $ fromJust blockingCall
 >	assert (isJust blockingFun) return ()
 >
 >	let (Just ((,,) bname retType params)) = blockingFun
+>       wdebug $ "[generateCallbackDeclForBlocking]: fun: " ++ (show bname)
 >	return $ mkCallbackDecl b (fromJust blockingCall) retType
 
 > generateCallbackDefs :: BlockingContext -> WalkerT [CExtDecl]
@@ -1592,6 +1624,7 @@ CStat:  The blocking statement
 
 >       isValidBlockingFunDef funDef
 
+>       wdebug $ "[transform start]: " ++ (getFunDefName funDef)
 >	-- register a blocking function with its parameters and return type
 >	registerBlocking ((getFunDefIdent funDef), (getFunDefReturn funDef), (getFunDefParams funDef))
 
@@ -1653,6 +1686,9 @@ CStat:  The blocking statement
 >	-- Clear the blocking function parameters registry
 >	resetLocals
 >	clearLocalFunPtrRegistry
+
+>       wdebug $ "[transform end]: " ++ (getFunDefName funDef)
+
 >	return transformedDecls
 
    | defHasBlockingFunPtrParam funDef = do
@@ -1706,10 +1742,10 @@ CStat:  The blocking statement
 >		Left p -> error $ "CPP/Parse failed for input file: " ++ input_file ++ ": " ++ (show p)
 >		Right ast -> return ast
 
-> parseHeader :: FilePath -> [String] -> [(String, String)] -> Maybe FilePath  -> FilePath -> [String]-> IO ()
-> parseHeader headerfile includes defs report outfile gccopts = do
+> parseHeader :: Bool -> FilePath -> [String] -> [(String, String)] -> Maybe FilePath  -> FilePath -> [String]-> IO ()
+> parseHeader debug headerfile includes defs report outfile gccopts = do
 >	let r = if isJust report then fromJust report else headerfile
->	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts
+>	w <- newWalkerState debug r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts
 >	ctu <- generateAST headerfile
 >	(pairs, w) <- runStateT (getBlockingHeaderDecls ctu) w
 >	writeFile outfile "\n\n/* This is an auto-generated file created by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
@@ -1731,10 +1767,10 @@ CStat:  The blocking statement
 > mergeCTUs :: CTranslUnit -> CTranslUnit -> CTranslUnit
 > mergeCTUs (CTranslUnit das ni) (CTranslUnit dbs _) = (CTranslUnit (das ++ dbs) ni)
 
-> parseFile :: Bool -> [String] -> [(String, String)] -> FilePath -> Maybe FilePath -> [String] -> FilePath -> IO ()
-> parseFile p includes defs outfile report gccopts f = do
+> parseFile :: Bool -> Bool -> [String] -> [(String, String)] -> FilePath -> Maybe FilePath -> [String] -> FilePath -> IO ()
+> parseFile debug p includes defs outfile report gccopts f = do
 >	let r = if isJust report then fromJust report else f
-> 	w <- newWalkerState r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts
+> 	w <- newWalkerState debug r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts
 > 	ctu <- generateAST f
 >       let extDecls (CTranslUnit d _) = d
 >       let (preBlockingCTU, mainCTU) = splitExtDeclsAtAesop ctu
@@ -1750,7 +1786,7 @@ CStat:  The blocking statement
 >       removeFile $ macheader $ fromJust $ blockingParser w
 > 	return ()
 
-> data ParserOpts = Pretty | Help | Include String | Report String | Outfile String | Header | Define (String, String) | GCCOpt String
+> data ParserOpts = Debug | Pretty | Help | Include String | Report String | Outfile String | Header | Define (String, String) | GCCOpt String
 
 > getIncludes :: [ParserOpts] -> [String]
 > getIncludes ((Include s):ps) = s:(getIncludes ps)
@@ -1803,6 +1839,8 @@ CStat:  The blocking statement
 >               "define a CPP macro or variable"
 >    , Option ['g'] ["gccopt"] (ReqArg (\s -> GCCOpt s) "<gcc option>")
 >               "pass the option to invocations of gcc"
+>    , Option ['d'] ["debug"] (NoArg Debug)
+>               "output debugging info (very verbose!)"
 >    ]
 
 > optPretty :: ParserOpts -> Bool
@@ -1812,6 +1850,10 @@ CStat:  The blocking statement
 > optHelp :: ParserOpts -> Bool
 > optHelp (Help) = True
 > optHelp _ = False
+
+> optDebug :: ParserOpts -> Bool
+> optDebug (Debug) = True
+> optDebug _ = False
 
 > optHeader :: ParserOpts -> Bool
 > optHeader (Header) = True
@@ -1829,11 +1871,12 @@ CStat:  The blocking statement
 >	pheader = any optHeader opts
 >       defines = getDefs opts
 >       gccopts = getGCCOpts opts
+>       debug = any optDebug opts
 >	header = "Usage: ae-blocking-parser [OPTIONS...] files..."
 >   when (not $ null errs) $ ioError $ userError ((concat errs) ++
 >			     	                  (usageInfo header parserOpts))
 >   when help $ do { putStrLn $ usageInfo header parserOpts ; exitWith (ExitFailure 1) } 
 >   when (isNothing outfile) $ ioError $ userError "No output file specified."
->   when pheader $ do { mapM_ (\f -> parseHeader f includes defines report (fromJust outfile) gccopts) files ; exitWith (ExitSuccess) }
->   mapM_ (parseFile pretty includes defines (fromJust outfile) report gccopts) files
+>   when pheader $ do { mapM_ (\f -> parseHeader debug f includes defines report (fromJust outfile) gccopts) files ; exitWith (ExitSuccess) }
+>   mapM_ (parseFile debug pretty includes defines (fromJust outfile) report gccopts) files
 

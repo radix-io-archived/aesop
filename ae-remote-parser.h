@@ -7,6 +7,7 @@
 #include "src/common/triton-log.h"
 #include "src/remote/remote.hae"
 #include "src/remote/error-encoding.h"
+#include "src/common/triton-init.h"
 
 /**
  * The remote parser generates encoding/decoding functions for every type (struct, typedef, etc.) with
@@ -250,7 +251,7 @@
         return ret; \
     } \
     op = __get_op_id_##__fname__(); \
-    ret = aer_message_attr_set(ctx, &send_message, &op); \
+    ret = aer_message_attr_set(ctx, &send_message, "aesop.remote.operation", &op); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
@@ -316,7 +317,7 @@
         return ret; \
     } \
     op = __get_op_id_##__fname__(); \
-    ret = aer_message_attr_set(ctx, &send_message, &op); \
+    ret = aer_message_attr_set(ctx, &send_message, "aesop.remote.operation", &op); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
@@ -504,9 +505,9 @@ __blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_
     static uint64_t __op_id_##__fname__ = 0;
 
 #define AER_MK_REG_CTOR_FNDEF(__service_name__) \
-static __attribute__((constructor)) void aer_remote_static_initializer_##__service_name__(void) \
+static __attribute__((constructor)) void aer_remote_##__service_name__##_init_register(void) \
 { \
-    triton_init_register("aesop.remote.__service_name__", aer_remote_register_##__service_name__(), NULL, 1, "triton.remote.service"); \
+    triton_init_register("aesop.remote.__service_name__", aer_remote_register_##__service_name__(), NULL, NULL, 1, "triton.remote.service"); \
 }
 
 #endif

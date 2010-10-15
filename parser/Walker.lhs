@@ -24,6 +24,14 @@ with the __blocking specifier, we add it to the registry.
  
 > type FunDecl = (Ident, ReturnType, [CDecl])
 
+> funDeclName :: FunDecl -> Ident
+> funDeclName (n, _, _) = n
+
+> funDeclReturnType :: FunDecl -> ReturnType
+> funDeclReturnType (_, r, _) = r
+
+> funDeclParams :: FunDecl -> [CDecl]
+> funDeclParams (_, _, p) = p
 
 The FPType is either a function or a struct.  The FPFun is the
 function pointer, declarated within a struct or simply declarated locally.
@@ -95,6 +103,7 @@ the blocking call information, but is actually a tuple of:
 filename, prefix stack, blocking call registry, and blocking function pointer registry
 
 > data Walker = Walker {
+>       debug :: Bool,
 >	filename :: String,
 >       includes :: [String],
 >       defines :: [(String, String)],
@@ -108,7 +117,8 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >       blockingParser :: Maybe MacroParser
 > }
 
-> newWalkerState :: String ->
+> newWalkerState :: Bool ->
+>                   String ->
 >                   [String] ->
 >                   [(String, String)] ->
 >                   (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) ->
@@ -118,10 +128,10 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >                   [String] ->
 >                   IO Walker
 
-> newWalkerState fname includes defines errorWriter pbranchDone transExit macroHeader gccopts = do
+> newWalkerState debug fname includes defines errorWriter pbranchDone transExit macroHeader gccopts = do
 >	varReg <- newVarRegistry
 >       bp <- mkParser includes defines macroHeader gccopts
->	return $ Walker fname includes defines ["ctl"] errorWriter pbranchDone transExit [] [] varReg (Just bp) 
+>	return $ Walker debug fname includes defines ["ctl"] errorWriter pbranchDone transExit [] [] varReg (Just bp) 
 
 > setBlockingParser :: MacroParser -> WalkerT ()
 > setBlockingParser b = do
@@ -197,6 +207,12 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 
 > type WalkerT = StateT Walker IO
 
+> wdebug :: String -> WalkerT ()
+> wdebug msg = do
+>       w <- get
+>       when (debug w) $ putStrLnW msg
+>       return ()
+
 > getFileName :: WalkerT String
 > getFileName = do
 >	w <- get
@@ -245,6 +261,7 @@ Turns into:
 
 > lookupVar :: CExpr -> WalkerT (Maybe [Ident])
 > lookupVar e@(CVar name _) = do
+>       wdebug $ "[lookupVar]: CVar: " ++ (show name)
 >	w <- get
 >	d <- liftIO $ lookupInVarRegistry name $ varReg w
 >	if isNothing d
@@ -262,6 +279,7 @@ Turns into:
 >		             else return Nothing
 
 > lookupVar (CMember expr name _ _) = do
+>       wdebug $ "[lookupVar]: CMember: " ++ (show name)
 >	w <- get
 >	inner <- lookupVar expr
 >	if isNothing inner
@@ -377,16 +395,20 @@ if so, register the outer struct too.
 >     lookupBlocking e
 
 > lookupBlocking c = do
+>       wdebug $ "[lookupBlocking]: " ++ (show $ pretty c)
 >	v <- lookupVar c
 >	if isNothing v
 >	    then do
+>               wdebug $ "[lookupBlocking]: returning Nothing"
 >               return Nothing
 >	    else do
 >		all <- getAllBlocking
 >		let fs = mapMaybe (matchFP $ fromJust v) $ all
 >	        if null fs then do
+>                       wdebug $ "[lookupBlocking]: returning Nothing"
 >                       return Nothing 
 >                 else do
+>                       wdebug $ "[lookupBlocking]: returning " ++ (identToString $ funDeclName $ head fs)
 >                       return $ Just $ head fs
 
 Utility lift the print function into the WalkerT monad transformer

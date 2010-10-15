@@ -13,6 +13,7 @@
 #include "src/zeroconf/zeroconf.h"
 #include "src/net/mpi/mpi.hae"
 #include "src/net/mpi/mpi-method.h"
+#include "src/common/triton-init.h"
 
 #include "src/remote/service.hae"
 
@@ -65,29 +66,7 @@ int main(int argc, char *argv[])
     ae_op_id_t op_id;
     ae_context_t mpi_resource_ctx;
 
-    ret = triton_zeroconf_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = ae_hints_init();
-    assert(ret == TRITON_SUCCESS);
-
-    triton_debug_init();
-
-    aesop_init();
-
-    ret = triton_sched_resource_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_timer_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_msg_init();
-    assert(ret == TRITON_SUCCESS);
-
-    ret = triton_mpi_init();
-    assert(ret == TRITON_SUCCESS);
-
-    triton_msg_mpi_init();
+    ret = triton_init();
     assert(ret == TRITON_SUCCESS);
 
     if(argc > 1)
@@ -98,8 +77,6 @@ int main(int argc, char *argv[])
     {
         sleep(30);
     }
-
-    triton_zeroconf_set("aesop.remote.method", "mpi");
 
     ret = aer_service_init();
     assert(ret == TRITON_SUCCESS);
@@ -115,9 +92,7 @@ int main(int argc, char *argv[])
         ae_poll(mpi_resource_ctx, 0);
     }
 
-    aer_service_finalize();
-    triton_msg_mpi_finalize();
-    triton_mpi_finalize();
+    triton_finalize();
     return 0;
 }
 

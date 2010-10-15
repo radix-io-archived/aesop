@@ -261,25 +261,27 @@ __ae_post_end: \
 #define AE_MK_NULL_RETURN_CALLBACK() \
     ctl->__ae_callback(ctl->user_ptr); \
     if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
-    return;
+    goto __ae_callback_end;
 
 #define AE_MK_RETURN_CALLBACK(__ret_param_expr) \
     ctl->__ae_callback(ctl->user_ptr, __ret_param_expr); \
     if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
-    return;
+    goto __ae_callback_end;
 
 #define AE_MK_NULL_POST_RETURN_CALLBACK() \
 { \
     ctl->__ae_callback(ctl->user_ptr); \
     if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
-    return TRITON_SUCCESS; \
+    __ae_postret = TRITON_SUCCESS; \
+    goto __ae_post_end; \
 }
 
 #define AE_MK_POST_RETURN_CALLBACK(__ret_param_expr) \
 { \
     ctl->__ae_callback(ctl->user_ptr, __ret_param_expr); \
     if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
-    return TRITON_SUCCESS; \
+    __ae_postret = TRITON_SUCCESS; \
+    goto __ae_post_end; \
 }
 
 #endif

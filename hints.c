@@ -33,32 +33,29 @@ struct ae_hints
 static struct triton_hash_table *hints_type_key_table = NULL;
 static struct triton_hash_table *hints_type_table = NULL;
 
-static int hints_key_compare(void *key, struct triton_hash_link *link)
+static int hints_key_compare(const void *key, struct triton_hash_link *link)
 {
     struct ae_hint_info *info = triton_hash_get_entry(link, struct ae_hint_info, key_link);
-    char *keystr = (char *)key;
-
-    return !strcmp(keystr, info->key);
+    return !strcmp(key, info->key);
 }
 
-static int hints_key_hash(void *key, int table_size)
+static int hints_key_hash(const void *key, int table_size)
 {
     uint32_t pc = 0, pb = 0;
-    char *keystr = (char *)key;
-    bj_hashlittle2(keystr, strlen(keystr), &pc, &pb);
+    bj_hashlittle2(key, strlen(key), &pc, &pb);
     return pc & ( table_size - 1 );
 }
 
-static int hints_type_compare(void *t, struct triton_hash_link *link)
+static int hints_type_compare(const void *t, struct triton_hash_link *link)
 {
     struct ae_hint_info *info = triton_hash_get_entry(link, struct ae_hint_info, type_link);
-    int *type = (int *)t;
+    const int *type = (const int *)t;
     return (*type == info->type);
 }
 
-static int hints_type_hash(void *t, int table_size)
+static int hints_type_hash(const void *t, int table_size)
 {
-    uint32_t *type = (uint32_t *)t;
+    const uint32_t *type = (const uint32_t *)t;
     return (*type) & (table_size - 1);
 }
 
@@ -71,9 +68,11 @@ static void ae_hint_info_destroy(void * hi)
 
 #include "src/common/triton-init.h"
 
-__attribute__((constructor)) void ae_hints_register(void)
+__attribute__((constructor)) void ae_hints_init_register(void);
+
+__attribute__((constructor)) void ae_hints_init_register(void)
 {
-    triton_init_register("aesop.hints", ae_hints_init, ae_hints_finalize, 0);
+    triton_init_register("aesop.hints", ae_hints_init, ae_hints_finalize, NULL, 0);
 }
 
 
@@ -150,7 +149,7 @@ static inline triton_ret_t ae_hints_check(ae_hints_t hints, int type);
 static inline struct ae_hint_info *ae_hints_get_info_by_key(const char *key)
 {
     struct triton_hash_link *link;
-    link = triton_hash_search(hints_type_key_table, (void *)key);
+    link = triton_hash_search(hints_type_key_table, key);
     if(link)
     {
         return triton_hash_get_entry(link, struct ae_hint_info, key_link);
