@@ -91,6 +91,9 @@ Will result in ["a", "b", "c"]
 > isTypeDefDecl (CDecl (s:specs) initdecls ni) = isTypeDefSpec s
 > isTypeDefDecl _ = False
 
+> getTypeDefIdents :: CTranslUnit -> [Ident]
+> getTypeDefIdents (CTranslUnit extDecls _) = getTypedefIdentsFromDecls extDecls
+
 > getTypedefIdentsFromDecls :: [CExtDecl] -> [Ident]
 > getTypedefIdentsFromDecls ds = concatMap getIdent $ concatMap getd ds
 >       where getd (CDeclExt d) = [d]

@@ -130,27 +130,21 @@ static inline void ae_ctl_destroy(void *tctl, struct ae_ctl *ctl)
 static inline int ae_ctl_refcount(struct ae_ctl *ctl)
 {
     int rc;
-    triton_mutex_lock(&ctl->mutex);
     rc = ctl->refcount;
-    triton_mutex_unlock(&ctl->mutex);
     return rc;
 }
 
 static inline int ae_ctl_refinc(struct ae_ctl *ctl)
 {
     int rc;
-    triton_mutex_lock(&ctl->mutex);
     rc = ++ctl->refcount;
-    triton_mutex_unlock(&ctl->mutex);
     return rc;
 }
 
 static inline int ae_ctl_refdec(struct ae_ctl *ctl)
 {
     int rc;
-    triton_mutex_lock(&ctl->mutex);
     rc = --ctl->refcount;
-    triton_mutex_unlock(&ctl->mutex);
     return rc;
 }
 

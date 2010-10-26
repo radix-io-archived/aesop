@@ -80,7 +80,6 @@
 >                       hClose errorH
 >                       return "dummy_file.c"
                        
-
 > type ReturnType = (CTypeSpec, [CDerivedDeclr])
 
 > returnToString :: ReturnType -> String
@@ -124,6 +123,9 @@ Functions to generate AST objects from C template code
 > mkStmtsFromCLines ni lines = [mkStmtFromC ni lines]
 
 > data MacroParser = MacroParser { macheader :: FilePath, typedefs :: [Ident] }
+
+> addTypeIdents :: [Ident] -> MacroParser -> MacroParser
+> addTypeIdents idents m = m { typedefs = idents ++ (typedefs m) }
 
 > getTypeIdents :: [FilePath] -> [(String, String)] -> FilePath -> [String] -> IO [Ident]
 > getTypeIdents idirs defines macheader gccopts = do

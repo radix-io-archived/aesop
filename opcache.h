@@ -18,8 +18,8 @@ typedef struct ae_opcache *ae_opcache_t;
     void (*__callback)(void *, __ret_type) = (__op)->callback; \
     void* __user_ptr = (__op)->user_ptr; \
     __ret_type __saved_error_code = __error_code; \
-    ae_opcache_put(__opcache, __op); \
     __callback(__user_ptr, __saved_error_code); \
+    ae_opcache_put(__opcache, __op); \
     } while(0)
 
 triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache);

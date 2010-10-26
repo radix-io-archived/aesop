@@ -215,7 +215,14 @@ CTypeOfType CDecl NodeInfo
 >       let anonSType = mkAnonFromDecl stype
 >       encodeBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkEncodeBlock ni) fieldsInfo
 >       encodeDecls <- mkDeclsFromRemote "AER_MK_ENCODE_DECLS" [show $ pretty anonSType] ni
->       startStmts <- mkStmtFromRemote "AER_MK_ENCODE_STMTS_START" [show $ pretty anonSType] ni
+>       let typeStr = show $ pretty anonSType
+>           canon ' ' = '_'
+>           canon '*' = 'p'
+>           canon '{' = '_';
+>           canon '}' = '_';
+>           canon a = a
+>           canonTypeStr = map canon typeStr
+>       startStmts <- mkStmtFromRemote "AER_MK_ENCODE_STMTS_START" [typeStr, canonTypeStr] ni
 >       endStmts <- mkStmtFromRemote "AER_MK_ENCODE_STMTS_END" [] ni
 >       return $ mkCompoundWithDecls Nothing encodeDecls (startStmts ++ encodeBlocks ++ endStmts) ni
 
@@ -243,7 +250,14 @@ CTypeOfType CDecl NodeInfo
 >       let anonSType = mkAnonFromDecl stype
 >       decodeBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkDecodeBlock ni) fieldsInfo 
 >       decodeDecls <- mkDeclsFromRemote "AER_MK_DECODE_DECLS" [show $ pretty anonSType] ni
->       startStmts <- mkStmtFromRemote "AER_MK_DECODE_STMTS_START" [show $ pretty anonSType] ni
+>       let typeStr = show $ pretty anonSType
+>           canon ' ' = '_'
+>           canon '*' = 'p'
+>           canon '{' = '_';
+>           canon '}' = '_';
+>           canon a = a
+>           canonTypeStr = map canon typeStr
+>       startStmts <- mkStmtFromRemote "AER_MK_DECODE_STMTS_START" [typeStr, canonTypeStr] ni
 >       endStmts <- mkStmtFromRemote "AER_MK_DECODE_STMTS_END" [] ni
 >       return $ mkCompoundWithDecls Nothing decodeDecls (startStmts ++ decodeBlocks ++ endStmts) ni
 

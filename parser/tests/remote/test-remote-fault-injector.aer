@@ -14,6 +14,7 @@
 #include "src/net/mpi/mpi.hae"
 #include "src/net/mpi/mpi-method.h"
 #include "src/net/fault-injector/fault-method.h"
+#include "src/common/triton-init.h"
 
 #include "src/remote/service.hae"
 

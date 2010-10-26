@@ -356,9 +356,7 @@ triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
         assert(ctl);
     }
-    triton_mutex_lock(&ctl->mutex);
     ret = ae_cancel_children(ctl->context, ctl);
-    triton_mutex_unlock(&ctl->mutex);
     return ret;
 }
 
@@ -370,9 +368,7 @@ int ae_count_branches(struct ae_ctl *ctl)
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
         assert(ctl);
     }
-    triton_mutex_lock(&ctl->mutex);
     r = triton_list_count(&ctl->children);
-    triton_mutex_unlock(&ctl->mutex);
     return r;
 }
     

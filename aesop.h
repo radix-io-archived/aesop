@@ -7,6 +7,7 @@
 #include "src/common/triton-list.h"
 #include "src/common/triton-log.h"
 #include "src/common/triton-debug.h"
+#include "src/common/triton-init.h"
 
 #include "src/aesop/resource.h"
 #include "src/aesop/op.h"

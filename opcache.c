@@ -55,7 +55,6 @@ static triton_ret_t ae_opcache_double(ae_opcache_t cache)
             free(cache->array[i]);
         }
         free(cache);
-        triton_mutex_unlock(&cache->mutex);
         return TRITON_ERR_NOMEM;
     }
     cache->array_count++;

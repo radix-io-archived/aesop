@@ -117,6 +117,15 @@
 #define AE_MK_PBRANCH_POST_DONE_STMTS(__pbranch_id) \
     if(!__ae_pwait_done) goto __ae_##__pbranch_id##_end;
 
+#define AE_MK_CB_DECLS(__ctl, __ctl_type) \
+    struct __ctl_type *__ctl;
+
+#define AE_MK_CB_INIT_STMTS(__ctl, __ctl_type) \
+    __ctl = (struct __ctl_type *) __ae_ptr; \
+    triton_mutex_lock(&__ctl->gen.mutex); \
+    triton_uint128_setzero(__ctl->gen.current_op_id); \
+    triton_mutex_unlock(&__ctl->gen.mutex);
+
 #define AE_MK_CB_DONE_STMTS() \
     goto __ae_callback_end;
 
@@ -207,7 +216,9 @@
     ctl->params = parent_ctl->params; \
     triton_list_link_clear(&ctl->gen.link); \
     ae_lone_pbranches_add(&ctl->gen); \
+    triton_mutex_lock(&ctl->parent->gen.mutex); \
     ae_ctl_refinc(&ctl->parent->gen); \
+    triton_mutex_unlock(&ctl->parent->gen.mutex); \
 }
 
 #define AE_MK_LONE_PBRANCH_POST_END_STMTS(__ctl_type, __fname, __location, __pbranch_id) \
@@ -219,7 +230,9 @@
 { \
     int prc; \
     ae_lone_pbranches_remove(&ctl->gen); \
+    triton_mutex_lock(&ctl->parent->gen.mutex); \
     prc = ae_ctl_refdec(&ctl->parent->gen); \
+    triton_mutex_unlock(&ctl->parent->gen.mutex); \
     if(prc == 0) ae_ctl_destroy(ctl->parent, &ctl->parent->gen); \
     ae_hints_destroy(ctl->gen.hints); \
     ae_ctl_destroy(ctl, &ctl->gen); \
@@ -255,31 +268,75 @@
 #define AE_MK_POST_FUN_FINISHED_STMTS() \
 __ae_post_end: \
 { \
-                   return __ae_postret; \
+    return __ae_postret; \
 } \
 
 #define AE_MK_NULL_RETURN_CALLBACK() \
-    ctl->__ae_callback(ctl->user_ptr); \
-    if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
-    goto __ae_callback_end;
+{ \
+    void (* __ae_local_cb)(void *); \
+    void *__ae_local_up; \
+    int __ae_refcount; \
+    __ae_local_cb = ctl->__ae_callback; \
+    __ae_local_up = ctl->user_ptr; \
+    triton_mutex_lock(&ctl->gen.mutex); \
+    __ae_refcount = ae_ctl_refcount(&ctl->gen); \
+    assert(__ae_refcount >= 0); \
+    triton_mutex_unlock(&ctl->gen.mutex); \
+    __ae_local_cb(__ae_local_up); \
+    if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    goto __ae_callback_end; \
+}
 
-#define AE_MK_RETURN_CALLBACK(__ret_param_expr) \
-    ctl->__ae_callback(ctl->user_ptr, __ret_param_expr); \
-    if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
-    goto __ae_callback_end;
+#define AE_MK_RETURN_CALLBACK(__ret_param_expr, __ret_type) \
+{ \
+    void (* __ae_local_cb)(void *, __ret_type); \
+    void *__ae_local_up; \
+    int __ae_refcount; \
+    __ret_type __ae_ret; \
+    __ae_local_cb = ctl->__ae_callback; \
+    __ae_local_up = ctl->user_ptr; \
+    __ae_ret = __ret_param_expr; \
+    triton_mutex_lock(&ctl->gen.mutex); \
+    __ae_refcount = ae_ctl_refcount(&ctl->gen); \
+    assert(__ae_refcount >= 0); \
+    triton_mutex_unlock(&ctl->gen.mutex); \
+    __ae_local_cb(__ae_local_up, __ae_ret); \
+    if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    goto __ae_callback_end; \
+}
 
 #define AE_MK_NULL_POST_RETURN_CALLBACK() \
 { \
-    ctl->__ae_callback(ctl->user_ptr); \
-    if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    void (* __ae_local_cb)(void *); \
+    void *__ae_local_up; \
+    int __ae_refcount; \
+    __ae_local_cb = ctl->__ae_callback; \
+    __ae_local_up = ctl->user_ptr; \
+    triton_mutex_lock(&ctl->gen.mutex); \
+    __ae_refcount = ae_ctl_refcount(&ctl->gen); \
+    assert(__ae_refcount >= 0); \
+    triton_mutex_unlock(&ctl->gen.mutex); \
+    __ae_local_cb(__ae_local_up); \
+    if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
     __ae_postret = TRITON_SUCCESS; \
     goto __ae_post_end; \
 }
 
-#define AE_MK_POST_RETURN_CALLBACK(__ret_param_expr) \
+#define AE_MK_POST_RETURN_CALLBACK(__ret_param_expr, __ret_type) \
 { \
-    ctl->__ae_callback(ctl->user_ptr, __ret_param_expr); \
-    if(ae_ctl_refdec(&ctl->gen) == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    void (* __ae_local_cb)(void *, __ret_type); \
+    void *__ae_local_up; \
+    int __ae_refcount; \
+    __ret_type __ae_ret; \
+    __ae_local_cb = ctl->__ae_callback; \
+    __ae_local_up = ctl->user_ptr; \
+    __ae_ret = __ret_param_expr; \
+    triton_mutex_lock(&ctl->gen.mutex); \
+    __ae_refcount = ae_ctl_refcount(&ctl->gen); \
+    assert(__ae_refcount >= 0); \
+    triton_mutex_unlock(&ctl->gen.mutex); \
+    __ae_local_cb(__ae_local_up, __ae_ret); \
+    if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
     __ae_postret = TRITON_SUCCESS; \
     goto __ae_post_end; \
 }

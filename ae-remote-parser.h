@@ -8,6 +8,10 @@
 #include "src/remote/remote.hae"
 #include "src/remote/error-encoding.h"
 #include "src/common/triton-init.h"
+#include "src/aesop/hints.h"
+#include "src/common/triton-debug.h"
+
+extern triton_debug_mask_t encoding_dbg_mask;
 
 /**
  * The remote parser generates encoding/decoding functions for every type (struct, typedef, etc.) with
@@ -56,9 +60,10 @@
     triton_ret_t ret; \
     __type__ x;
 
-#define AER_MK_ENCODE_STMTS_START(__type__) \
+#define AER_MK_ENCODE_STMTS_START(__type__, __canon_type__) \
 { \
     x = (__type__)vx; \
+    triton_debug(encoding_dbg_mask, "encoding:" #__canon_type__ ":%s\t cptr=%p\n", varname, triton_buffer_cptr(buf)); \
 }
 
 #define AER_MK_ENCODE_STMTS_END() \
@@ -106,9 +111,10 @@
     triton_ret_t ret; \
     __type__ x;
 
-#define AER_MK_DECODE_STMTS_START(__type__) \
+#define AER_MK_DECODE_STMTS_START(__type__, __canon_type__) \
 { \
     x = (__type__)vx; \
+    triton_debug(encoding_dbg_mask, "decoding:" #__canon_type__ ":%s\t cptr=%p\n", varname, triton_buffer_cptr(buf)); \
 }
 
 #define AER_MK_DECODE_STMTS_END() \
@@ -240,10 +246,20 @@
     aer_message_t recv_message; \
     triton_ret_t ret, sret; \
     uint64_t insize; \
-    uint64_t op;
+    uint64_t op; \
+    int s;
 
 #define AER_MK_STUB_BLOCK(__fname__, __intype__, __inname__, __outtype__, __outname__) \
 { \
+    s = triton_addr_is_self(id); \
+    if(s) \
+    { \
+        ret = ae_hints_put(&ctl->gen.hints, "triton.remote.context", sizeof(ctx), &ctx); \
+        if(ret != TRITON_SUCCESS) triton_log_error(triton_log_default, ret, "Failed to store remote context in hints\n"); \
+        ret = ae_hints_put(&ctl->gen.hints, "triton.remote.from", sizeof(id), &id); \
+        if(ret != TRITON_SUCCESS) triton_log_error(triton_log_default, ret, "Failed to store remote address in hints\n"); \
+        return __fname__(__inname__, __outname__); \
+    } \
     insize = aer_encode_size_##__intype__(#__inname__, &__inname__); \
     ret = aer_message_init(ctx, &send_message, AER_MESSAGE_REQUEST, insize); \
     if(ret != TRITON_SUCCESS) \
@@ -256,12 +272,20 @@
     { \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- encoding request header: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&send_message.buffer)); \
     ret = aer_message_encode(ctx, &send_message); \
+    triton_debug(encoding_dbg_mask, "---------- encoding request header completed: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&send_message.buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- encoding request: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&send_message.buffer)); \
     ret = aer_encode_##__intype__(&(send_message.buffer), #__inname__, &__inname__); \
+    triton_debug(encoding_dbg_mask, "---------- encoding request completed: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&send_message.buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         aer_message_destroy(ctx, &send_message); \
@@ -281,29 +305,49 @@
         aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- decoding response header:" #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&recv_message.buffer)); \
     ret = aer_message_decode(ctx, &recv_message); \
+    triton_debug(encoding_dbg_mask, "---------- decoding response header completed:" #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&recv_message.buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         aer_message_destroy(ctx, &send_message); \
         aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- decoding response: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&recv_message.buffer)); \
+    triton_debug(encoding_dbg_mask, "decoding:return cptr=%p\n", triton_buffer_cptr(&recv_message.buffer)); \
     ret = aer_decode_triton_ret_t(&(recv_message.buffer), NULL, &sret); \
     if(ret != TRITON_SUCCESS) \
     { \
+        triton_debug(encoding_dbg_mask, "---------- decoding response completed: " #__fname__ " cptr=%p ----------\n", \
+                     triton_buffer_cptr(&recv_message.buffer)); \
         aer_message_destroy(ctx, &send_message); \
         aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
     if(sret == TRITON_SUCCESS) \
     { \
+        triton_debug(encoding_dbg_mask, "decoding:" #__outtype__ ":" #__outname__ " cptr=%p\n", \
+                     triton_buffer_cptr(&recv_message.buffer)); \
         ret = aer_decode_##__outtype__(&(recv_message.buffer), NULL, __outname__); \
+        triton_debug(encoding_dbg_mask, "---------- decoding response completed: " #__fname__ " cptr=%p ----------\n", \
+                     triton_buffer_cptr(&recv_message.buffer)); \
         aer_message_destroy(ctx, &send_message); \
         aer_message_destroy(ctx, &recv_message); \
         if(ret != TRITON_SUCCESS) \
         { \
             return ret; \
         } \
+    } \
+    else \
+    { \
+        triton_debug(encoding_dbg_mask, "---------- decoding response completed: cptr=%p ----------\n", \
+                     triton_buffer_cptr(&recv_message.buffer)); \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
     } \
     return sret; \
 }
@@ -322,12 +366,20 @@
     { \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- encoding request header: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&send_message.buffer)); \
     ret = aer_message_encode(ctx, &send_message); \
+    triton_debug(encoding_dbg_mask, "---------- encoding request header completed: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&send_message.buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- encoding request: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&send_message.buffer)); \
     ret = aer_encode_##__intype__(&(send_message.buffer), #__inname__, __inname__); \
+    triton_debug(encoding_dbg_mask, "---------- encoding request completed: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&send_message.buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         aer_message_destroy(ctx, &send_message); \
@@ -347,29 +399,49 @@
         aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- decoding response header: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&recv_message.buffer)); \
     ret = aer_message_decode(ctx, &recv_message); \
+    triton_debug(encoding_dbg_mask, "---------- decoding response header completed: cptr=%p ----------\n", \
+                 triton_buffer_cptr(&recv_message.buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         aer_message_destroy(ctx, &send_message); \
         aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- decoding response: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&recv_message.buffer)); \
+    triton_debug(encoding_dbg_mask, "decoding:return cptr=%p\n", triton_buffer_cptr(&recv_message.buffer)); \
     ret = aer_decode_triton_ret_t(&(recv_message.buffer), NULL, &sret); \
     if(ret != TRITON_SUCCESS) \
     { \
+        triton_debug(encoding_dbg_mask, "---------- decoding response completed: " #__fname__ " cptr=%p ----------\n", \
+                     triton_buffer_cptr(&recv_message.buffer)); \
         aer_message_destroy(ctx, &send_message); \
         aer_message_destroy(ctx, &recv_message); \
         return ret; \
     } \
     if(sret == TRITON_SUCCESS) \
     { \
+        triton_debug(encoding_dbg_mask, "decoding:" #__outtype__ ":" #__outname__ " cptr=%p\n", \
+                     triton_buffer_cptr(&recv_message.buffer)); \
         ret = aer_decode_##__outtype__(&(recv_message.buffer), NULL, __outname__); \
+        triton_debug(encoding_dbg_mask, "---------- decoding response completed: " #__fname__ " cptr=%p ----------\n", \
+                     triton_buffer_cptr(&recv_message.buffer)); \
         aer_message_destroy(ctx, &send_message); \
         aer_message_destroy(ctx, &recv_message); \
         if(ret != TRITON_SUCCESS) \
         { \
             return ret; \
         } \
+    } \
+    else \
+    { \
+        triton_debug(encoding_dbg_mask, "---------- decoding response completed: cptr=%p ----------\n", \
+                     triton_buffer_cptr(&recv_message.buffer)); \
+        aer_message_destroy(ctx, &send_message); \
+        aer_message_destroy(ctx, &recv_message); \
     } \
     return sret; \
 }
@@ -390,36 +462,58 @@ __blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_
     uint32_t outsize, retsize; \
     __intype__ __inname__; \
     __outtype__ __outname__; \
+    triton_debug(encoding_dbg_mask, "---------- decoding request: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&in_message->buffer)); \
     ret = aer_decode_##__incanontype__(&(in_message->buffer), NULL, &__inname__); \
+    triton_debug(encoding_dbg_mask, "---------- decoding request completed: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&in_message->buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
     sret = __fname__(__inname__, &__outname__); \
-    if(sret != TRITON_SUCCESS) \
+    retsize = aer_encode_size_triton_ret_t("error", &sret); \
+    outsize = 0; \
+    if(sret == TRITON_SUCCESS) \
     { \
-        return ret; \
-    } \
-    retsize = aer_encode_size_triton_ret_t("error", &ret); \
-    outsize = aer_encode_size_##__outcanontype__(#__outname__, &__outname__); \
-    if(ret != TRITON_SUCCESS) \
-    { \
-        return ret; \
+        outsize = aer_encode_size_##__outcanontype__(#__outname__, &__outname__); \
     } \
     ret = aer_message_init(ctx, out_message, AER_MESSAGE_RESPONSE, retsize+outsize); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- encoding response header: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&out_message->buffer)); \
     ret = aer_message_encode(ctx, out_message); \
+    triton_debug(encoding_dbg_mask, "---------- encoding response header completed: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&out_message->buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
+        aer_message_destroy(ctx, out_message); \
         return ret; \
     } \
-    ret = aer_encode_##__outcanontype__(&(out_message->buffer), #__outname__, &__outname__); \
+    triton_debug(encoding_dbg_mask, "---------- encoding response: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&out_message->buffer)); \
+    ret = aer_encode_triton_ret_t(&(out_message->buffer), "error", &sret); \
+    triton_buffer_fix_size(&out_message->buffer); \
     if(ret != TRITON_SUCCESS) \
     { \
+        triton_debug(encoding_dbg_mask, "---------- encoding response completed: " #__fname__ " cptr=%p ----------\n", \
+                     triton_buffer_cptr(&out_message->buffer)); \
         return ret; \
+    } \
+    if(sret == TRITON_SUCCESS) \
+    { \
+        ret = aer_encode_##__outcanontype__(&(out_message->buffer), #__outname__, &__outname__); \
+        triton_buffer_fix_size(&out_message->buffer); \
+        triton_debug(encoding_dbg_mask, "---------- encoding response completed: " #__fname__ " cptr=%p ----------\n", \
+                     triton_buffer_cptr(&out_message->buffer)); \
+        if(ret != TRITON_SUCCESS) \
+        { \
+            aer_message_destroy(ctx, out_message); \
+            return ret; \
+        } \
     } \
     return ret; \
 }
@@ -437,7 +531,11 @@ __blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_
     uint32_t outsize, retsize; \
     __intype__ __inname__; \
     __outtype__ __outname__; \
+    triton_debug(encoding_dbg_mask, "---------- decoding request: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&in_message->buffer)); \
     ret = aer_decode_##__incanontype__(&(in_message->buffer), NULL, &__inname__); \
+    triton_debug(encoding_dbg_mask, "---------- decoding request completed: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&in_message->buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
@@ -454,25 +552,43 @@ __blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_
     { \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- encoding response header: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&out_message->buffer)); \
     ret = aer_message_encode(ctx, out_message); \
+    triton_debug(encoding_dbg_mask, "---------- encoding response header completed: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&out_message->buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         aer_message_destroy(ctx, out_message); \
         return ret; \
     } \
+    triton_debug(encoding_dbg_mask, "---------- encoding response: " #__fname__ " cptr=%p ----------\n", \
+                 triton_buffer_cptr(&out_message->buffer)); \
     ret = aer_encode_triton_ret_t(&(out_message->buffer), "error", &sret); \
+    triton_buffer_fix_size(&out_message->buffer); \
     if(ret != TRITON_SUCCESS) \
     { \
+        triton_debug(encoding_dbg_mask, "---------- encoding response completed: " #__fname__ " cptr=%p ----------\n", \
+                     triton_buffer_cptr(&out_message->buffer)); \
         return ret; \
     } \
     if(sret == TRITON_SUCCESS) \
     { \
         ret = aer_encode_##__outcanontype__(&(out_message->buffer), #__outname__, &__outname__); \
+        triton_buffer_fix_size(&out_message->buffer); \
+        triton_debug(encoding_dbg_mask, "---------- encoding response completed: " #__fname__ " cptr=%p ----------\n", \
+                     triton_buffer_cptr(&out_message->buffer)); \
         if(ret != TRITON_SUCCESS) \
         { \
             aer_message_destroy(ctx, out_message); \
             return ret; \
         } \
+    } \
+    else \
+    { \
+        triton_debug(encoding_dbg_mask, "---------- encoding response completed: " #__fname__ " cptr=%p ----------\n", \
+                     triton_buffer_cptr(&out_message->buffer)); \
+        aer_message_destroy(ctx, out_message); \
     } \
     return ret; \
 }
@@ -507,7 +623,7 @@ __blocking triton_ret_t __service_##__fname__(aer_remote_ctx_t ctx, aer_message_
 #define AER_MK_REG_CTOR_FNDEF(__service_name__) \
 static __attribute__((constructor)) void aer_remote_##__service_name__##_init_register(void) \
 { \
-    triton_init_register("aesop.remote.__service_name__", aer_remote_register_##__service_name__(), NULL, NULL, 1, "triton.remote.service"); \
+    triton_init_register("aesop.remote." #__service_name__, aer_remote_register_##__service_name__, NULL, NULL, 1, "aesop.remote.service"); \
 }
 
 #endif

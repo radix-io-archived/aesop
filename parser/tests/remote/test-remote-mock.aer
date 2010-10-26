@@ -160,11 +160,10 @@ __blocking void do_remote_clients(int count)
 
 __blocking void do_remote_test(int count)
 {
-    aer_remote_ctx_t rctx;
     triton_string_t selfstr;
     triton_ret_t ret;
 
-    ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "triton.net.mpi");
+    ret = aer_remote_ctx_init(&remote_ctx, "triton.remote.retry", "mock");
     assert(ret == TRITON_SUCCESS);
 
     pwait
@@ -181,7 +180,7 @@ __blocking void do_remote_test(int count)
             assert(ret == TRITON_SUCCESS);
 
             /* start server */
-            aer_service_engine_start(rctx);
+            aer_service_engine_start(remote_ctx);
         }
 
         pbranch
@@ -203,6 +202,7 @@ int main(int argc, char *argv[])
 {
     triton_ret_t ret;
     ae_op_id_t op_id;
+    ae_context_t mock_resource_ctx;
 
     if(argc < 2)
     {
@@ -225,13 +225,16 @@ int main(int argc, char *argv[])
     ret = triton_msg_enable_method("mock");
     assert(ret == TRITON_SUCCESS);
 
-    ret = aer_remote_ctx_init(&remote_ctx, "retry", "mock");
+    ret = aer_remote_register_test_remote_mock();
     assert(ret == TRITON_SUCCESS);
 
-    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, NULL, &op_id, atoi(argv[1]));
+    ret = ae_context_create(&mock_resource_ctx, 2, "sched", "timer");
+    assert(ret == TRITON_SUCCESS);
+
+    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mock_resource_ctx, &op_id, atoi(argv[1]));
     while(!done)
     {
-        ae_poll(NULL, 0);
+        ae_poll(mock_resource_ctx, 0);
     }
 
     return 0;

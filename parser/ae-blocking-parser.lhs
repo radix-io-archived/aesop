@@ -357,7 +357,7 @@ gets called in the blocking function myblockingfun.
 >		    (Just declr, _, _) = head initdecls
 >		    (CDeclr (Just f) derivedDeclrs _ _ _)  = declr
 >		    (Just funDeclr) = find isFunDeclr derivedDeclrs
->		    params = getCFunDeclrParams funDeclr
+>		    params = removeVoid $ getCFunDeclrParams funDeclr
 >	        registerLocalBlocking (f, (retType, derivedDeclrs), params)
 >	| otherwise = return ()
 
@@ -384,7 +384,7 @@ gets called in the blocking function myblockingfun.
 >	    (Just declr, _, _) = head initdecls
 >	    (CDeclr (Just (Ident fname _ _)) _ _ _ _) = declr
 >	    funDeclr = getDerivedFun declr
->	    params = getCFunDeclrParams funDeclr
+>	    params = removeVoid $ getCFunDeclrParams funDeclr
 >	    postParams = bParams ++ params
 >	return $ mkFunPtrDecl fname ret postParams
 
@@ -788,32 +788,38 @@ to calling the appropriate callback
 >	p <- getPrefix
 >       endStmts <- mkStmtFromBlocking "AE_MK_END_OF_BLOCKING" [getParentName $ getFunContext b] (getNI b)
 >	transformExits <- getTransExit
->       unprefixed <- mapM (transformExits (mkCompoundStmt Nothing endStmts (getNI b))) stmts
+>       unprefixed <- mapM (transformExits b (mkCompoundStmt Nothing endStmts (getNI b))) stmts
 >	return $ map (trLocals p b) unprefixed
 
-> swapReturnWithCallback :: CStat -> CStat -> WalkerT CStat
-> swapReturnWithCallback endStmt (CReturn retexpr ni) = do
+> swapReturnWithCallback :: BlockingContext -> CStat -> CStat -> WalkerT CStat
+> swapReturnWithCallback b endStmt (CReturn retexpr ni) = do
+>       let funReturnType = returnToString $ getFunDefReturn $ funDef $ getFunContext b
+          
+>       endStmts <- mkStmtFromBlocking "AE_MK_END_OF_BLOCKING" [getParentName $ getFunContext b] ni
 >       stmts <- if isNothing retexpr then mkStmtFromBlocking "AE_MK_NULL_RETURN_CALLBACK" [] ni
->                  else mkStmtFromBlocking "AE_MK_RETURN_CALLBACK" [show $ pretty $ fromJust retexpr] ni
->       return $ mkCompoundStmt Nothing stmts ni
+>                  else mkStmtFromBlocking "AE_MK_RETURN_CALLBACK" [show $ pretty $ fromJust retexpr, funReturnType] ni
+>       return $ mkCompoundStmt Nothing (endStmts ++ stmts) ni
 
-> swapReturnWithCallback e c = return c
+> swapReturnWithCallback b e c = return c
 
-> transformFuncReturnStmts :: CStat -> CStat -> WalkerT CStat
-> transformFuncReturnStmts endStmt stmt =
->	everywhereM (mkM $ swapReturnWithCallback endStmt) stmt
+> transformFuncReturnStmts :: BlockingContext -> CStat -> CStat -> WalkerT CStat
+> transformFuncReturnStmts b endStmt stmt =
+>	everywhereM (mkM $ swapReturnWithCallback b endStmt) stmt
 
-> swapPostReturnWithCallback :: CStat -> CStat -> WalkerT CStat
-> swapPostReturnWithCallback endStmt (CReturn retexpr ni) = do
+> swapPostReturnWithCallback :: BlockingContext -> CStat -> CStat -> WalkerT CStat
+> swapPostReturnWithCallback b endStmt (CReturn retexpr ni) = do
+>       let funReturnType = returnToString $ getFunDefReturn $ funDef $ getFunContext b
+
+>       endStmts <- mkStmtFromBlocking "AE_MK_END_OF_BLOCKING" [getParentName $ getFunContext b] ni
 >       stmts <- if isNothing retexpr then mkStmtFromBlocking "AE_MK_NULL_POST_RETURN_CALLBACK" [] ni
->                  else mkStmtFromBlocking "AE_MK_POST_RETURN_CALLBACK" [show $ pretty $ fromJust retexpr] ni
+>                  else mkStmtFromBlocking "AE_MK_POST_RETURN_CALLBACK" [show $ pretty $ fromJust retexpr, funReturnType] ni
 >       return $ mkCompoundStmt Nothing stmts ni
 
-> swapPostReturnWithCallback e c = return c
+> swapPostReturnWithCallback b e c = return c
 
-> transformPostFuncReturnStmts :: CStat -> CStat -> WalkerT CStat
-> transformPostFuncReturnStmts endStmt stmt =
->	everywhereM (mkM $ swapPostReturnWithCallback endStmt) stmt
+> transformPostFuncReturnStmts :: BlockingContext -> CStat -> CStat -> WalkerT CStat
+> transformPostFuncReturnStmts b endStmt stmt =
+>	everywhereM (mkM $ swapPostReturnWithCallback b endStmt) stmt
 
 > getFuncLocalDecls :: CFunDef -> [CDecl]
 > getFuncLocalDecls funDef = (getFunDefParams funDef) ++ (getFunLocalDeclarations funDef)
@@ -1369,7 +1375,8 @@ Special case where the if has blocking call(s), but the else doesn't (an else ma
 >			   addStructPrefix ctlName "gen" $ mkVar "hints" ni,
 >			   addStructPrefix ctlName "gen" $ mkVar "context" ni,
 >			   addAddrOp $ addStructPrefix ctlName "gen" $ mkVar "current_op_id" ni,
->                          CConst (CIntConst (cInteger 0) ni)]
+>                          -- internal flag set to 1
+>                          CConst (CIntConst (cInteger 1) ni)]
 >	in [mkFunCall (mkVar "__ae_postret" ni)
 >		   fexpr
 >		   (extraParams ++ (map (fromJust . (trExpr ctlName b) . Just) $ getCallParams bcall))] ++
@@ -1448,27 +1455,28 @@ and finally the code up-to the first blocking call.
 >	            (blockingParams ++ params)
 >	            stmts -- statements
 
-> mkCallbackInitStmts :: String -> BlockingContext -> [CStat]
-> mkCallbackInitStmts prefix bctx =
->	let ni = getNI bctx
->	in [CExpr (Just (CAssign
->			 	CAssignOp
->				(mkVar prefix ni)
->				(CCast (mkAnonStructPtrDecl (mkStructCtlName $ getParentName bctx) ni)
->				(mkVar "__ae_ptr" ni) ni) ni)) ni]
+> mkCallbackDecls :: String -> String -> NodeInfo -> WalkerT [CDecl]
+> mkCallbackDecls prefix ctlName ni =
+>       mkDeclsFromBlocking "AE_MK_CB_DECLS" [prefix, ctlName] ni
+
+> mkCallbackInitStmts :: String -> String -> NodeInfo -> WalkerT [CStat]
+> mkCallbackInitStmts prefix ctlName ni =
+>       mkStmtFromBlocking "AE_MK_CB_INIT_STMTS" [prefix, ctlName] ni
 
 > mkCallbackStmts :: String -> BlockingContext -> [CStat] -> [CStat] -> WalkerT CStat
-> mkCallbackStmts prefix bctx stmtsAfter nextBlockingPostStmts =  do
+> mkCallbackStmts prefix bctx stmtsAfter nextBlockingPostStmts = do
 >	let ni = getNI bctx
+>           ctlName = mkStructCtlName $ getParentName bctx
 >       ret <- mkPostRetDecl ni
+>       cbDecls <- mkCallbackDecls prefix ctlName ni
+>       cbInits <- mkCallbackInitStmts prefix ctlName ni
 >       return $ mkCompoundWithDecls Nothing
 
 >		-- declarations
->		[(mkStructPtrDecl (mkStructCtlName $ getParentName bctx) "ctl" ni),
->		 ret]
+>		(cbDecls ++ [ret])
 
 >	 	 -- initializer stmts
->	 	((mkCallbackInitStmts prefix bctx)
+>	 	(cbInits
 
 >		 -- callback statements
 >	 	 ++ stmtsAfter
@@ -1695,7 +1703,7 @@ CStat:  The blocking statement
        let (fname, (rtype, derived), ps) = getFunInfo funDef
            (CFunDef _ _ _ stmt _) = funDef
            specs = getDeclSpecs funDef
-       newps <- mapM translateBlockingFunParam ps
+       newps <- mapM translateBlockingFunParam $ removeVoid ps
        let newDef = mkFunDef (rtype, derived) specs fname newps stmt
        return [newDef]
 
@@ -1745,8 +1753,9 @@ CStat:  The blocking statement
 > parseHeader :: Bool -> FilePath -> [String] -> [(String, String)] -> Maybe FilePath  -> FilePath -> [String]-> IO ()
 > parseHeader debug headerfile includes defs report outfile gccopts = do
 >	let r = if isJust report then fromJust report else headerfile
->	w <- newWalkerState debug r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts
 >	ctu <- generateAST headerfile
+>       let tdIdents = getTypeDefIdents ctu
+>	w <- newWalkerState debug r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts tdIdents
 >	(pairs, w) <- runStateT (getBlockingHeaderDecls ctu) w
 >	writeFile outfile "\n\n/* This is an auto-generated file created by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
 >	outputHeader r outfile pairs
@@ -1770,10 +1779,15 @@ CStat:  The blocking statement
 > parseFile :: Bool -> Bool -> [String] -> [(String, String)] -> FilePath -> Maybe FilePath -> [String] -> FilePath -> IO ()
 > parseFile debug p includes defs outfile report gccopts f = do
 >	let r = if isJust report then fromJust report else f
-> 	w <- newWalkerState debug r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts
 > 	ctu <- generateAST f
+>       let typeDefIdents = getTypeDefIdents ctu
+> 	w <- newWalkerState debug r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts typeDefIdents
 >       let extDecls (CTranslUnit d _) = d
 >       let (preBlockingCTU, mainCTU) = splitExtDeclsAtAesop ctu
+>       let (CTranslUnit mainExtDecls _) = mainCTU
+>       when (null mainExtDecls) $
+>           error $ "Parse failed for " ++ f ++ ": missing aesop_init() function.  " ++
+>                   "Must include aesop.h in all aesop source and header files.\n"
 >	(ctuWithPostDecls, w) <- runStateT (registerBlockingFunDecls mainCTU) w
 >       -- runStateT (printRegisteredBlockingCalls) w
 >	(transCTU, w) <- runStateT (transform ctuWithPostDecls) w

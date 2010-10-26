@@ -110,7 +110,7 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >	prefixes :: [String],
 >       errorWriter :: (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]),
 >       pbranchDone :: (Walker -> BlockingContext -> NodeInfo -> [CStat]),
->	transExit :: (CStat -> CStat -> WalkerT CStat),
+>	transExit :: (BlockingContext -> CStat -> CStat -> WalkerT CStat),
 >	fpTypeReg :: FPTypeRegistry,
 >	fpTypeLocalReg :: FPTypeRegistry,
 >	varReg :: VarRegistry,
@@ -123,15 +123,17 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >                   [(String, String)] ->
 >                   (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) ->
 >                   (Walker -> BlockingContext -> NodeInfo -> [CStat]) ->
->                   (CStat -> CStat -> WalkerT CStat) ->
+>                   (BlockingContext -> CStat -> CStat -> WalkerT CStat) ->
 >                   FilePath ->
 >                   [String] ->
+>                   [Ident] ->
 >                   IO Walker
 
-> newWalkerState debug fname includes defines errorWriter pbranchDone transExit macroHeader gccopts = do
+> newWalkerState debug fname includes defines errorWriter pbranchDone transExit macroHeader gccopts tdIdents = do
 >	varReg <- newVarRegistry
 >       bp <- mkParser includes defines macroHeader gccopts
->	return $ Walker debug fname includes defines ["ctl"] errorWriter pbranchDone transExit [] [] varReg (Just bp) 
+>       let nbp = addTypeIdents tdIdents bp
+>	return $ Walker debug fname includes defines ["ctl"] errorWriter pbranchDone transExit [] [] varReg (Just nbp)
 
 > setBlockingParser :: MacroParser -> WalkerT ()
 > setBlockingParser b = do
@@ -164,12 +166,12 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >	w <- get
 >	return $ (pbranchDone w) w
 
-> setTransExit :: (CStat -> CStat -> WalkerT CStat) -> WalkerT ()
+> setTransExit :: (BlockingContext -> CStat -> CStat -> WalkerT CStat) -> WalkerT ()
 > setTransExit tr = do
 >	w <- get
 >	put $ w { transExit = tr }
 
-> getTransExit :: WalkerT (CStat -> CStat -> WalkerT CStat)
+> getTransExit :: WalkerT (BlockingContext -> CStat -> CStat -> WalkerT CStat)
 > getTransExit = do
 >	w <- get
 >	return $ transExit w
