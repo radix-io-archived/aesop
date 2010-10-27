@@ -206,8 +206,8 @@ CTypeOfType CDecl NodeInfo
 
 > mkEncodeBlock :: NodeInfo -> String -> String -> Bool -> RemoteT [CStat]
 > mkEncodeBlock ni typeName fieldName isPtr = do
->       let encodeMacro = if isPtr then "AER_MK_ENCODE_TYPE_PTR" else "AER_MK_ENCODE_TYPE"
->       mkStmtFromRemote encodeMacro [typeName, fieldName] ni
+>       let ptrParam = if isPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_ENCODE_TYPE" [typeName, fieldName, ptrParam] ni
 
 > mkEncodeStmts :: CDecl -> [CDecl] -> NodeInfo -> RemoteT CStat
 > mkEncodeStmts stype fields ni = do
@@ -241,8 +241,8 @@ CTypeOfType CDecl NodeInfo
 
 > mkDecodeBlock :: NodeInfo -> String -> String -> Bool -> RemoteT [CStat]
 > mkDecodeBlock ni typeName fieldName isPtr = do 
->       let decodeMacro = if isPtr then "AER_MK_DECODE_TYPE_PTR" else "AER_MK_DECODE_TYPE"
->       mkStmtFromRemote decodeMacro [typeName, fieldName] ni
+>       let ptrParam = if isPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_DECODE_TYPE" [typeName, fieldName, ptrParam] ni
 
 > mkDecodeStmts :: CDecl -> [CDecl] -> NodeInfo -> RemoteT CStat
 > mkDecodeStmts stype fields ni = do
@@ -276,8 +276,8 @@ CTypeOfType CDecl NodeInfo
 
 > mkSizeBlock :: NodeInfo -> String -> String -> Bool -> RemoteT [CStat]
 > mkSizeBlock ni typeName fieldName isPtr = do
->       let sizeMacro = if isPtr then "AER_MK_SIZE_TYPE_PTR" else "AER_MK_SIZE_TYPE"
->       mkStmtFromRemote sizeMacro [typeName, fieldName] ni
+>       let ptrParam = if isPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_SIZE_TYPE" [typeName, fieldName, ptrParam] ni
 
 > mkSizeStmts :: CDecl -> [CDecl] -> NodeInfo -> RemoteT CStat
 > mkSizeStmts stype fields ni = do
@@ -303,8 +303,8 @@ CTypeOfType CDecl NodeInfo
 
 > mkInitBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
 > mkInitBlock ni baseTypeName typeName fieldName isPtr = do
->       let initMacro = if isPtr then "AER_MK_INIT_PTR_TYPE" else "AER_MK_INIT_TYPE"
->       mkStmtFromRemote initMacro [baseTypeName, typeName, fieldName] ni
+>       let ptrParam = if isPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_INIT_TYPE" [baseTypeName, typeName, fieldName, ptrParam] ni
 
 > mkInitNullBlock :: NodeInfo -> String -> String -> Bool -> RemoteT [CStat]
 > mkInitNullBlock ni tName fName isPtr = do
@@ -342,8 +342,8 @@ CTypeOfType CDecl NodeInfo
 
 > mkDestroyBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
 > mkDestroyBlock ni baseTypeName typeName fieldName isPtr = do
->       let destroyMacro = if isPtr then "AER_MK_DESTROY_PTR_TYPE" else "AER_MK_DESTROY_TYPE"
->       mkStmtFromRemote destroyMacro [baseTypeName, typeName, fieldName] ni
+>       let ptrParam = if isPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_DESTROY_TYPE" [baseTypeName, typeName, fieldName, ptrParam] ni
 
 > mkDestroyStmts :: CDecl -> [CDecl] -> NodeInfo -> RemoteT CStat
 > mkDestroyStmts stype fields ni = do
@@ -638,8 +638,8 @@ CTypeOfType CDecl NodeInfo
 
 > mkStubBlock :: String -> String -> String -> Bool -> String -> String -> NodeInfo -> RemoteT [CStat]
 > mkStubBlock fname inTypeName inName isInPtr outTypeName outName ni = do
->       let macro = if isInPtr then "AER_MK_STUB_PTR_BLOCK" else "AER_MK_STUB_BLOCK"
->       mkStmtFromRemote macro [fname, inTypeName, inName, outTypeName, outName] ni
+>       let ptrParam = if isInPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_STUB_BLOCK" [fname, inTypeName, inName, outTypeName, outName, ptrParam] ni
 
 > mkStubStmts :: String -> [CDecl] -> NodeInfo -> RemoteT CStat
 > mkStubStmts fname params ni = do
@@ -688,17 +688,18 @@ CTypeOfType CDecl NodeInfo
 >           canonOutType = getRemoteTypeName $ getTypeSpecFromDecl outparam
 >           (CDecl _ inDerived _) = inparam
 >           isInPtr = any isDerivedPtr (join $ map getDerivedDeclrs inDerived)
->           macro = if isInPtr then "AER_MK_SERVICE_FNDEF_INPTR" else "AER_MK_SERVICE_FNDEF"
+>           ptrParam = if isInPtr then "&" else ""
 >       assert (isJust canonInType) return ()
 >       assert (isJust canonOutType) return ()
->       [fdef] <- mkFunDefFromRemote (fname ++ "_service_block") [] macro
+>       [fdef] <- mkFunDefFromRemote (fname ++ "_service_block") [] "AER_MK_SERVICE_FNDEF"
 >                                    [fname,
 >                                     inTypeName,
 >                                     fromJust canonInType,
 >                                     inParamName,
 >                                     outTypeName,
 >                                     fromJust canonOutType,
->                                     outParamName] ni
+>                                     outParamName,
+>                                     ptrParam] ni
 >       return $ addDeclSpecs fdef newspecs
 
 > mkOpStmts :: String -> NodeInfo -> RemoteT [CStat]
