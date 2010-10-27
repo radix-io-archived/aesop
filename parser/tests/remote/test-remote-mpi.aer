@@ -35,6 +35,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
 
     ret = aesop_hints_get("triton.remote.context", sizeof(rctx), &rctx);
     assert(ret == TRITON_SUCCESS);
+    assert(rctx != NULL);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -68,6 +69,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
             pbranch
             {
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r1, in);
+                assert(rctx != NULL);
                 ret1 = remote_scatter_gather(rctx, n1, in, &res1);
                 if(ret1 != TRITON_SUCCESS)
                 {
@@ -82,6 +84,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
             pbranch
             {
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r2, in);
+                assert(rctx != NULL);
                 ret2 = remote_scatter_gather(rctx, n2, in, &res2);
                 if(ret2 != TRITON_SUCCESS)
                 {
@@ -139,6 +142,7 @@ __blocking void do_remote_test(aer_remote_ctx_t rctx)
     else
     {
         /* service a single scatter/gather request */
+        assert(rctx != NULL);
         ret = aer_service_requests(rctx, 1);
     }
 }
@@ -158,6 +162,8 @@ int main(int argc, char *argv[])
 
 
     ret = triton_init();
+    assert(ret == TRITON_SUCCESS);
+
     ret = aer_remote_register_test_remote_mpi();
     assert(ret == TRITON_SUCCESS);
 

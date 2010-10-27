@@ -147,7 +147,8 @@ __blocking void do_remote_test(void)
     }
     else
     {
-        aer_remote_ctx_init(&rctx, "retry", "mpi");
+        ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mpi");
+        assert(ret == TRITON_SUCCESS);
         /* service a single scatter/gather request */
         ret = aer_service_requests(rctx, 1);
     }

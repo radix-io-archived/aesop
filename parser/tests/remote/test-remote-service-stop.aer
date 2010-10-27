@@ -35,7 +35,7 @@ __blocking void do_remote_test(void)
     aer_remote_ctx_t rctx;
     triton_ret_t ret;
 
-    ret = aer_remote_ctx_init(&rctx, "retry", "mpi");
+    ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mpi");
     assert(ret == TRITON_SUCCESS);
 
     pwait
