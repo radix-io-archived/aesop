@@ -19,8 +19,6 @@
 
 #include "mpi.h"
 
-static aer_remote_ctx_t rctx;
-
 __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out);
 
 __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
@@ -33,6 +31,10 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     int rank, r1, r2, size;
     char n1str[100], n2str[100];
     int32_t res1 = 0, res2 = 0;
+    aer_remote_ctx_t rctx;
+
+    ret = aesop_hints_get("triton.remote.context", sizeof(rctx), &rctx);
+    assert(ret == TRITON_SUCCESS);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -104,7 +106,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     return ret;
 }
 
-__blocking void do_remote_test(void)
+__blocking void do_remote_test(aer_remote_ctx_t rctx)
 {
     triton_ret_t ret;
     int32_t result;
@@ -120,6 +122,12 @@ __blocking void do_remote_test(void)
          * for a sec.
          */
         ret = triton_timer(1000);
+        assert(ret == TRITON_SUCCESS);
+
+        /* must set the remote context as a hint because we're about to call
+         * scatter_gather as a local call
+         */
+        ret = aesop_hints_put("triton.remote.context", sizeof(rctx), &rctx);
         assert(ret == TRITON_SUCCESS);
 
         /* rank 0 calls local scatter_gather, which starts everything */
@@ -141,57 +149,15 @@ static void cb(void *up)
     done=1;
 }
 
-#include <execinfo.h>
-
-#ifndef __USE_GNU
-#define __USE_GNU
-#endif
-
-#include <ucontext.h>
-
-#if defined(REG_EIP)
-#  define REG_INSTRUCTION_POINTER REG_EIP
-#elif defined(REG_RIP)
-#  define REG_INSTRUCTION_POINTER REG_RIP
-#else
-#  error Unknown instruction pointer location for your architecture, configure without --enable-segv-backtrace.
-#endif
-
-static void bt_sighandler(int sig, siginfo_t *info, void *secret)
-{
-    void *trace[16];
-    char **messages = (char **)NULL;
-    int i, trace_size = 0;
-    ucontext_t *uc = (ucontext_t *)secret;
-
-    trace_size = backtrace(trace, 16);
-    trace[1] = (void *) uc->uc_mcontext.gregs[REG_INSTRUCTION_POINTER];
-
-    messages = backtrace_symbols(trace, trace_size);
-    for(i = 1; i < trace_size; ++i)
-    {
-        printf("[bt] %s\n", messages[i]);
-    }
-    return;
-}
-
 int main(int argc, char *argv[])
 {
     triton_ret_t ret;
     ae_op_id_t op_id;
     ae_context_t mpi_resource_ctx;
-    struct sigaction segv_action;
+    aer_remote_ctx_t rctx;
+
 
     ret = triton_init();
-    if(argc > 1)
-    {
-        triton_debug_enable("/dev/stdout", "all");
-    }
-    if(argc > 2)
-    {
-        sleep(30);
-    }
-
     ret = aer_remote_register_test_remote_mpi();
     assert(ret == TRITON_SUCCESS);
 
@@ -201,13 +167,7 @@ int main(int argc, char *argv[])
     ret = ae_context_create(&mpi_resource_ctx, 3, "mpi", "sched", "timer");
     assert(ret == TRITON_SUCCESS);
 
-    segv_action.sa_sigaction = (void *)bt_sighandler;
-    sigemptyset(&segv_action.sa_mask);
-    segv_action.sa_flags = SA_RESTART | SA_SIGINFO | SA_ONESHOT;
-
-    sigaction(SIGSEGV, &segv_action, NULL);
-
-    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mpi_resource_ctx, &op_id);
+    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mpi_resource_ctx, &op_id, rctx);
     while(!done)
     {
         ae_poll(mpi_resource_ctx, 0);
