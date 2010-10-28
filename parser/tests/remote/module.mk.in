@@ -11,6 +11,11 @@ REMOTE_TESTSRC += $(DIR)/test-remote-mock.aer
 
 MODLIBS_$(DIR)/test-remote-mock = -lpthread
 
+REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mock_buf
+REMOTE_TESTMODSRC_$(DIR)/test_remote_mock_buf := $(DIR)/test-remote-mock-embedded-buffers.aer
+REMOTE_TESTSRC += $(DIR)/test-remote-mock-embedded-buffers.aer
+MODLIBS_$(DIR)/test-remote-mock-embedded-buffers = -lpthread
+
 ifneq (,$(BUILD_MPI))
 
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mpi
