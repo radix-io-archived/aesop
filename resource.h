@@ -169,7 +169,7 @@ static inline triton_ret_t aesop_cancel_branches(void) { return TRITON_ERR_NOSYS
 static inline int aesop_count_branches(void) { return -1; }
 #endif
 
-static void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
+static inline void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
 {
     int i = 0, top;
     char *stack[512];
