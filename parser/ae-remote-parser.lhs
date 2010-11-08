@@ -36,7 +36,19 @@ required:  (encode, decode, encode_size, init, destroy)
 Once one of those function declarations is found, the appropriate boolean value
 is set to true.
 
-> type RemoteTypeRegistry = HashTable String (Bool, Bool, Bool, Bool, Bool)
+> data RemoteType = RemoteType {
+>       encode :: Bool,
+>       decode :: Bool,
+>       encodeSize :: Bool,
+>       initNull :: Bool,
+>       destroy :: Bool,
+>       copy :: Bool
+> }
+
+> remoteTypeAllFalse = RemoteType False False False False False False
+> remoteTypeAllTrue = RemoteType True True True True True True
+
+> type RemoteTypeRegistry = HashTable String RemoteType
 
 > newRemoteTypeRegistry :: IO RemoteTypeRegistry
 > newRemoteTypeRegistry = Data.HashTable.new (==) Data.HashTable.hashString
@@ -68,10 +80,10 @@ is set to true.
 >       res <- liftIO $ Data.HashTable.lookup (typeReg r) e
 >       if isJust res
 >         then do
->             let (en, de, es, ini, des) = fromJust res
->             liftIO $  Data.HashTable.insert (typeReg r) e (True, de, es, ini, des)
+>             let rtype = fromJust res
+>             liftIO $  Data.HashTable.insert (typeReg r) e $ rtype { encode = True }
 >         else
->             liftIO $  Data.HashTable.insert (typeReg r) e (True, False, False, False, False)
+>             liftIO $  Data.HashTable.insert (typeReg r) e $ remoteTypeAllFalse { encode = True }
 >       return ()
 
 > registerDecodeFun :: String -> RemoteT ()
@@ -80,10 +92,10 @@ is set to true.
 >       res <- liftIO $ Data.HashTable.lookup (typeReg r) d
 >       if isJust res
 >         then do
->             let (en, de, es, ini, des) = fromJust res
->             liftIO $  Data.HashTable.insert (typeReg r) d (en, True, es, ini, des)
+>             let rtype = fromJust res
+>             liftIO $  Data.HashTable.insert (typeReg r) d $ rtype { decode = True }
 >         else
->             liftIO $  Data.HashTable.insert (typeReg r) d (False, True, False, False, False)
+>             liftIO $  Data.HashTable.insert (typeReg r) d $ remoteTypeAllFalse { decode = True }
 >       return ()
 
 > registerEncodeSizeFun :: String -> RemoteT ()
@@ -92,22 +104,34 @@ is set to true.
 >       res <- liftIO $ Data.HashTable.lookup (typeReg r) d
 >       if isJust res
 >         then do
->             let (en, de, es, ini, des) = fromJust res
->             liftIO $ Data.HashTable.insert (typeReg r) d (en, de, True, ini, des)
+>             let rtype = fromJust res
+>             liftIO $ Data.HashTable.insert (typeReg r) d $ rtype { encodeSize = True }
 >         else
->             liftIO $ Data.HashTable.insert (typeReg r) d (False, False, True, False, False)
+>             liftIO $ Data.HashTable.insert (typeReg r) d $ remoteTypeAllFalse { encodeSize = True }
 >       return ()
 
-> registerInitFun :: String -> RemoteT ()
-> registerInitFun d = do
+> registerCopyFun :: String -> RemoteT ()
+> registerCopyFun d = do
 >       r <- get
 >       res <- liftIO $ Data.HashTable.lookup (typeReg r) d
 >       if isJust res
 >         then do
->             let (en, de, es, ini, des) = fromJust res
->             liftIO $  Data.HashTable.insert (typeReg r) d (en, de, es, True, des)
+>             let rtype = fromJust res
+>             liftIO $  Data.HashTable.insert (typeReg r) d $ rtype { copy = True }
 >         else
->             liftIO $  Data.HashTable.insert (typeReg r) d (False, False, False, True, False)
+>             liftIO $  Data.HashTable.insert (typeReg r) d $ remoteTypeAllFalse { copy = True }
+>       return ()
+
+> registerInitNullFun :: String -> RemoteT ()
+> registerInitNullFun d = do
+>       r <- get
+>       res <- liftIO $ Data.HashTable.lookup (typeReg r) d
+>       if isJust res
+>         then do
+>             let rtype = fromJust res
+>             liftIO $  Data.HashTable.insert (typeReg r) d $ rtype { initNull = True }
+>         else
+>             liftIO $  Data.HashTable.insert (typeReg r) d $ remoteTypeAllFalse { initNull = True }
 >       return ()
 
 > registerDestroyFun :: String -> RemoteT ()
@@ -116,18 +140,19 @@ is set to true.
 >       res <- liftIO $ Data.HashTable.lookup (typeReg r) d
 >       if isJust res
 >         then do
->             let (en, de, es, ini, des) = fromJust res
->             liftIO $  Data.HashTable.insert (typeReg r) d (en, de, es, ini, True)
+>             let rtype = fromJust res
+>             liftIO $  Data.HashTable.insert (typeReg r) d $ rtype { destroy = True }
 >         else
->             liftIO $  Data.HashTable.insert (typeReg r) d (False, True, False, False, False)
+>             liftIO $  Data.HashTable.insert (typeReg r) d $ remoteTypeAllFalse { destroy = True }
 >       return ()
 
 > isFullEncoding :: String -> RemoteT Bool
 > isFullEncoding d = do
 >       r <- get
 >       res <- liftIO $ Data.HashTable.lookup (typeReg r) d
->       let (Just (enc, dec, siz, ini, des)) = res
->       if isJust res && enc && dec && siz && ini && des
+>       let rtype = fromJust res
+>       if isJust res && encode rtype && decode rtype && encodeSize rtype
+>                     && initNull rtype && copy rtype && destroy rtype
 >         then return True
 >         else return False
 
@@ -136,7 +161,7 @@ is set to true.
 >       r <- get
 >       res <- liftIO $ Data.HashTable.lookup (typeReg r) s
 >       when (isJust res) $ invalid (s ++ " already has encoding functions defined.\n") ni
->       liftIO $ Data.HashTable.insert (typeReg r) s (True, True, True, True, True)
+>       liftIO $ Data.HashTable.insert (typeReg r) s remoteTypeAllTrue
 
 > newRemoteState :: String -> [FilePath] -> [(String, String)] -> FilePath -> [String] -> IO Remote
 > newRemoteState fname includes defs macroHeader gccopts = do
@@ -301,28 +326,68 @@ CTypeOfType CDecl NodeInfo
 >                          mkCDecl (CVoidType ni) [CPtrDeclr [] ni] "vx" ni]
 >                         stmts
 
+> mkPtrInitNullBlock :: NodeInfo -> String -> String -> Bool -> RemoteT [CStat]
+> mkPtrInitNullBlock ni typeName fieldName _ = do
+>       mkStmtFromRemote "AER_MK_INIT_PTR_NULL" [typeName, fieldName] ni
+
+> mkInitNullBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
+> mkInitNullBlock ni baseTypeName typeName fieldName isPtr = do
+>       let ptrParam = if isPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_INIT_NULL_TYPE" [baseTypeName, typeName, fieldName, ptrParam] ni
+
+> mkInitNullStmts :: CDecl -> [CDecl] -> NodeInfo -> RemoteT CStat
+> mkInitNullStmts stype fields ni = do
+>       fieldsInfo <- mapM getFieldInfo fields
+>       let getDeriveds (CDecl _ declrs _) = concatMap getDerivedDeclrs declrs
+>           ptrFields = filter (\d -> any isDerivedPtr (getDeriveds d)) fields
+>           nonPtrFields = filter (\d -> not $ any isDerivedPtr (getDeriveds d)) fields
+>           anonSType = mkAnonFromDecl stype
+>           baseTypeName = getRemoteTypeName $ getTypeSpecFromDecl anonSType
+>       ptrFieldInfo <- mapM getFieldInfo ptrFields
+>       nonPtrFieldsInfo <- mapM getFieldInfo nonPtrFields
+>       when (isNothing baseTypeName) $ invalid ("type '" ++ (show $ pretty stype) ++ "does not have a known encoding type") ni
+>       initBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkInitNullBlock ni $ fromJust baseTypeName) nonPtrFieldsInfo
+>       initDecls <- mkDeclsFromRemote "AER_MK_INIT_DECLS" [show $ pretty anonSType] ni
+>       startStmts <- mkStmtFromRemote "AER_MK_INIT_STMTS_START" [show $ pretty anonSType] ni
+>       endStmts <- mkStmtFromRemote "AER_MK_INIT_STMTS_END" [] ni
+
+>       return $ mkCompoundWithDecls Nothing initDecls (startStmts ++ initBlocks ++ endStmts) ni
+
+> mkInitNullFun :: CDecl -> String -> [CDecl] -> NodeInfo -> RemoteT CExtDecl
+> mkInitNullFun decl sname fields ni = do
+>     fieldsInfo <- mapM getFieldInfo fields
+>     let tparam = mkRemoteDecl decl [(CPtrDeclr [] ni)] "x"
+>     when (isNothing tparam) $ invalid "not a known encoding type" ni
+>     stmts <- mkInitNullStmts (fromJust tparam) fields ni
+>     return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
+>                       [(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       ("aer_init_null_" ++ sname)
+>                       ([mkCDecl (CVoidType ni) [CPtrDeclr [] ni] "vx" ni])
+>                       stmts
+
+> mkPtrInitBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
+> mkPtrInitBlock ni baseTypeName typeName fieldName isPtr = do
+>       let ptrParam = if isPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_PTR_INIT_TYPE" [baseTypeName, typeName, fieldName, ptrParam] ni
+
 > mkInitBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
 > mkInitBlock ni baseTypeName typeName fieldName isPtr = do
 >       let ptrParam = if isPtr then "" else "&"
 >       mkStmtFromRemote "AER_MK_INIT_TYPE" [baseTypeName, typeName, fieldName, ptrParam] ni
 
-> mkInitNullBlock :: NodeInfo -> String -> String -> Bool -> RemoteT [CStat]
-> mkInitNullBlock ni tName fName isPtr = do
->       if isPtr then mkStmtFromRemote "AER_MK_INIT_PTR_NULL" [tName, fName] ni
->                else return []
-
 > mkInitStmts :: CDecl -> [CDecl] -> NodeInfo -> RemoteT CStat
 > mkInitStmts stype fields ni = do
 >       fieldsInfo <- mapM getFieldInfo fields
 >       let getDeriveds (CDecl _ declrs _) = concatMap getDerivedDeclrs declrs
->           ptrVars = map getVarName $ filter (\d -> any isDerivedPtr (getDeriveds d)) fields
->           initPtr s = "x->" ++ s ++ " = 0;"
->           initPtrs = mkStmtsFromCLines ni ("{ " ++ (join $ map initPtr ptrVars) ++ "}")
 >           anonSType = mkAnonFromDecl stype
 >           baseTypeName = getRemoteTypeName $ getTypeSpecFromDecl anonSType
+>           ptrFields = filter (\d -> any isDerivedPtr (getDeriveds d)) fields
+>           nonPtrFields = filter (\d -> not $ any isDerivedPtr (getDeriveds d)) fields
+>       ptrFieldInfo <- mapM getFieldInfo ptrFields
+>       nonPtrFieldsInfo <- mapM getFieldInfo nonPtrFields
 >       when (isNothing baseTypeName) $ invalid ("type '" ++ (show $ pretty stype) ++ "does not have a known encoding type") ni
->       nullBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkInitNullBlock ni) fieldsInfo
->       initBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkInitBlock ni $ fromJust baseTypeName) fieldsInfo
+>       nullBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkPtrInitBlock ni $ fromJust baseTypeName) ptrFieldInfo
+>       initBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkInitBlock ni $ fromJust baseTypeName) nonPtrFieldsInfo
 >       initDecls <- mkDeclsFromRemote "AER_MK_INIT_DECLS" [show $ pretty anonSType] ni
 >       startStmts <- mkStmtFromRemote "AER_MK_INIT_STMTS_START" [show $ pretty anonSType] ni
 >       endStmts <- mkStmtFromRemote "AER_MK_INIT_STMTS_END" [] ni
@@ -331,13 +396,58 @@ CTypeOfType CDecl NodeInfo
 
 > mkInitFun :: CDecl -> String -> [CDecl] -> NodeInfo -> RemoteT CExtDecl
 > mkInitFun decl sname fields ni = do
+>     fieldsInfo <- mapM getFieldInfo fields
 >     let tparam = mkRemoteDecl decl [(CPtrDeclr [] ni)] "x"
+>         getDeriveds (CDecl _ declrs _) = concatMap getDerivedDeclrs declrs
+>         params = map (\d -> if (any isDerivedPtr (getDeriveds d)) then d else addPtrDeclr d) fields
 >     when (isNothing tparam) $ invalid "not a known encoding type" ni
 >     stmts <- mkInitStmts (fromJust tparam) fields ni
 >     return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
 >                       [(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
 >                       ("aer_init_" ++ sname)
->                       [mkCDecl (CVoidType ni) [CPtrDeclr [] ni] "vx" ni]
+>                       ([mkCDecl (CVoidType ni) [CPtrDeclr [] ni] "vx" ni] ++ params)
+>                       stmts
+
+> mkPtrCopyBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
+> mkPtrCopyBlock ni baseTypeName typeName fieldName isPtr = do
+>       let ptrParam = if isPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_PTR_COPY_TYPE" [baseTypeName, typeName, fieldName, ptrParam] ni
+
+> mkCopyBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
+> mkCopyBlock ni baseTypeName typeName fieldName isPtr = do
+>       let ptrParam = if isPtr then "" else "&"
+>       mkStmtFromRemote "AER_MK_COPY_TYPE" [baseTypeName, typeName, fieldName, ptrParam] ni
+
+> mkCopyStmts :: CDecl -> [CDecl] -> NodeInfo -> RemoteT CStat
+> mkCopyStmts stype fields ni = do
+>       fieldsInfo <- mapM getFieldInfo fields
+>       let getDeriveds (CDecl _ declrs _) = concatMap getDerivedDeclrs declrs
+>           anonSType = mkAnonFromDecl stype
+>           baseTypeName = getRemoteTypeName $ getTypeSpecFromDecl anonSType
+>           ptrFields = filter (\d -> any isDerivedPtr (getDeriveds d)) fields
+>           nonPtrFields = filter (\d -> not $ any isDerivedPtr (getDeriveds d)) fields
+>       ptrFieldInfo <- mapM getFieldInfo ptrFields
+>       nonPtrFieldsInfo <- mapM getFieldInfo nonPtrFields
+>       when (isNothing baseTypeName) $ invalid ("type '" ++ (show $ pretty stype) ++ "does not have a known encoding type") ni
+>       ptrInitBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkPtrCopyBlock ni $ fromJust baseTypeName) ptrFieldInfo
+>       initBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkCopyBlock ni $ fromJust baseTypeName) nonPtrFieldsInfo
+>       initDecls <- mkDeclsFromRemote "AER_MK_COPY_DECLS" [show $ pretty anonSType] ni
+>       startStmts <- mkStmtFromRemote "AER_MK_COPY_STMTS_START" [show $ pretty anonSType] ni
+>       endStmts <- mkStmtFromRemote "AER_MK_COPY_STMTS_END" [] ni
+                    
+>       return $ mkCompoundWithDecls Nothing initDecls (startStmts ++ ptrInitBlocks ++ initBlocks ++ endStmts) ni
+
+> mkCopyFun :: CDecl -> String -> [CDecl] -> NodeInfo -> RemoteT CExtDecl
+> mkCopyFun decl sname fields ni = do
+>     fieldsInfo <- mapM getFieldInfo fields
+>     let tparam = mkRemoteDecl decl [(CPtrDeclr [] ni)] "x"
+>         mkVoidParam n = mkCDecl (CVoidType ni) [CPtrDeclr [] ni] n ni
+>     when (isNothing tparam) $ invalid "not a known encoding type" ni
+>     stmts <- mkCopyStmts (fromJust tparam) fields ni
+>     return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
+>                       [(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       ("aer_copy_" ++ sname)
+>                       [mkVoidParam "vx", mkVoidParam "vv"]
 >                       stmts
 
 > mkDestroyBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
@@ -370,8 +480,8 @@ CTypeOfType CDecl NodeInfo
 > mkEncodingStruct :: CDecl -> String -> NodeInfo -> RemoteT CExtDecl
 > mkEncodingStruct decl sname ni = do
 >       let ffs = zip fields funs
->           fields = ["encode", "decode", "encode_size", "init", "destroy"]
->           funs = ["aer_encode_"++sname, "aer_decode_"++sname, "aer_encode_size_"++sname, "aer_init_"++sname, "aer_destroy_"++sname]
+>           fields = ["encode", "decode", "encode_size", "init_null", "copy", "destroy"]
+>           funs = ["aer_encode_"++sname, "aer_decode_"++sname, "aer_encode_size_"++sname, "aer_init_null_"++sname, "aer_copy_"++sname, "aer_destroy_"++sname]
 >       return $ mkFunPtrsStruct "aer_encoder" ("aer_encoder_"++sname) ffs True ni
 
 > tripleFST :: (a,b,c) -> a
@@ -413,11 +523,13 @@ CTypeOfType CDecl NodeInfo
 >               enc <- mkEncodeFun d sname allFields ni
 >               size <- mkSizeFun d sname allFields ni 
 >               dec <- mkDecodeFun d sname allFields ni
+>               initNull <- mkInitNullFun d sname allFields ni
 >               init <- mkInitFun d sname allFields ni
 >               dest <- mkDestroyFun d sname allFields ni
+>               copy <- mkCopyFun d sname allFields ni
 >               encStruct <- mkEncodingStruct d sname ni
 >               registerFullEncoding sname ni
->               return [newS, dest, init, size, enc, dec, encStruct]
+>               return [newS, dest, initNull, copy, size, enc, dec, init, encStruct]
 >          else return []
 
 > transDecl :: CExtDecl -> RemoteT [CExtDecl]
@@ -496,7 +608,8 @@ CTypeOfType CDecl NodeInfo
 >       let encRE = "aer_encode_(.*)$"
 >           decRE = "aer_decode_(.*)$"
 >           sizeRE = "aer_encode_size_(.*)$"
->           initRE = "aer_init_(.*)$"
+>           initNullRE = "aer_init_null_(.*)$"
+>           copyRE = "aer_copy_(.*)$"
 >           destRE = "aer_destroy_(.*)$"
 >           getT r = fst ((head r) ! 1)
 
@@ -509,8 +622,11 @@ CTypeOfType CDecl NodeInfo
 >       let sizeResult = (fname =~ sizeRE) :: [MatchText String]
 >       when (not $ null sizeResult) $ registerEncodeSizeFun $ getT sizeResult
 
->       let initResult = (fname =~ initRE) :: [MatchText String]
->       when (not $ null initResult) $ registerInitFun $ getT initResult
+>       let initNullResult = (fname =~ initNullRE) :: [MatchText String]
+>       when (not $ null initNullResult) $ registerInitNullFun $ getT initNullResult
+
+>       let copyResult = (fname =~ copyRE) :: [MatchText String]
+>       when (not $ null copyResult) $ registerCopyFun $ getT copyResult
 
 >       let destResult = (fname =~ destRE) :: [MatchText String]
 >       when (not $ null destResult) $ registerDestroyFun $ getT destResult

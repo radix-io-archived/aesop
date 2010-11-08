@@ -191,4 +191,28 @@ static inline void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
     }
 }
     
+#define aesop_main_set(__main_blocking_function__, context_count, ...) \
+static int __main_done=0; \
+static int __main_ret; \
+static void __main_cb(void *user_ptr, int t) \
+{ \
+      __main_done = 1; \
+      __main_ret = t; \
+} \
+int main(int argc, char **argv)  \
+{ \
+    ae_context_t __main_ctx; \
+    ae_op_id_t __main_opid; \
+    triton_init(); \
+    ae_context_create(&__main_ctx, context_count, __VA_ARGS__); \
+    ae_post_blocking(__main_blocking_function__, __main_cb, NULL, NULL, __main_ctx, &__main_opid, argc, argv); \
+    while(!__main_done) \
+    { \
+        ae_poll(__main_ctx, 0); \
+    } \
+    ae_context_destroy(__main_ctx); \
+    triton_finalize(); \
+    return __main_ret; \
+}
+
 #endif /* __AE_RESOURCE_H__ */

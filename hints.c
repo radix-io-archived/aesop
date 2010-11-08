@@ -349,6 +349,9 @@ triton_ret_t aer_encode_ae_hints_t(
     assert(buf);
     assert(x);
 
+    /* TODO: fix hints encode/decode functions */
+    assert(0);
+
     while(h)
     {
         if(h->flags & AE_HINT_TRANSFER_FLAG)
@@ -391,6 +394,8 @@ triton_ret_t aer_decode_ae_hints_t(
     assert(buf);
     assert(x);
 
+    /* TODO: fix hints encode/decode functions */
+    assert(0);
     tmp = NULL;
 
     while(1)
@@ -443,9 +448,15 @@ triton_ret_t aer_decode_ae_hints_t(
     return TRITON_SUCCESS;
 }
 
-triton_ret_t aer_init_ae_hints_t(void *x)
+triton_ret_t aer_init_null_ae_hints_t(void *x)
 {
+    memset(x, 0, sizeof(struct ae_hints));
     return TRITON_SUCCESS;
+}
+
+triton_ret_t aer_copy_ae_hints_t(void *x, void *y)
+{
+    return ae_hints_copy(*(ae_hints_t *)x, (ae_hints_t *)y);
 }
 
 void aer_destroy_ae_hints_t(void *x)
@@ -458,7 +469,8 @@ struct aer_encoder aer_encoder_ae_hints_t =
     .encode = aer_encode_ae_hints_t,
     .decode = aer_decode_ae_hints_t,
     .encode_size = aer_encode_size_ae_hints_t,
-    .init = aer_init_ae_hints_t,
+    .init_null = aer_init_null_ae_hints_t,
+    .copy = aer_copy_ae_hints_t,
     .destroy = aer_destroy_ae_hints_t
 };
 

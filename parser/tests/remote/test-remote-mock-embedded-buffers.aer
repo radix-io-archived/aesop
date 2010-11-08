@@ -123,8 +123,8 @@ __blocking void do_remote_clients(int count)
                 assert(out.ut1 == 100);
                 assert(!memcmp(in.buf.buffer, out.buf.buffer, in.buf.size));
 
-                triton_buffer_free(&in.buf);
-                triton_buffer_free(&out.buf);
+                triton_buffer_destroy(&in.buf);
+                triton_buffer_destroy(&out.buf);
             }
         }
     }

@@ -153,16 +153,11 @@ static void cb(void *up)
     done=1;
 }
 
-int main(int argc, char *argv[])
+__blocking int aesop_main(int argc, char **argv)
 {
     triton_ret_t ret;
     ae_op_id_t op_id;
-    ae_context_t mpi_resource_ctx;
     aer_remote_ctx_t rctx;
-
-
-    ret = triton_init();
-    assert(ret == TRITON_SUCCESS);
 
     ret = aer_remote_register_test_remote_mpi();
     assert(ret == TRITON_SUCCESS);
@@ -170,20 +165,15 @@ int main(int argc, char *argv[])
     ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mpi");
     assert(ret == TRITON_SUCCESS);
 
-    ret = ae_context_create(&mpi_resource_ctx, 3, "mpi", "sched", "timer");
-    assert(ret == TRITON_SUCCESS);
-
-    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mpi_resource_ctx, &op_id, rctx);
-    while(!done)
-    {
-        ae_poll(mpi_resource_ctx, 0);
-    }
+    do_remote_test(rctx);
 
     aer_remote_ctx_destroy(rctx);
 
     triton_finalize();
     return 0;
 }
+aesop_main_set(aesop_main, 3, "mpi", "sched", "timer");
+
 
 /*
  * Local variables:

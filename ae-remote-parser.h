@@ -150,9 +150,24 @@ extern triton_debug_mask_t encoding_dbg_mask;
     x->__field__ = NULL; \
 }
 
+#define AER_MK_INIT_NULL_TYPE(__basetype__, __type__, __field__, __ptr__) \
+{ \
+    ret = aer_init_null_##__type__(__ptr__ x->__field__); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        aer_destroy_##__basetype__(x); \
+        return ret; \
+    } \
+}
+
+#define AER_MK_PTR_INIT_TYPE(__basetype__, __type__, __field__, __ptr__) \
+{ \
+    x->__field__ = __field__; \
+}
+
 #define AER_MK_INIT_TYPE(__basetype__, __type__, __field__, __ptr__) \
 { \
-    ret = aer_init_##__type__(__ptr__ x->__field__); \
+    ret = aer_copy_##__type__(__ptr__ x->__field__, __field__); \
     if(ret != TRITON_SUCCESS) \
     { \
         aer_destroy_##__basetype__(x); \
@@ -170,6 +185,37 @@ extern triton_debug_mask_t encoding_dbg_mask;
 }
 
 #define AER_MK_INIT_STMTS_END() \
+{ \
+    return ret; \
+}
+
+#define AER_MK_PTR_COPY_TYPE(__basetype__, __type__, __field__, __ptr__) \
+{ \
+    x->__field__ = v->__field__; \
+}
+
+#define AER_MK_COPY_TYPE(__basetype__, __type__, __field__, __ptr__) \
+{ \
+    ret = aer_copy_##__type__(__ptr__ x->__field__, __ptr__ v->__field__); \
+    if(ret != TRITON_SUCCESS) \
+    { \
+        aer_destroy_##__basetype__(x); \
+        return ret; \
+    } \
+}
+
+#define AER_MK_COPY_DECLS(__type__) \
+    triton_ret_t ret; \
+    __type__ x; \
+    __type__ v;
+
+#define AER_MK_COPY_STMTS_START(__type__) \
+{ \
+    x = (__type__)vx; \
+    v = (__type__)vv; \
+}
+
+#define AER_MK_COPY_STMTS_END() \
 { \
     return ret; \
 }

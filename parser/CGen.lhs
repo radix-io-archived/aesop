@@ -407,6 +407,14 @@ param1Decl can be created with mkCDecl.
 >							            []
 >								    ni) ni) [(CPtrDeclr [] ni)] name ni
 
+> addPtrToDeclarators :: (Maybe CDeclr, Maybe CInit, Maybe CExpr) -> (Maybe CDeclr, Maybe CInit, Maybe CExpr)
+> addPtrToDeclarators (Just (CDeclr name d asm attrs ni), i, e) =
+>       (Just (CDeclr name (d ++ [CPtrDeclr [] ni]) asm attrs ni), i, e)
+> addPtrToDeclarators a = a
+
+> addPtrDeclr :: CDecl -> CDecl
+> addPtrDeclr (CDecl specs declarators ni) = (CDecl specs ((addPtrToDeclarators (head declarators)):(tail declarators)) ni)
+
 > mkAnonStructPtrDecl :: String -> NodeInfo -> CDecl
 > mkAnonStructPtrDecl tname ni = mkAnonCDecl (CSUType (CStruct CStructTag (Just $ newIdent tname ni) Nothing [] ni) ni)
 >		                             [(CPtrDeclr [] ni)] ni
