@@ -78,7 +78,11 @@ __attribute__((constructor)) void ae_hints_init_register(void)
 
 triton_ret_t ae_hints_init(void)
 {
-    assert(hints_type_key_table == NULL);
+    if(hints_type_key_table != NULL)
+    {
+        return(TRITON_SUCCESS);
+    }
+
     hints_type_key_table = triton_hash_init(hints_key_compare, hints_key_hash, bj_hashsize(10));
     if(hints_type_key_table == NULL)
     {
