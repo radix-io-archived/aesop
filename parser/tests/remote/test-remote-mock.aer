@@ -17,8 +17,6 @@
 #include "src/zeroconf/zeroconf.h"
 #include "src/common/triton-init.h"
 
-static aer_remote_ctx_t remote_ctx;
-
 __remote struct myremotes
 {
     int32_t t1;
@@ -113,7 +111,7 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
     return ret;
 }
 
-__blocking void do_remote_clients(int count)
+__blocking void do_remote_clients(int count, aer_remote_ctx_t rctx)
 {
     triton_ret_t ret;
     struct myremotes in, out;
@@ -143,13 +141,13 @@ __blocking void do_remote_clients(int count)
                 ret = triton_addr_lookup("mock://0", &node0);
                 triton_error_assert(ret);
 
-                ret = remote_remotefun1(remote_ctx, node0, 10, &fun1res);
+                ret = remote_remotefun1(rctx, node0, 10, &fun1res);
                 triton_error_assert(ret);
                 assert(fun1res == 10);
 
                 in.t1 = 100;
                 in.ut1 = 0;
-                ret = remote_remotefun2(remote_ctx, node0, &in, &out);
+                ret = remote_remotefun2(rctx, node0, &in, &out);
                 triton_error_assert(ret);
                 assert(out.t1 == 100);
                 assert(out.ut1 == 100);
@@ -158,13 +156,10 @@ __blocking void do_remote_clients(int count)
     }
 }
 
-__blocking void do_remote_test(int count)
+__blocking void do_remote_test(int count, aer_remote_ctx_t rctx)
 {
     triton_string_t selfstr;
     triton_ret_t ret;
-
-    ret = aer_remote_ctx_init(&remote_ctx, "triton.remote.retry", "mock");
-    triton_error_assert(ret);
 
     pwait
     {
@@ -180,12 +175,12 @@ __blocking void do_remote_test(int count)
             triton_error_assert(ret);
 
             /* start server */
-            aer_service_engine_start(remote_ctx);
+            aer_service_engine_start(rctx);
         }
 
         pbranch
         {
-            do_remote_clients(count);
+            do_remote_clients(count, rctx);
             /* clients done.  stop service engine */
             aer_service_engine_stop();
         }
@@ -205,6 +200,9 @@ __blocking int aesop_main(int argc, char **argv)
     }
     assert(argc > 1);
 
+    ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mock");
+    triton_error_assert(ret);
+
     ret = aer_remote_register_test_remote_mock();
     triton_error_assert(ret);
 
@@ -214,13 +212,13 @@ __blocking int aesop_main(int argc, char **argv)
     ret = triton_msg_enable_method("mock");
     triton_error_assert(ret);
 
-    do_remote_test(atoi(argv[1]));
+    do_remote_test(atoi(argv[1]), rctx);
 
     aer_remote_ctx_destroy(rctx);
 
     return 0;
 }
-aesop_main_set(aesop_main, 3, "mock", "sched", "timer");
+aesop_main_set(aesop_main, 2, "sched", "timer");
 
 /*
  * Local variables:

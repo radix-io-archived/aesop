@@ -217,11 +217,15 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
             if(ae_resource_entries[ridx].resource->poll_context)
             {
                 ret = ae_resource_entries[ridx].resource->poll_context(context, resource_ms);
+                resources_polled++;
+                if(ret == TRITON_ERR_TIMEDOUT)
+                {
+                    continue;
+                }
                 if(ret != TRITON_SUCCESS)
                 {
                     return ret;
                 }
-                resources_polled++;
             }
         }
     }
@@ -234,11 +238,15 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
             {
                 ret = ae_resource_entries[i].resource->poll_context(
                     context, resource_ms);
+                resources_polled++;
+                if(ret == TRITON_ERR_TIMEDOUT)
+                {
+                    continue;
+                }
                 if(ret != TRITON_SUCCESS)
                 {
                     return ret;
                 }
-                resources_polled++;
             }
         }
     }
@@ -319,7 +327,8 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
         if(!resource_found)
         {
             va_end(ap);
-            return TRITON_ERR_INVAL;
+            return triton_error_wrap(TRITON_ERR_INVAL, TRITON_ADDR_NULL,
+                                     "No aesop resource found with name '%s'.", rname);
         }
     }
     va_end(ap);

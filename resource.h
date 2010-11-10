@@ -203,12 +203,17 @@ int main(int argc, char **argv)  \
 { \
     ae_context_t __main_ctx; \
     ae_op_id_t __main_opid; \
-    triton_init(); \
-    ae_context_create(&__main_ctx, context_count, __VA_ARGS__); \
-    ae_post_blocking(__main_blocking_function__, __main_cb, NULL, NULL, __main_ctx, &__main_opid, argc, argv); \
+    triton_ret_t ret; \
+    ret = triton_init(); \
+    triton_error_assert(ret); \
+    ret = ae_context_create(&__main_ctx, context_count, __VA_ARGS__); \
+    triton_error_assert(ret); \
+    ret = ae_post_blocking(__main_blocking_function__, __main_cb, NULL, NULL, __main_ctx, &__main_opid, argc, argv); \
+    triton_error_assert(ret); \
     while(!__main_done) \
     { \
-        ae_poll(__main_ctx, 0); \
+        ret = ae_poll(__main_ctx, 0); \
+        triton_error_assert(ret); \
     } \
     ae_context_destroy(__main_ctx); \
     triton_finalize(); \
