@@ -367,6 +367,7 @@ Get the local declarations for a function definition
 > getCallName :: CExpr -> String
 > getCallName (CCall (CVar n _) _ _) = identToString n
 > getCallName (CCall _ _ ni) = "fptr"
+> getCallName n = error "getCallName: unknown CExpr type: " ++ (show $ pretty n)
 
 > getCallParams :: CExpr -> [CExpr]
 > getCallParams (CCall _ p _) = p

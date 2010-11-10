@@ -105,12 +105,12 @@ __blocking void do_remote_clients(int count)
                  */ 
                 sprintf(nodestr, "mock://%d", i);
                 ret = triton_addr_lookup(nodestr, &self);
-                assert(ret == TRITON_SUCCESS);
+                triton_error_assert(ret);
                 ret = aesop_hints_put("triton.mock.self", sizeof(self), &self);
-                assert(ret == TRITON_SUCCESS);
+                triton_error_assert(ret);
 
                 ret = triton_addr_lookup("mock://0", &node0);
-                assert(ret == TRITON_SUCCESS);
+                triton_error_assert(ret);
 
                 in.t1 = 100;
                 in.ut1 = 0;
@@ -118,7 +118,7 @@ __blocking void do_remote_clients(int count)
                 memset(in.buf.buffer, i, 42);
 
                 ret = remote_remote_with_buffer(remote_ctx, node0, &in, &out);
-                assert(ret == TRITON_SUCCESS);
+                triton_error_assert(ret);
                 assert(out.t1 == 100);
                 assert(out.ut1 == 100);
                 assert(!memcmp(in.buf.buffer, out.buf.buffer, in.buf.size));
@@ -136,7 +136,7 @@ __blocking void do_remote_test(int count)
     triton_ret_t ret;
 
     ret = aer_remote_ctx_init(&remote_ctx, "triton.remote.retry", "mock");
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     pwait
     {
@@ -147,9 +147,9 @@ __blocking void do_remote_test(int count)
             /* tell the server what its address is */
 
             ret = triton_addr_lookup("mock://0", &self);
-            assert(ret == TRITON_SUCCESS);
+            triton_error_assert(ret);
             ret = aesop_hints_put("triton.mock.self", sizeof(self), &self);
-            assert(ret == TRITON_SUCCESS);
+            triton_error_assert(ret);
 
             /* start server */
             aer_service_engine_start(remote_ctx);
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
     assert(argc > 1);
 
     ret = triton_init();
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     if(argc > 2)
     {
@@ -192,16 +192,16 @@ int main(int argc, char *argv[])
     }
 
     ret = ae_hints_type_register("triton.mock.self", 0, NULL);
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     ret = triton_msg_enable_method("mock");
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     ret = aer_remote_register_test_remote_mock_buf();
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     ret = ae_context_create(&mock_resource_ctx, 2, "sched", "timer");
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mock_resource_ctx, &op_id, atoi(argv[1]));
     while(!done)

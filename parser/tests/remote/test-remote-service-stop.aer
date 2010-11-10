@@ -36,7 +36,7 @@ __blocking void do_remote_test(void)
     triton_ret_t ret;
 
     ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mpi");
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     pwait
     {
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     ae_context_t mpi_resource_ctx;
 
     ret = triton_init();
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     if(argc > 1)
     {
@@ -79,11 +79,11 @@ int main(int argc, char *argv[])
     }
 
     ret = aer_service_init();
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
 
     ret = aer_remote_register_test_remote_service_stop();
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     ae_context_create(&mpi_resource_ctx, 3, "mpi", "sched", "timer");
     ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mpi_resource_ctx, &op_id);

@@ -34,7 +34,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     aer_remote_ctx_t rctx;
 
     ret = aesop_hints_get("triton.remote.context", sizeof(rctx), &rctx);
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
     assert(rctx != NULL);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -56,11 +56,11 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
 
     sprintf(n1str, "mpi://%d", r1);
     ret = triton_addr_lookup(n1str, &n1);
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     sprintf(n2str, "mpi://%d", r2);
     ret = triton_addr_lookup(n2str, &n2);
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     pwait
     {
@@ -125,17 +125,17 @@ __blocking void do_remote_test(aer_remote_ctx_t rctx)
          * for a sec.
          */
         ret = triton_timer(1000);
-        assert(ret == TRITON_SUCCESS);
+        triton_error_assert(ret);
 
         /* must set the remote context as a hint because we're about to call
          * scatter_gather as a local call
          */
         ret = aesop_hints_put("triton.remote.context", sizeof(rctx), &rctx);
-        assert(ret == TRITON_SUCCESS);
+        triton_error_assert(ret);
 
         /* rank 0 calls local scatter_gather, which starts everything */
         ret = scatter_gather(50, &result);
-        assert(ret == TRITON_SUCCESS);
+        triton_error_assert(ret);
         printf("FINAL RESULT: %d\n", result);
 
     }
@@ -147,12 +147,6 @@ __blocking void do_remote_test(aer_remote_ctx_t rctx)
     }
 }
 
-static int done = 0;
-static void cb(void *up)
-{
-    done=1;
-}
-
 __blocking int aesop_main(int argc, char **argv)
 {
     triton_ret_t ret;
@@ -160,16 +154,15 @@ __blocking int aesop_main(int argc, char **argv)
     aer_remote_ctx_t rctx;
 
     ret = aer_remote_register_test_remote_mpi();
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mpi");
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     do_remote_test(rctx);
 
     aer_remote_ctx_destroy(rctx);
 
-    triton_finalize();
     return 0;
 }
 aesop_main_set(aesop_main, 3, "mpi", "sched", "timer");

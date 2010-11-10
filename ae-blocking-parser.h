@@ -50,7 +50,7 @@
     if(__ae_postret != TRITON_SUCCESS) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: post call did not return AE_POSTED or AE_COMPLETE, trace exiting\n", #__fname, __location); \
-        assert(__ae_postret == TRITON_SUCCESS); \
+        triton_error_assert(__ae_postret); \
         return; \
     }
 
@@ -58,7 +58,7 @@
     if(__ae_postret != TRITON_SUCCESS) \
     { \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: post call did not return AE_POSTED or AE_COMPLETE, trace exiting\n", #__fname, __location); \
-        assert(__ae_postret == TRITON_SUCCESS); \
+        triton_error_assert(__ae_postret); \
         return __ae_postret; \
     }
 
@@ -75,7 +75,7 @@
     { \
         triton_mutex_unlock(&done_ctl->parent->gen.mutex); \
         triton_err(triton_log_default, "INVALID STATE: %s:%d: ae_cancel_cancel did not return success\n", #__fname, __location); \
-        assert(__ae_cancel_ret == TRITON_SUCCESS); \
+        triton_error_assert(__ae_cancel_ret); \
     } \
 }
 

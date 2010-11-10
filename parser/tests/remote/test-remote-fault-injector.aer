@@ -61,13 +61,13 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
 
     sprintf(n1str, "mpi://%d", r1);
     ret = triton_addr_lookup(n1str, &n1);
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
     sprintf(n2str, "mpi://%d", r2);
     ret = triton_addr_lookup(n2str, &n2);
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     ret = aesop_hints_get("triton.remote.context", sizeof(rctx), &rctx);
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     pwait
     {
@@ -137,18 +137,18 @@ __blocking void do_remote_test(void)
          * for a sec.
          */
         ret = triton_timer(1000);
-        assert(ret == TRITON_SUCCESS);
+        triton_error_assert(ret);
 
         /* rank 0 calls local scatter_gather, which starts everything */
         ret = scatter_gather(50, &result);
-        assert(ret == TRITON_SUCCESS);
+        triton_error_assert(ret);
         printf("FINAL RESULT: %d\n", result);
 
     }
     else
     {
         ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mpi");
-        assert(ret == TRITON_SUCCESS);
+        triton_error_assert(ret);
         /* service a single scatter/gather request */
         ret = aer_service_requests(rctx, 1);
     }
@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
     triton_debug_stderr_enable("all");
 
     ret = aer_remote_register_test_remote_fault();
-    assert(ret == TRITON_SUCCESS);
+    triton_error_assert(ret);
 
     ae_context_create(&mpi_resource_ctx, 3, "mpi", "sched", "timer");
     ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mpi_resource_ctx, &op_id);

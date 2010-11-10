@@ -684,9 +684,14 @@ Each callback function defined for a given blocking function must have a unique 
 > isVarIn locals (CVar name _) = name `elem` locals
 > isVarIn _ _ = False
 
+> isCallIn :: [Ident] -> CExpr -> Bool
+> isCallIn locals c@(CCall expr params ni) = (newIdent (getCallName c) ni) `elem` locals
+> isCallIn _ _ = False
+
 > addParamsPtrPrefixToExpr :: String -> String -> [Ident] -> CExpr -> CExpr
 > addParamsPtrPrefixToExpr ctlPrefix paramsPrefix locals expr
 >	| isVarIn locals expr = addStructPtrPrefix ctlPrefix paramsPrefix expr
+>       | isCallIn locals expr = addStructPtrPrefix ctlPrefix paramsPrefix expr
 >	| otherwise = expr
 
 > addParamsPtrPrefixes :: String -> String -> [Ident] -> CStat -> CStat
