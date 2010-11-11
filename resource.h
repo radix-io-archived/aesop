@@ -161,6 +161,8 @@ triton_ret_t ae_cancel_branches(struct ae_ctl *ctl);
 
 int ae_count_branches(struct ae_ctl *ctl);
 
+void ae_get_stack(struct ae_ctl *ctl, triton_string_t *stack, int *inout_count);
+
 #ifdef AESOP_PARSER
 #define aesop_cancel_branches() ae_cancel_branches(ctl->parent ? &ctl->parent->gen : NULL)
 #define aesop_count_branches() ae_count_branches(ctl->parent ? &ctl->parent->gen : NULL)
@@ -169,28 +171,28 @@ static inline triton_ret_t aesop_cancel_branches(void) { return TRITON_ERR_NOSYS
 static inline int aesop_count_branches(void) { return -1; }
 #endif
 
-static inline void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
-{
-    int i = 0, top;
-    char *stack[512];
-    do
-    {
-        stack[i++] = strdup(ctl->name);
-        ctl = ctl->parent;
-    } while(ctl);
+void ae_print_stack(FILE *outstream, struct ae_ctl *ctl);
 
-    top = 0;
-    for(--i; i >= 0; --i)
-    {
-        fprintf(outstream, "%d: %s\n", top++, stack[i]);
-    }
+#ifdef AESOP_PARSER
+#define aesop_get_stack(stack, io_count) ae_get_stack(&ctl->gen, stack, io_count)
+#else
+static inline void aesop_get_stack(triton_string_t *strings, int *inout_count) { *inout_count = 0; }
+#endif
 
-    for(i = 0; i < top; ++i)
-    {
-        free(stack[i]);
-    }
-}
-    
+#ifdef AESOP_PARSER
+#define aesop_print_stack(stream) ae_print_stack(stream, &ctl->gen)
+#else
+static inline void aesop_print_stack(FILE *stream) { }
+#endif
+
+triton_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, triton_ret_t);
+
+#if defined(AESOP_PARSER) && !defined(NDEBUG)
+#define aesop_error_wrap_stack(__ret) ae_error_wrap_stack(&ctl->gen, __ret)
+#else
+static inline triton_ret_t aesop_error_wrap_stack(triton_ret_t ret) { return ret; }
+#endif
+
 #define aesop_main_set(__main_blocking_function__, context_count, ...) \
 static int __main_done=0; \
 static int __main_ret; \

@@ -407,6 +407,77 @@ int ae_lone_pbranches_count(void)
     return ret;
 }
 
+void ae_get_stack(struct ae_ctl *ctl, triton_string_t *stack, int *inout_count)
+{
+    int i = 0;
+    while(ctl && i < *inout_count) 
+    {
+        triton_string_init(&(stack[i++]), ctl->name);
+        ctl = ctl->parent;
+    }
+
+    *inout_count = i;
+}
+
+void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
+{
+    int i = 0, top;
+    char *stack[512];
+    do
+    {
+        stack[i++] = strdup(ctl->name);
+        ctl = ctl->parent;
+    } while(ctl);
+
+    top = 0;
+    for(--i; i >= 0; --i)
+    {
+        fprintf(outstream, "[%d]: %s\n", top++, stack[i]);
+    }
+
+    for(i = 0; i < top; ++i)
+    {
+        free(stack[i]);
+    }
+}
+    
+#define TRITON_ERROR_WRAP_AESOP_STACK_SIZE 32
+
+triton_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, triton_ret_t parent)
+{
+    triton_ret_t ret = TRITON_SUCCESS;
+    triton_string_t stack[TRITON_ERROR_WRAP_AESOP_STACK_SIZE];
+    int rcount, i;
+    int count = TRITON_ERROR_WRAP_AESOP_STACK_SIZE;
+    ae_get_stack(ctl, stack, &count);
+    rcount = count;
+    if(count > 0)
+    {
+        int bleft, offset;
+        bleft = count * 1024;
+        char *stackstr = malloc(bleft);
+        char *ptr = stackstr;
+
+        i = 0;
+        while(count-- > 0 && bleft > 0)
+        {
+            offset = snprintf(ptr, bleft, "\t\t[%d]:\t%s\n", i++, triton_string_get(&stack[count]));
+            ptr += offset;
+            bleft -= offset;
+        }
+        ret = triton_error_wrap(parent, TRITON_ADDR_NULL, "Error Stack:\n%s\n", stackstr);
+        free(stackstr);
+    }
+
+    for(i = 0; i < rcount; ++i)
+    {
+        triton_string_destroy(&stack[i]);
+    }
+
+    return ret;
+}
+
+
 /*
  * Local variables:
  *  c-indent-level: 4
