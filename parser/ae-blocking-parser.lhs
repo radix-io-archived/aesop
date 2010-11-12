@@ -700,6 +700,7 @@ Each callback function defined for a given blocking function must have a unique 
 > addParamsPrefixToExpr :: String -> String -> [Ident] -> CExpr -> CExpr
 > addParamsPrefixToExpr ctlPrefix paramsPrefix locals expr
 >	| isVarIn locals expr = addStructPrefix ctlPrefix paramsPrefix expr
+>       | isCallIn locals expr = addStructPrefix ctlPrefix paramsPrefix expr
 >	| otherwise = expr
 
 > addParamsPrefixes :: String -> String -> [Ident] -> CStat -> CStat
@@ -708,6 +709,7 @@ Each callback function defined for a given blocking function must have a unique 
 > addParams2PrefixToExpr :: String -> String -> String -> [Ident] -> CExpr -> CExpr
 > addParams2PrefixToExpr ctlPrefix p1Prefix p2Prefix locals expr
 >	| isVarIn locals expr = addStructPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
+>       | isCallIn locals expr = addStructPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
 >	| otherwise = expr
 
 > addParams2Prefixes :: String -> String -> String -> [Ident] -> CStat -> CStat
@@ -717,6 +719,7 @@ Each callback function defined for a given blocking function must have a unique 
 > addParams2PtrPrefixToExpr :: String -> String -> String -> [Ident] -> CExpr -> CExpr
 > addParams2PtrPrefixToExpr ctlPrefix p1Prefix p2Prefix locals expr
 >	| isVarIn locals expr = addStructPtrPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
+>       | isCallIn locals expr = addStructPtrPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
 >	| otherwise = expr
 
 > addParams2PtrPrefixes :: String -> String -> String -> [Ident] -> CStat -> CStat
@@ -1490,11 +1493,16 @@ and finally the code up-to the first blocking call.
 >	 	 ++ nextBlockingPostStmts
 >	         ++ [mkLabel "__ae_callback_end" [] $ getNI bctx]) $ getNI bctx
 
+> removeDerivedFun :: [CDerivedDeclr] -> [CDerivedDeclr]
+> removeDerivedFun (d:ds) | isDerivedFun d = ds
+> removeDerivedFun (p:f:ds) | isDerivedPtr p && isDerivedFun f = ds
+> removeDerivedFun ds = ds
+
 > mkCallbackReturnParamDecl :: (CTypeSpec, [CDerivedDeclr]) -> String -> NodeInfo -> [CDecl]
 >	-- no parameter if the return type is void
 > mkCallbackReturnParamDecl (CVoidType _, []) _ _ = []
 > mkCallbackReturnParamDecl (retType, derives) name ni =
->	[mkCDecl retType (filter (not . isDerivedFun) derives) (mkCallbackRetParam name ni) ni]
+>	[mkCDecl retType (removeDerivedFun derives) (mkCallbackRetParam name ni) ni]
 
 function definition, blocking call, return expression, statements after blocking call up to next blocking, optional next blocking call
 
@@ -1579,7 +1587,7 @@ CStat:  The blocking statement
 >		   (fromJust blockingCall)
 >		   retType
 >                  (nonBlockingStmts ++ nextInitStmts)
->	           nextBlockingPostStmts
+>	           (map (trLocals prefix b) nextBlockingPostStmts)
 
 > generateCallbackDeclForBlocking :: BlockingContext -> WalkerT CExtDecl
 > generateCallbackDeclForBlocking b = do

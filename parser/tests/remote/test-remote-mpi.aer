@@ -104,6 +104,8 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     else
     {
         ret = (ret1 == TRITON_SUCCESS) ? ret2 : ret1;
+        self = triton_addr_self("mpi");
+        ret = triton_error_wrap(ret, self, "Error at remote scatter_gather");
     }
 
     return ret;

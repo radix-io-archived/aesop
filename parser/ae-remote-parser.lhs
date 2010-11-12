@@ -56,11 +56,21 @@ is set to true.
 > data Remote = Remote {
 >       filename :: FilePath,
 >       typeReg :: RemoteTypeRegistry,
->       funs :: [String],
+>       funs :: [(String, (CTypeSpec, [CDerivedDeclr]), [CDecl])],
 >       includes :: [FilePath],
 >       defines :: [(String, String)],
 >       remoteParser :: Maybe MacroParser
 > }
+
+> getRemotes :: RemoteT [(String, (CTypeSpec, [CDerivedDeclr]), [CDecl])]
+> getRemotes = do
+>       r <- get
+>       return $ funs r
+
+> getRemoteNames :: RemoteT [String]
+> getRemoteNames = do
+>       ts <- getRemotes
+>       return $ map (\((,,) f _ _) -> f) ts
 
 > type RemoteT = StateT Remote IO
 
@@ -69,10 +79,10 @@ is set to true.
 >	fstr <- getFilePosStr ni
 >	error (fstr ++ ":  Invalid aesop usage: " ++ msg)
 
-> registerRemoteFun :: String -> RemoteT ()
-> registerRemoteFun name = do
+> registerRemoteFun :: String -> (CTypeSpec, [CDerivedDeclr]) -> [CDecl] -> RemoteT ()
+> registerRemoteFun name retType params = do
 >       r <- get
->       put $ r { funs = name : (funs r) }
+>       put $ r { funs = (name, retType, params) : (funs r) }
 
 > registerEncodeFun :: String -> RemoteT ()
 > registerEncodeFun e = do
@@ -805,8 +815,12 @@ CTypeOfType CDecl NodeInfo
 >           (CDecl _ inDerived _) = inparam
 >           isInPtr = any isDerivedPtr (join $ map getDerivedDeclrs inDerived)
 >           ptrParam = if isInPtr then "&" else ""
->       assert (isJust canonInType) return ()
->       assert (isJust canonOutType) return ()
+>       when (not $ isJust canonInType) $
+>               invalid ("'" ++ inTypeName ++ "'" ++ 
+>                        " is not a recognized encoding type for input parameter '" ++ inParamName ++ "' to function: " ++ fname) ni
+>       when (not $ isJust canonOutType) $
+>               invalid ("'" ++ outTypeName ++ "'" ++
+>                        " is not a recognized encoding type for output parameter '" ++ outParamName ++ "' to function: " ++ fname) ni
 >       [fdef] <- mkFunDefFromRemote (fname ++ "_service_block") [] "AER_MK_SERVICE_FNDEF"
 >                                    [fname,
 >                                     inTypeName,
@@ -849,7 +863,7 @@ CTypeOfType CDecl NodeInfo
 >                   opfundecl = mkOpIdDecl (nodeInfo funDef) (getFunDefName funDef)
 >               opfun <- mkOpFun funDef
 >               sop <- liftM (map CDeclExt) $ mkDeclsFromRemote "AER_MK_STATIC_OP_DECL" [getFunDefName funDef] ni
->               registerRemoteFun $ getFunDefName funDef
+>               registerRemoteFun (getFunDefName funDef) (getFunDefReturn funDef) (getFunDefParams funDef)
 >               return $ sop ++ [opfundecl, opfun, re, rstub, rservF]
 >       | otherwise = return [e]
 > transformRemote e = return [e]
@@ -865,9 +879,9 @@ CTypeOfType CDecl NodeInfo
 
 > mkRegFun :: String -> NodeInfo -> RemoteT CExtDecl
 > mkRegFun sname ni = do
->       r <- get
 >       decls <- mkDeclsFromRemote "AER_MK_REG_DECLS" [sname] ni
->       stmts <- liftM concat $ sequence $ map (mkRegBlock ni) (funs r)
+>       rs <- getRemoteNames 
+>       stmts <- liftM concat $ sequence $ map (mkRegBlock ni) rs 
 >       endStmts <- mkStmtFromRemote "AER_MK_REG_END" [sname] ni
 >       return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
 >                         []
@@ -889,8 +903,8 @@ CTypeOfType CDecl NodeInfo
 
 > mkOpIdDecls :: NodeInfo -> RemoteT [CExtDecl]
 > mkOpIdDecls ni = do
->       r <- get
->       return $ map (mkOpIdDecl ni) (funs r)
+>       rs <- getRemoteNames
+>       return $ map (mkOpIdDecl ni) rs 
 
 > mkServiceDecl :: NodeInfo -> String -> RemoteT CExtDecl
 > mkServiceDecl ni s = do
@@ -899,8 +913,8 @@ CTypeOfType CDecl NodeInfo
 
 > mkServiceDecls :: NodeInfo -> RemoteT [CExtDecl]
 > mkServiceDecls ni = do
->       r <- get
->       sequence $ map (mkServiceDecl ni) (funs r)
+>       rs <- getRemoteNames
+>       sequence $ map (mkServiceDecl ni) rs 
 
 > addRegisterFun :: String -> NodeInfo -> RemoteT CTranslUnit
 > addRegisterFun sname ni = do
@@ -911,6 +925,11 @@ CTypeOfType CDecl NodeInfo
 >       return $ CTranslUnit (opidDecls ++ sDecls ++ [regf, ctor]) ni
 >       -- return $ CTranslUnit (opidDecls ++ sDecls ++ [regf]) ni
 
+> mkStubs :: NodeInfo -> RemoteT CTranslUnit
+> mkStubs ni = do
+>       rs <- getRemotes
+>       stubs <- sequence $ map (\((,,) f r p) -> mkStubDecl f r p ni) rs 
+>       return $ CTranslUnit stubs ni
 
 > generateAST :: FilePath -> IO CTranslUnit
 > generateAST input_file = do
@@ -929,9 +948,12 @@ CTypeOfType CDecl NodeInfo
 > writeRegistryFiles :: String -> Maybe String -> RemoteT ()
 > writeRegistryFiles s r = do
 >       let ni = mkNodeInfoOnlyPos $ initPos s
->       regCTU <- addRegisterFun s ni
 >       let sourcefile = (if (isJust r) then ((fromJust r) ++ "/") else "") ++ s ++ "_module.ae"
 >           headerfile = (if (isJust r) then ((fromJust r) ++ "/") else "") ++ s ++ "_module.h"
+>           stubfile = (if (isJust r) then ((fromJust r) ++ "/") else "") ++ s ++ "_stubs.hae"
+
+>       regCTU <- addRegisterFun s ni
+
 >       liftIO $ (writeFile sourcefile) $ "\
 >       \\n\n\
 >       \/* This is an auto-generated source file created by the ae-remote-parser tool.  DO NOT MODIFY! */\n\n\
@@ -949,6 +971,21 @@ CTypeOfType CDecl NodeInfo
 >       \\n\n"
 >       liftIO $ ((appendFile headerfile) . show . pretty) (getRegistryDecl s ni)
 >       liftIO $ appendFile headerfile $ " \n\
+>       \\n\n\
+>       \#endif \
+>       \\n\n"
+
+>       stubCTU <- mkStubs ni
+>       liftIO $ (writeFile stubfile) $ "\
+>       \\n\n\
+>       \/* This is an auto-generated header file create by the ae-remote-parser tool.  DO NOT MODIFY! */\n\n\
+>       \#ifndef ___" ++ s ++ "_stubs_hae__ \n\
+>       \#define ___" ++ s ++ "_stubs_hae__ \n\
+>       \#include \"src/aesop/aesop.h\" \n\
+>       \#include \"src/remote/service.hae\" \n\
+>       \\n\n"
+>       liftIO $ ((appendFile stubfile) . show . pretty) stubCTU
+>       liftIO $ appendFile stubfile $ " \n\
 >       \\n\n\
 >       \#endif \
 >       \\n\n"

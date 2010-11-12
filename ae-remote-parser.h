@@ -466,7 +466,8 @@ __blocking triton_ret_t __service_##__fname__( \
     if(ret != TRITON_SUCCESS) return ret; \
 }
 
-#define AER_MK_REG_START(__service_name__)
+#define AER_MK_REG_START(__service_name__) \
+    ret = TRITON_SUCCESS;
 
 #define AER_MK_REG_END(__service_name__) \
     return ret;

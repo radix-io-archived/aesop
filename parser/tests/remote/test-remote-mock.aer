@@ -107,7 +107,6 @@ __remote __blocking triton_ret_t remotefun2(struct myremotes *in, struct myremot
            fromstr.string, selfstr.string, in->t1, llu(in->ut1), out->t1, llu(out->ut1));
 
     triton_string_destroy(&fromstr);
-
     return ret;
 }
 
