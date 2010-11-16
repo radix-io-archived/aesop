@@ -481,4 +481,9 @@ static __attribute__((constructor)) void aer_remote_##__service_name__##_init_re
     triton_init_register("aesop.remote." #__service_name__, aer_remote_register_##__service_name__, NULL, NULL, 1, "aesop.remote.service"); \
 }
 
+#define AER_MK_STRUCT_DECLS(__name__, params...) \
+    triton_ret_t aer_init_##__name__(void * vx, ##params); \
+    triton_ret_t aer_copy_##__name__(void * vx, void *vv); \
+    triton_ret_t aer_destroy_##__name__(void * vx);
+
 #endif

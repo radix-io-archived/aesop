@@ -56,6 +56,7 @@ is set to true.
 > data Remote = Remote {
 >       filename :: FilePath,
 >       typeReg :: RemoteTypeRegistry,
+>       decls :: [CExtDecl],
 >       funs :: [(String, (CTypeSpec, [CDerivedDeclr]), [CDecl])],
 >       includes :: [FilePath],
 >       defines :: [(String, String)],
@@ -173,11 +174,16 @@ is set to true.
 >       when (isJust res) $ invalid (s ++ " already has encoding functions defined.\n") ni
 >       liftIO $ Data.HashTable.insert (typeReg r) s remoteTypeAllTrue
 
+> addRemoteDecl :: CExtDecl -> NodeInfo -> RemoteT ()
+> addRemoteDecl d ni = do
+>       r <- get
+>       put $ r { decls = d : (decls r) }
+
 > newRemoteState :: String -> [FilePath] -> [(String, String)] -> FilePath -> [String] -> IO Remote
 > newRemoteState fname includes defs macroHeader gccopts = do
 >       r <- Data.HashTable.new (==) Data.HashTable.hashString
 >       bp <- mkParser includes defs macroHeader gccopts
->       return $ Remote fname r [] includes defs (Just bp)
+>       return $ Remote fname r [] [] includes defs (Just bp)
 
 > getRemoteTypeName :: CTypeSpec -> Maybe String
 > getRemoteTypeName (CSUType (CStruct CStructTag (Just n) _ _ _) _) = Just $ "struct_" ++ (identToString n)
@@ -497,13 +503,6 @@ CTypeOfType CDecl NodeInfo
 > tripleFST :: (a,b,c) -> a
 > tripleFST (a,b,c) = a
 
-> registerTypedefTypedef :: CDecl -> RemoteT [CExtDecl]
-> registerTypedefTypedef t@(CDecl specs inits ni) = do
->       let ti@(Just (t1, t2)) = getTypeDefTypeDefInfo t
->       when (isNothing ti) $ invalid ("cannot register a remote type without a name\n") ni
->       return []
-      
-
 > registerStruct :: CDecl -> RemoteT [CExtDecl]
 > registerStruct d@(CDecl specs inits ni) = do
 >       let si = getStructInfo d
@@ -539,6 +538,7 @@ CTypeOfType CDecl NodeInfo
 >               copy <- mkCopyFun d sname allFields ni
 >               encStruct <- mkEncodingStruct d sname ni
 >               registerFullEncoding sname ni
+>               addRemoteDecl newS ni
 >               return [newS, dest, initNull, copy, size, enc, dec, init, encStruct]
 >          else return []
 
@@ -925,11 +925,29 @@ CTypeOfType CDecl NodeInfo
 >       return $ CTranslUnit (opidDecls ++ sDecls ++ [regf, ctor]) ni
 >       -- return $ CTranslUnit (opidDecls ++ sDecls ++ [regf]) ni
 
+> mkInitDeclParamStr :: NodeInfo -> String -> String -> Bool -> String
+> mkInitDeclParamStr ni typeName fieldName isPtr =
+>       let ptrParam = if isPtr then " * " else ""
+>       in (typeName ++ " " ++ ptrParam ++ " " ++ fieldName)
+
+> mkStructFunDecls :: CExtDecl -> RemoteT [CExtDecl]
+> mkStructFunDecls (CDeclExt d@(CDecl specs inits ni)) = do
+>       let si = getStructInfo d
+>           (Just (structName, fields)) = si
+>           s = getRemoteTypeName (getTypeSpec specs)
+>           sname = fromJust s
+>           allFields = join $ map splitDecls fields
+
+>       liftM (map CDeclExt) $ mkDeclsFromRemote "AER_MK_STRUCT_DECLS" (sname : (map (show . pretty) allFields)) ni
+
 > mkStubs :: NodeInfo -> RemoteT CTranslUnit
 > mkStubs ni = do
+>       r <- get
+>       let rdecls = reverse $ decls r
+>       allDecls <- liftM concat $ mapM mkStructFunDecls rdecls
 >       rs <- getRemotes
 >       stubs <- sequence $ map (\((,,) f r p) -> mkStubDecl f r p ni) rs 
->       return $ CTranslUnit stubs ni
+>       return $ CTranslUnit (allDecls ++ stubs) ni
 
 > generateAST :: FilePath -> IO CTranslUnit
 > generateAST input_file = do
