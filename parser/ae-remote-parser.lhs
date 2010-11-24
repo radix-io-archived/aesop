@@ -944,10 +944,11 @@ CTypeOfType CDecl NodeInfo
 > mkStubs ni = do
 >       r <- get
 >       let rdecls = reverse $ decls r
->       allDecls <- liftM concat $ mapM mkStructFunDecls rdecls
+>       funDecls <- mapM mkStructFunDecls rdecls
+>       let allDecls  = concat $ zipWith (\a b -> a:b) rdecls funDecls
 >       rs <- getRemotes
 >       stubs <- sequence $ map (\((,,) f r p) -> mkStubDecl f r p ni) rs 
->       return $ CTranslUnit (allDecls ++ stubs) ni
+>       return $ CTranslUnit (rdecls ++ allDecls ++ stubs) ni
 
 > generateAST :: FilePath -> IO CTranslUnit
 > generateAST input_file = do
