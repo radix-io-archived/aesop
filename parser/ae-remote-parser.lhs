@@ -948,7 +948,7 @@ CTypeOfType CDecl NodeInfo
 >       let allDecls  = concat $ zipWith (\a b -> a:b) rdecls funDecls
 >       rs <- getRemotes
 >       stubs <- sequence $ map (\((,,) f r p) -> mkStubDecl f r p ni) rs 
->       return $ CTranslUnit (rdecls ++ allDecls ++ stubs) ni
+>       return $ CTranslUnit (allDecls ++ stubs) ni
 
 > generateAST :: FilePath -> IO CTranslUnit
 > generateAST input_file = do
