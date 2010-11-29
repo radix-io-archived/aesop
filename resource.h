@@ -22,6 +22,9 @@
 #define ae_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) TRITON_SUCCESS
 #endif
 
+#define ext_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) \
+    __fname(__callback, __user_ptr, __hints, __resource_ctx, __op_id, 0, ##__fargs)
+
 #define ae_define_post(__ret_type, __fname, __fargs...) \
     triton_ret_t __fname(void (*__ae_callback)(void *ptr, __ret_type ret), \
                          void *__ae_user_ptr, \
