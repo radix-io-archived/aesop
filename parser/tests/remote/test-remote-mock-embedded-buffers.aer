@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
     }
     assert(argc > 1);
 
-    ret = triton_init();
+    ret = triton_init(0);
     triton_error_assert(ret);
 
     if(argc > 2)
