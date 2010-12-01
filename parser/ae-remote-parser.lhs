@@ -498,7 +498,7 @@ CTypeOfType CDecl NodeInfo
 >       let ffs = zip fields funs
 >           fields = ["encode", "decode", "encode_size", "init_null", "copy", "destroy"]
 >           funs = ["aer_encode_"++sname, "aer_decode_"++sname, "aer_encode_size_"++sname, "aer_init_null_"++sname, "aer_copy_"++sname, "aer_destroy_"++sname]
->       return $ mkFunPtrsStruct "aer_encoder" ("aer_encoder_"++sname) ffs True ni
+>       return $ mkFunPtrsStruct "aer_encoder" ("aer_encoder_"++sname++" __attribute__ ((unused))") ffs True ni
 
 > tripleFST :: (a,b,c) -> a
 > tripleFST (a,b,c) = a
