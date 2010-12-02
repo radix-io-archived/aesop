@@ -44,7 +44,7 @@
     triton_debug(ae_debug_blocking_funs, "[END]: %s (%p)\n", #__fname__, ctl);
 
 #define AE_MK_RET_DECL() \
-    triton_ret_t __ae_postret;
+    triton_ret_t __ae_postret __attribute__ ((unused));
     
 #define AE_MK_POSTCB_STMT(__fname, __ret_type, __ctl_name, __location) \
     if(__ae_postret != TRITON_SUCCESS) \
