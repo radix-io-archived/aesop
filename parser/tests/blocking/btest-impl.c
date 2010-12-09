@@ -60,7 +60,7 @@ ae_define_post(int, tctest1, int *a)
     struct ae_op *op;
     struct btest_op *bop;
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, __ae_callback, __ae_user_ptr, __ae_hints, __ae_ctx);
+    ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -77,7 +77,7 @@ ae_define_post(int, btest1, int *a)
     struct btest_op *bop;
     printf("BTEST1: %d\n", *a);
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, __ae_callback, __ae_user_ptr, __ae_hints, __ae_ctx);
+    ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -93,7 +93,7 @@ ae_define_post(int, btest2, int *a)
     struct btest_op *bop;
     printf("BTEST2: %d\n", *a);
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, __ae_callback, __ae_user_ptr, __ae_hints, __ae_ctx);
+    ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -109,7 +109,7 @@ ae_define_post(int, btest3, int *a)
     struct btest_op *bop;
     printf("BTEST3: %d\n", *a);
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, __ae_callback, __ae_user_ptr, __ae_hints, __ae_ctx);
+    ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -125,7 +125,7 @@ ae_define_post(int, btest_sleep, int secs)
     struct bsleep_op *bop;
     printf("BTEST SLEEP\n");
     op = ae_opcache_get(sleep_opcache);
-    ae_op_fill(op, __ae_callback, __ae_user_ptr, __ae_hints, __ae_ctx);
+    ae_op_fill(op);
     bop = ae_op_entry(op, struct bsleep_op, op);
     bop->sleep = secs;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -141,7 +141,7 @@ ae_define_post(int, btest_forever)
     struct btest_op *bop;
     printf("BTEST FOREVER\n");
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, __ae_callback, __ae_user_ptr, __ae_hints, __ae_ctx);
+    ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = NULL;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
@@ -157,7 +157,7 @@ ae_define_post(int, btest_random)
     struct btest_op *bop;
     printf("BTEST RANDOM\n");
     op = ae_opcache_get(test_opcache);
-    ae_op_fill(op, __ae_callback, __ae_user_ptr, __ae_hints, __ae_ctx);
+    ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = NULL;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));

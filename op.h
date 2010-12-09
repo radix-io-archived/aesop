@@ -24,12 +24,20 @@ typedef struct ae_op
 #define ae_invoke_callback(_op, __ret_type, _result) \
     ((void (*)(void *, __ret_type))(_op)->callback)((_op)->user_ptr, _result)
 
-#define ae_op_fill(_op, _cb, _up, _hints, _ctx) \
+#define ae_op_fill(_op)                         \
     do {                                        \
-        (_op)->callback = (_cb);                \
-        (_op)->user_ptr = (_up);                \
-        (_op)->hints = (_hints);                \
-        (_op)->ctx  = (_ctx);                   \
+        (_op)->callback = (__ae_callback);      \
+        (_op)->user_ptr = (__ae_user_ptr);      \
+        (_op)->hints = (__ae_hints);            \
+        (_op)->ctx  = (__ae_ctx);               \
+    } while(0)
+
+#define ae_op_fill_with_params(_op, _cb, _up, _hints, _ctx) \
+    do {                                                    \
+        (_op)->callback = (_cb);                            \
+        (_op)->user_ptr = (_up);                            \
+        (_op)->hints = (_hints);                            \
+        (_op)->ctx  = (_ctx);                               \
     } while(0)
 
 #define ae_ops_link_clear(_op) triton_list_link_clear(&(_op)->link)

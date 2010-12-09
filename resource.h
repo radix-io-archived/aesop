@@ -25,13 +25,13 @@
 #define ext_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) \
     __fname(__callback, __user_ptr, __hints, __resource_ctx, __op_id, 0, ##__fargs)
 
-#define ae_define_post(__ret_type, __fname, __fargs...) \
+#define ae_define_post(__ret_type, __fname, __fargs...)                    \
     triton_ret_t __fname(void (*__ae_callback)(void *ptr, __ret_type ret), \
-                         void *__ae_user_ptr, \
-                         ae_hints_t __ae_hints, \
-                         ae_context_t __ae_ctx, \
-                         ae_op_id_t *__ae_op_id, \
-                         int __ae_internal, \
+                         void *__ae_user_ptr,                              \
+                         ae_hints_t __ae_hints,                            \
+                         ae_context_t __ae_ctx,                            \
+                         ae_op_id_t *__ae_op_id,                           \
+                         int __ae_internal,                                \
                          ##__fargs)
 
 typedef struct ae_context *ae_context_t;
