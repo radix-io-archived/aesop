@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
     ae_context_t mpi_resource_ctx;
     int scan_ret;
 
-    triton_init(1, "triton.keyval");
+    triton_init(1, "triton.client");
 
     if(argc != 2)
     {
