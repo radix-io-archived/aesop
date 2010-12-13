@@ -35,6 +35,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     int rank, r1, r2, size;
     char n1str[100], n2str[100];
     int32_t res1 = 0, res2 = 0;
+    aer_remote_ctx_t rctx;
 
     /* we need to get the remote context from the hints, since
      * we call the remote_scatter_gather stub function locally.
