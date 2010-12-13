@@ -153,17 +153,11 @@ __blocking int aesop_main(int argc, char **argv)
 {
     triton_ret_t ret;
     ae_op_id_t op_id;
-    aer_remote_ctx_t rctx;
 
     ret = aer_remote_register_test_remote_mpi();
     triton_error_assert(ret);
 
-    ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mpi");
-    triton_error_assert(ret);
-
-    do_remote_test(rctx);
-
-    aer_remote_ctx_destroy(rctx);
+    do_remote_test(AER_DEFAULT_CTX);
 
     return 0;
 }

@@ -135,9 +135,6 @@ __blocking void do_remote_test(int count)
     triton_string_t selfstr;
     triton_ret_t ret;
 
-    ret = aer_remote_ctx_init(&remote_ctx, "triton.remote.retry", "mock");
-    triton_error_assert(ret);
-
     pwait
     {
         pprivate triton_addr_t self;
@@ -152,7 +149,7 @@ __blocking void do_remote_test(int count)
             triton_error_assert(ret);
 
             /* start server */
-            aer_service_engine_start(remote_ctx);
+            aer_service_engine_start(AER_DEFAULT_CTX);
         }
 
         pbranch

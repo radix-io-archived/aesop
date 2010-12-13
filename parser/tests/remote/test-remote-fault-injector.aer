@@ -39,8 +39,6 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     /* we need to get the remote context from the hints, since
      * we call the remote_scatter_gather stub function locally.
      */
-    aer_remote_ctx_t rctx;
-
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -147,10 +145,8 @@ __blocking void do_remote_test(void)
     }
     else
     {
-        ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mpi");
-        triton_error_assert(ret);
         /* service a single scatter/gather request */
-        ret = aer_service_requests(rctx, 1);
+        ret = aer_service_requests(AER_DEFAULT_CTX, 1);
     }
 }
 

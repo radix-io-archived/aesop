@@ -32,17 +32,13 @@ __remote __blocking triton_ret_t foobar(int32_t in, int32_t *out)
 
 __blocking void do_remote_test(void)
 {
-    aer_remote_ctx_t rctx;
     triton_ret_t ret;
-
-    ret = aer_remote_ctx_init(&rctx, "triton.remote.retry", "mpi");
-    triton_error_assert(ret);
 
     pwait
     {
         pbranch
         {
-            aer_service_engine_start(rctx);
+            aer_service_engine_start(AER_DEFAULT_CTX);
         }
         pbranch
         {
