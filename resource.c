@@ -1,15 +1,30 @@
 
+/* TODO: implement an alternative using poll() instead of epoll() for
+ * systems that don't have the latter
+ */
+#include <sys/epoll.h>
+#include <unistd.h>
+
 #include "src/common/triton-error.h"
 #include "src/aesop/resource.h"
+#include "src/common/triton-log.h"
+
+struct ae_poll_data
+{
+    int pipe_fds[2];
+    triton_ret_t (*poll_context)(ae_context_t context);
+};
 
 struct ae_resource_entry
 {
     int id;
+    struct ae_poll_data poll_data;
     struct ae_resource *resource;
 };
 
 static int ae_resource_count = 0;
 static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES];
+static int efd = -1;
 
 #define AE_RESOURCE_IDX2ID(reindex) (reindex+16)
 #define AE_RESOURCE_ID2IDX(rid) (rid-16)
@@ -18,31 +33,80 @@ struct ae_context
 {
     int id;
     int resource_count;
-    int *resource_ids;
+    int* resource_ids;
+    struct ae_poll_data* poll_data;
+    int efd;
 };
 
 static int ae_context_count = 0;
 static struct ae_context ae_context_entries[AE_MAX_CONTEXTS];
 
-triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
+/* NOTE: the ae_poll function will not probe a resource unless it writes a
+ * byte into the notify_pipe file descriptor
+ */
+triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid, int *notify_pipe)
 {
     int reindex = ae_resource_count;
+    int ret;
+    struct epoll_event event;
+
+    if(efd < 0)
+    {
+        /* epoll fd has not been created yet */
+        efd = epoll_create(32);
+        if(efd < 0)
+        {
+            triton_err(triton_log_default, "Error: could not create epoll fd for resource polling.\n");
+            return(TRITON_ERR_EPOLL);
+        }
+    }
 
     if(ae_resource_count == AE_MAX_RESOURCES)
     {
 	return TRITON_ERR_INVAL;
     }
 
+    ret = pipe(ae_resource_entries[reindex].poll_data.pipe_fds);
+    if(ret < 0)
+    {
+        triton_err(triton_log_default, "Error: could not create pipe for resource polling.\n");
+        return(TRITON_ERR_EPOLL);
+
+    }
+    ae_resource_entries[reindex].poll_data.poll_context =
+        resource->poll_context;
+    event.data.ptr = &ae_resource_entries[reindex].poll_data;
+    event.events = EPOLLIN;
+    ret = epoll_ctl(efd, EPOLL_CTL_ADD, 
+        ae_resource_entries[reindex].poll_data.pipe_fds[0], &event);
+    if(ret < 0)
+    {
+        triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
+        return(TRITON_ERR_EPOLL);
+
+    }
+
     ae_resource_entries[reindex].id = AE_RESOURCE_IDX2ID(reindex);
     ae_resource_entries[reindex].resource = resource;
     ae_resource_count++;
     *newid = AE_RESOURCE_IDX2ID(reindex);
+    *notify_pipe = ae_resource_entries[reindex].poll_data.pipe_fds[1];
     return TRITON_SUCCESS;
 }
 
 void ae_resource_unregister(int id)
 {
     int idx = AE_RESOURCE_ID2IDX(id);
+
+    /* TODO: what about contexts that might include this resource?  Do we
+     * just assume that contexts are always closed before resources are
+     * unregistered?
+     */
+
+    epoll_ctl(efd, EPOLL_CTL_DEL, 
+        ae_resource_entries[idx].poll_data.pipe_fds[0], NULL);
+    close(ae_resource_entries[idx].poll_data.pipe_fds[0]);
+    close(ae_resource_entries[idx].poll_data.pipe_fds[1]);
 
     if(idx != (ae_resource_count -1))
     {
@@ -65,6 +129,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
     struct ae_ctl *ctl;
     int resource_id, ridx;
     triton_ret_t ret, saved;
+    triton_ret_t ret;
     int error;
 
     if(triton_uint128_iszero(op_id))
@@ -207,69 +272,77 @@ void ae_backtrace(void)
 
 triton_ret_t ae_poll(ae_context_t context, int millisecs)
 {
-    int resource_ms, i;
-    int rid, ridx;
-    int resources_polled = 0;
-    triton_ret_t ret;
+    triton_ret_t tret;
+    int to_poll;
+    int ret;
+    struct epoll_event* events;
+    int event_count;
+    int i;
+    struct ae_poll_data* poll_data;
 
     if(context)
     {
-        resource_ms = millisecs / context->resource_count;
-        for(i = 0; i < context->resource_count; ++i)
-        {
-            rid = context->resource_ids[i];
-            ridx = AE_RESOURCE_ID2IDX(rid);
-            if(ae_resource_entries[ridx].resource->poll_context)
-            {
-                ret = ae_resource_entries[ridx].resource->poll_context(context, resource_ms);
-                resources_polled++;
-                if(ret == TRITON_ERR_TIMEDOUT)
-                {
-                    continue;
-                }
-                if(ret != TRITON_SUCCESS)
-                {
-                    return ret;
-                }
-            }
-        }
+        /* use context specific epoll fd */
+        to_poll = context->efd;
+        event_count = context->resource_count;
     }
     else
     {
-        resource_ms = millisecs / ae_resource_count;
-        for(i = 0; i < ae_resource_count; ++i)
+        /* use global epoll fd */
+        if(efd < 0)
         {
-            if(ae_resource_entries[i].resource->poll_context)
-            {
-                ret = ae_resource_entries[i].resource->poll_context(
-                    context, resource_ms);
-                resources_polled++;
-                if(ret == TRITON_ERR_TIMEDOUT)
-                {
-                    continue;
-                }
-                if(ret != TRITON_SUCCESS)
-                {
-                    return ret;
-                }
-            }
+            /* nothing to poll yet */
+            return(TRITON_SUCCESS);
         }
+        to_poll = efd;
+        event_count = ae_resource_count;
     }
 
-    if(resources_polled == 0)
+    events = malloc(sizeof(*events) * event_count);
+    if(!events)
     {
-        int nret;
-        struct timespec ts;
+        return(TRITON_ERR_NOMEM);
+    }
 
-        ts.tv_sec = (int)(millisecs / 1e3);
-        ts.tv_nsec = (millisecs % 1000) * 1e6;
-        nret = nanosleep(&ts, NULL);
-        if(nret != 0)
+    /* wait for a resource to indicate that it has something to do */
+    event_count = epoll_wait(to_poll, events, event_count, millisecs);
+    if(event_count < 0)
+    {
+        free(events);
+        triton_err(triton_log_default, "Error: could not epoll_wait for resource polling.\n");
+        return(TRITON_ERR_EPOLL);
+    }
+
+    /* this means that the epoll timed out without finding any work */
+    if(event_count == 0)
+    {
+        return(TRITON_ERR_TIMEDOUT);
+    }
+
+    /* poll each resource that needs attention */
+    for(i=0; i<event_count; i++)
+    {
+        char onebyte;
+
+        poll_data = (struct ae_poll_data*)events[i].data.ptr;
+        /* empty the pipe */
+        do
         {
-            return triton_error_from_errno(errno);
+            ret = read(poll_data->pipe_fds[0], &onebyte, 1);
+        } while(ret == 1);
+        /* we better not get data on this pipe if the resource doesn't
+         * provide a poll function
+         */
+        assert(poll_data->poll_context);
+        tret = poll_data->poll_context(context);
+        if(tret != TRITON_SUCCESS)
+        {
+            return(tret);
         }
     }
-    return TRITON_SUCCESS;
+
+    free(events);
+    return(TRITON_SUCCESS);
 }
 
 #include <stdarg.h>
@@ -282,6 +355,8 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
     ae_context_t c;
     int i, j, reindex;
     triton_ret_t ret;
+    struct epoll_event event;
+    int ep_ret;
 
     if(ae_context_count == AE_MAX_CONTEXTS)
     {
@@ -292,10 +367,30 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
     c->id = ae_context_count;
     ae_context_count++;
     c->resource_count = resource_count;
-    c->resource_ids = malloc(sizeof(int) * resource_count);
+    c->resource_ids = malloc(sizeof(*c->resource_ids) * resource_count);
     if(!c->resource_ids)
     {
         return TRITON_ERR_NOMEM;
+    }
+    c->poll_data = malloc(sizeof(*c->poll_data) * resource_count);
+    if(!c->poll_data)
+    {
+        free(c->resource_ids);
+        return TRITON_ERR_NOMEM;
+    }
+
+    for(i=0; i<resource_count; i++)
+    {
+        c->poll_data[i].pipe_fds[0] = -1;
+        c->poll_data[i].pipe_fds[1] = -1;
+    }
+    c->efd = epoll_create(32);
+    if(c->efd < 0)
+    {
+        triton_err(triton_log_default, "Error: could not create epoll fd for resource polling.\n");
+        free(c->resource_ids);
+        free(c->poll_data);
+        return(TRITON_ERR_EPOLL);
     }
     reindex = 0;
 
@@ -313,9 +408,31 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
         {
             if(!strcmp(ae_resource_entries[j].resource->resource_name, rname))
             {
+                event.data.ptr = &c->poll_data[reindex];
+                event.events = EPOLLIN;
                 if(ae_resource_entries[j].resource->register_context)
                 {
-                    ret = ae_resource_entries[j].resource->register_context(c);
+                    /* if the resource supports contexts, then give it a
+                     * separate pipe fd to use just for this context
+                     */
+                    ep_ret = pipe(c->poll_data[reindex].pipe_fds);
+                    if(ep_ret < 0)
+                    {
+                        /* TODO: clean up better here */
+                        triton_err(triton_log_default, "Error: could not create pipe for resource polling.\n");
+                        return(TRITON_ERR_EPOLL);
+                    }
+                    c->poll_data[reindex].poll_context = ae_resource_entries[j].resource->poll_context;
+                    ep_ret = epoll_ctl(efd, EPOLL_CTL_ADD, 
+                        c->poll_data[reindex].pipe_fds[0], &event);
+                    if(ep_ret < 0)
+                    {
+                        /* TODO: clean up better here */
+                        triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
+                        return(TRITON_ERR_EPOLL);
+                    }
+
+                    ret = ae_resource_entries[j].resource->register_context(c, c->poll_data[reindex].pipe_fds[1]);
                     if(ret != TRITON_SUCCESS)
                     {
                         /* what do we do if a context fails to register with a resource? */
@@ -323,7 +440,31 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
                         return ret;
                     }
                 }
+                else
+                {
+                    /* resource doesn't do anything special for contexts;
+                     * just re-use its general pipe fd
+                     */
+                    ep_ret = epoll_ctl(efd, EPOLL_CTL_ADD, 
+                        ae_resource_entries[j].poll_data.pipe_fds[0], &event);
+                    if(ep_ret < 0)
+                    {
+                        /* TODO: clean up better here */
+                        triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
+                        return(TRITON_ERR_EPOLL);
+                    }
+
+
+                }
                 c->resource_ids[reindex] = ae_resource_entries[j].id;
+
+                if(ret < 0)
+                {
+                    triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
+                    /* TODO: need to clean up better here */
+                    return(TRITON_ERR_EPOLL);
+                }
+
                 reindex++;
                 resource_found = 1;
                 break;
@@ -354,11 +495,18 @@ triton_ret_t ae_context_destroy(ae_context_t context)
         {
             ae_resource_entries[idx].resource->unregister_context(context);
         }
+        if(context->poll_data[i].pipe_fds[0] >= 0)
+            close(context->poll_data[i].pipe_fds[0]);
+        if(context->poll_data[i].pipe_fds[1] >= 0)
+            close(context->poll_data[i].pipe_fds[1]);
     }
     free(context->resource_ids);
+    free(context->poll_data);
     context->resource_ids = NULL;
+    context->poll_data = NULL;
     context->id = -1;
     context->resource_count = -1;
+    close(context->efd);
     return TRITON_SUCCESS;
 }
 
