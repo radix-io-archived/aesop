@@ -47,7 +47,7 @@ void ae_resource_unregister(int id)
     if(idx != (ae_resource_count -1))
     {
 	/* this is not the last resource in the table; shift everything down */
-	memmove(&ae_resource_entries[idx], &ae_resource_entries[idx+1], 
+	memmove(&ae_resource_entries[idx], &ae_resource_entries[idx+1],
 		(sizeof(struct ae_resource_entry) * (ae_resource_count-idx-1)));
     }
     ae_resource_count--;
@@ -59,12 +59,13 @@ void ae_resource_unregister(int id)
  * the callback for the operation is responsible for returning TRITON_ERR_CANCELLED
  * in the callback or somehow notifying through the callback that the operation was
  * cancelled.
- */ 
+ */
 triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 {
     struct ae_ctl *ctl;
     int resource_id, ridx;
     triton_ret_t ret, saved;
+    int error;
 
     if(triton_uint128_iszero(op_id))
     {
@@ -82,11 +83,14 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
             return TRITON_SUCCESS;
         }
 
-	triton_mutex_lock(&ctl->mutex);
+	error = triton_mutex_lock(&ctl->mutex);
+        assert(!error);
+
 	if(ctl->cancelled)
 	{
 	    /* already cancelled! */
-	    triton_mutex_unlock(&ctl->mutex);
+	    error = triton_mutex_unlock(&ctl->mutex);
+            assert(!error);
 	    return TRITON_ERR_INVAL;
 	}
 
@@ -99,7 +103,8 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 	{
 	    ret = ae_cancel_op(context, ctl->current_op_id);
 	}
-	triton_mutex_unlock(&ctl->mutex);
+	error = triton_mutex_unlock(&ctl->mutex);
+        assert(!error);
 	return ret;
     }
     else
@@ -152,7 +157,7 @@ uint64_t ae_id_lookup(ae_op_id_t id, int *resource_id)
  * in the callback or somehow notifying through the callback that the operation was
  * cancelled.  Right now, if one of the operations fails to be cancelled, we return
  * failure immediately instead of trying to cancel the others.
- */ 
+ */
 triton_ret_t ae_cancel_children(ae_context_t context, struct ae_ctl *ctl)
 {
     triton_ret_t ret;
@@ -295,7 +300,7 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
     reindex = 0;
 
 
-    /* step through the resource names passed in and register the context with them */ 
+    /* step through the resource names passed in and register the context with them */
     va_start(ap, resource_count);
     for(i = 0; i < resource_count; ++i)
     {
@@ -334,7 +339,7 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
     va_end(ap);
 
     *context = c;
-    return TRITON_SUCCESS; 
+    return TRITON_SUCCESS;
 }
 
 triton_ret_t ae_context_destroy(ae_context_t context)
@@ -380,7 +385,7 @@ int ae_count_branches(struct ae_ctl *ctl)
     r = triton_list_count(&ctl->children);
     return r;
 }
-    
+
 static triton_list_t ae_lone_pbranch_list = TRITON_LIST_STATIC_INITIALIZER(ae_lone_pbranch_list);
 static triton_mutex_t ae_lone_pbranch_mutex = TRITON_MUTEX_INITIALIZER;
 
@@ -410,7 +415,7 @@ int ae_lone_pbranches_count(void)
 void ae_get_stack(struct ae_ctl *ctl, triton_string_t *stack, int *inout_count)
 {
     int i = 0;
-    while(ctl && i < *inout_count) 
+    while(ctl && i < *inout_count)
     {
         triton_string_init(&(stack[i++]), ctl->name);
         ctl = ctl->parent;
@@ -440,7 +445,7 @@ void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
         free(stack[i]);
     }
 }
-    
+
 #define TRITON_ERROR_WRAP_AESOP_STACK_SIZE 32
 
 triton_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, triton_ret_t parent)

@@ -78,7 +78,7 @@ triton_ret_t ae_poll(ae_context_t context, int ms);
 triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
 
 /* The ae_ctl structure is used by the aesop generated code to manage parallel and
- * nested operations.  This structure is not needed by resource writers or aesop 
+ * nested operations.  This structure is not needed by resource writers or aesop
  * code.
  * TODO: move these to a separate header
  */
@@ -95,7 +95,7 @@ struct ae_ctl
     int completed;
     int allposted;
     int hit_pbreak;
-    int in_pwait;    
+    int in_pwait;
     ae_hints_t hints;
     ae_context_t context;
     int refcount;
@@ -108,6 +108,11 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
                                int internal,
                                void *user_ptr)
 {
+    pthread_mutexattr_t attr;
+
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
+
     ctl->name = name;
     ctl->posted = 0;
     ctl->completed = 0;
@@ -117,7 +122,7 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     ctl->hints = hints;
     ctl->context = context;
     ctl->cancelled = 0;
-    triton_mutex_init(&ctl->mutex, NULL);
+    triton_mutex_init(&ctl->mutex, &attr);
     triton_list_init(&ctl->children);
     ctl->refcount = 1;
     triton_uint128_setzero(ctl->current_op_id);
@@ -226,3 +231,11 @@ int main(int argc, char **argv)  \
 }
 
 #endif /* __AE_RESOURCE_H__ */
+
+/*
+ * Local Variables:
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
