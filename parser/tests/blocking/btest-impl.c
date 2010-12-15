@@ -83,6 +83,7 @@ ae_define_post(int, btest1, int *a)
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list1);
+    ae_resource_request_poll(NULL, btest_resource_id);
 
     return TRITON_SUCCESS;
 }
@@ -99,6 +100,7 @@ ae_define_post(int, btest2, int *a)
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list2);
+    ae_resource_request_poll(NULL, btest_resource_id);
 
     return TRITON_SUCCESS;
 }
@@ -115,6 +117,7 @@ ae_define_post(int, btest3, int *a)
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list3);
+    ae_resource_request_poll(NULL, btest_resource_id);
 
     return TRITON_SUCCESS;
 }
@@ -131,6 +134,7 @@ ae_define_post(int, btest_sleep, int secs)
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &slist);
+    ae_resource_request_poll(NULL, btest_resource_id);
 
     return TRITON_SUCCESS;
 }
@@ -147,6 +151,7 @@ ae_define_post(int, btest_forever)
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &flist);
+    ae_resource_request_poll(NULL, btest_resource_id);
 
     return TRITON_SUCCESS;
 }
@@ -163,6 +168,7 @@ ae_define_post(int, btest_random)
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &rlist);
+    ae_resource_request_poll(NULL, btest_resource_id);
 
     return TRITON_SUCCESS;
 }
@@ -189,7 +195,7 @@ static struct btest_op * poll_list(ae_ops_t *list)
    return NULL;
 }
 
-static triton_ret_t btest_poll(ae_context_t context, int ms)
+static triton_ret_t btest_poll(ae_context_t context)
 {
    struct btest_op *b;
    struct bsleep_op *s;
@@ -249,6 +255,7 @@ static triton_ret_t btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
 	    ae_ops_del(t);
 	    printf("forever op cancelled\n");
 	    ae_ops_enqueue(&b->op, &clist);
+            ae_resource_request_poll(NULL, btest_resource_id);
 	}
    }
 
