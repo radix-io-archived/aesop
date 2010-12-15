@@ -52,13 +52,14 @@ struct ae_resource
     triton_ret_t (*test)(ae_op_id_t id, int ms_timeout);
     triton_ret_t (*poll_context)(ae_context_t context);
     triton_ret_t (*cancel)(ae_context_t ctx, ae_op_id_t id);
-    triton_ret_t (*register_context)(ae_context_t context, int notify_fd);
+    triton_ret_t (*register_context)(ae_context_t context);
     triton_ret_t (*unregister_context)(ae_context_t context);
 };
 
 /* Called by resources to register themselves to the resource framework */
-triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid, int* notify_pipe);
+triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid);
 void ae_resource_unregister(int resource_id);
+void ae_resource_request_poll(ae_context_t context, int resource_id);
 
 /* Contexts are created to allow separation of polling for different logical
  * groups of operations.
