@@ -340,6 +340,14 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
 
     /* wait for a resource to indicate that it has something to do */
     event_count = epoll_wait(to_poll, events, event_count, millisecs);
+
+    /* if interrupted, just exit and let the caller try again */
+    if(event_count < 0 && errno == EINTR)
+    {
+        return(TRITON_SUCCESS);
+    }
+
+    /* general error */
     if(event_count < 0)
     {
         free(events);
