@@ -450,8 +450,6 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
         {
             if(!strcmp(ae_resource_entries[j].resource->resource_name, rname))
             {
-                event.data.ptr = &c->poll_data[reindex];
-                event.events = EPOLLIN;
                 if(ae_resource_entries[j].resource->register_context)
                 {
                     /* if the resource supports contexts, then give it a
@@ -485,7 +483,9 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
                 }
 
                 /* monitor the context-specific pipe */
-                ep_ret = epoll_ctl(efd, EPOLL_CTL_ADD, 
+                event.data.ptr = &c->poll_data[reindex];
+                event.events = EPOLLIN;
+                ep_ret = epoll_ctl(c->efd, EPOLL_CTL_ADD, 
                     c->poll_data[reindex].pipe_fds[0], &event);
                 if(ep_ret < 0 && errno != EEXIST)
                 {
