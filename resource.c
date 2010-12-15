@@ -163,7 +163,6 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 {
     struct ae_ctl *ctl;
     int resource_id, ridx;
-    triton_ret_t ret, saved;
     triton_ret_t ret;
     int error;
 
