@@ -479,7 +479,7 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
                 /* monitor the context-specific pipe */
                 ep_ret = epoll_ctl(efd, EPOLL_CTL_ADD, 
                     c->poll_data[reindex].pipe_fds[0], &event);
-                if(ep_ret < 0)
+                if(ep_ret < 0 && errno != EEXIST)
                 {
                     /* TODO: clean up better here */
                     triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
@@ -487,13 +487,6 @@ triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
                 }
 
                 c->resource_ids[reindex] = ae_resource_entries[j].id;
-
-                if(ret < 0)
-                {
-                    triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
-                    /* TODO: need to clean up better here */
-                    return(TRITON_ERR_EPOLL);
-                }
 
                 reindex++;
                 resource_found = 1;
