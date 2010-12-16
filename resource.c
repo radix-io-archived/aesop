@@ -389,7 +389,7 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
 
 #include <stdarg.h>
 
-triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...)
+triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attribute__((unused)), int resource_count, ...)
 {
     va_list ap;
     char *rname;

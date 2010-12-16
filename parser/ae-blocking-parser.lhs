@@ -880,9 +880,9 @@ params->val = val;
 >	setErrorWriter mkErrorPostHandler
 >	setPBDone mkPBranchPostDoneStmts
 >	setTransExit transformPostFuncReturnStmts
->	gspWarn
->	    ("The blocking function '" ++ fname ++ "' does not contain any blocking statements\n")
->	    (getNI b)
+>	-- gspWarn
+>	--    ("The blocking function '" ++ fname ++ "' does not contain any blocking statements\n")
+>	--    (getNI b)
 >	return tlInitStmts
 
 > generateFirstPostStmts _ = error "Not a FunContext.  Invalid code path."

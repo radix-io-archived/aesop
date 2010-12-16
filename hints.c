@@ -72,7 +72,7 @@ __attribute__((constructor)) void ae_hints_init_register(void);
 
 __attribute__((constructor)) void ae_hints_init_register(void)
 {
-    triton_init_register("aesop.hints", ae_hints_init, ae_hints_finalize, NULL, 0);
+    triton_init_register("aesop.hints", ae_hints_init, ae_hints_finalize, NULL);
 }
 
 

@@ -62,9 +62,15 @@ void ae_resource_unregister(int resource_id);
 void ae_resource_request_poll(ae_context_t context, int resource_id);
 
 /* Contexts are created to allow separation of polling for different logical
- * groups of operations.
+ * groups of operations.  Don't use this function.  Instead, use the associated
+ * ae_context_create macro.
  */
-triton_ret_t ae_context_create(ae_context_t *context, int resource_count, ...);
+triton_ret_t _ae_context_create(ae_context_t *context, const char *format, int resource_count, ...) __attribute__((format (printf, 2, 4))) ;
+
+/* macro to calculate the number of resources passed in as string 
+ * arguments so we don't have to pass in the count explicitly. */
+#define ae_context_create(_context, ...) \
+    _ae_context_create(_context, MAKE_VARARG_ARGS(__VA_ARGS__) , ##__VA_ARGS__)
 
 /* Context destruction.  Called to cleanup state allocated in ae_context_create.
  */
@@ -202,7 +208,7 @@ triton_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, triton_ret_t);
 static inline triton_ret_t aesop_error_wrap_stack(triton_ret_t ret) { return ret; }
 #endif
 
-#define aesop_main_set(__main_blocking_function__, context_count, ...) \
+#define aesop_main_set(__main_blocking_function__, ...) \
 static int __main_done=0; \
 static int __main_ret; \
 static void __main_cb(void *user_ptr, int t) \
@@ -215,9 +221,9 @@ int main(int argc, char **argv)  \
     ae_context_t __main_ctx; \
     ae_op_id_t __main_opid; \
     triton_ret_t ret; \
-    ret = triton_init(1, "triton.client"); \
+    ret = triton_init("triton.client"); \
     triton_error_assert(ret); \
-    ret = ae_context_create(&__main_ctx, context_count, __VA_ARGS__); \
+    ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
     triton_error_assert(ret); \
     ret = ae_post_blocking(__main_blocking_function__, __main_cb, NULL, NULL, __main_ctx, &__main_opid, argc, argv); \
     triton_error_assert(ret); \

@@ -96,7 +96,7 @@ extern triton_debug_mask_t encoding_dbg_mask;
 #define AER_MK_DECODE_STMTS_START(__type__, __canon_type__) \
 { \
     x = (__type__)vx; \
-    triton_debug(encoding_dbg_mask, "decoding:" #__canon_type__ ":%s\t cptr=%p\n", varname, triton_buffer_cptr(buf)); \
+    triton_debug(encoding_dbg_mask, "decoding:" #__canon_type__ ":%s\t cptr=%p\n", (varname ? *varname : ""), triton_buffer_cptr(buf)); \
 }
 
 #define AER_MK_DECODE_STMTS_END() \
@@ -478,7 +478,7 @@ __blocking triton_ret_t __service_##__fname__( \
 #define AER_MK_REG_CTOR_FNDEF(__service_name__) \
 static __attribute__((constructor)) void aer_remote_##__service_name__##_init_register(void) \
 { \
-    triton_init_register("aesop.remote." #__service_name__, aer_remote_register_##__service_name__, NULL, NULL, 1, "aesop.remote.service"); \
+    triton_init_register("aesop.remote." #__service_name__, aer_remote_register_##__service_name__, NULL, NULL, "aesop.remote.service"); \
 }
 
 #define AER_MK_STRUCT_DECLS(__name__, params...) \

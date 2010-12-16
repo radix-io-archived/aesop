@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
     }
     assert(argc > 1);
 
-    ret = triton_init(1, "triton.client");
+    ret = triton_init("triton.client");
     triton_error_assert(ret);
 
     if(argc > 2)
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
     ret = aer_remote_register_test_remote_mock_buf();
     triton_error_assert(ret);
 
-    ret = ae_context_create(&mock_resource_ctx, 2, "sched", "timer");
+    ret = ae_context_create(&mock_resource_ctx, "sched", "timer");
     triton_error_assert(ret);
 
     ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mock_resource_ctx, &op_id, atoi(argv[1]));

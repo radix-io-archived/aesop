@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
     triton_timer_init();
     btest_init();
 
-    ae_context_create(&ctx, 2, "btest", "timer");
+    ae_context_create(&ctx, "btest", "timer");
 
     for(i = 0; i < 100; ++i)
     {
