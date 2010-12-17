@@ -70,13 +70,6 @@
     done_ctl->parent->gen.hit_pbreak = 1; \
     triton_uint128_setzero(done_ctl->gen.current_op_id); \
     triton_list_del(&done_ctl->gen.link); \
-    __ae_cancel_ret = ae_cancel_children(done_ctl->gen.context, &done_ctl->parent->gen); \
-    if(__ae_cancel_ret != TRITON_SUCCESS) \
-    { \
-        triton_mutex_unlock(&done_ctl->parent->gen.mutex); \
-        triton_err(triton_log_default, "INVALID STATE: %s:%d: ae_cancel_cancel did not return success\n", #__fname, __location); \
-        triton_error_assert(__ae_cancel_ret); \
-    } \
 }
 
 #define AE_MK_PBRANCH_CB_START_DECLS(__prefix, __ctl_name) \
@@ -112,9 +105,15 @@
 }
 
 #define AE_MK_PBRANCH_CB_DONE_STMTS(__id) \
+    triton_mutex_lock(&ctl->gen.mutex); \
+    __ae_pwait_done = ctl->gen.allposted == 1 && ctl->gen.posted == ctl->gen.completed; \
+    triton_mutex_unlock(&ctl->gen.mutex); \
     if(!__ae_pwait_done) goto __ae_callback_end;
 
 #define AE_MK_PBRANCH_POST_DONE_STMTS(__pbranch_id) \
+    triton_mutex_lock(&ctl->gen.mutex); \
+    __ae_pwait_done = ctl->gen.allposted == 1 && ctl->gen.posted == ctl->gen.completed; \
+    triton_mutex_unlock(&ctl->gen.mutex); \
     if(!__ae_pwait_done) goto __ae_##__pbranch_id##_end;
 
 #define AE_MK_CB_DECLS(__ctl, __ctl_type) \
