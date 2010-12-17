@@ -115,11 +115,6 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
                                int internal,
                                void *user_ptr)
 {
-    pthread_mutexattr_t attr;
-
-    pthread_mutexattr_init(&attr);
-    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
-
     ctl->name = name;
     ctl->posted = 0;
     ctl->completed = 0;
@@ -129,7 +124,7 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     ctl->hints = hints;
     ctl->context = context;
     ctl->cancelled = 0;
-    triton_mutex_init(&ctl->mutex, &attr);
+    triton_mutex_init(&ctl->mutex, NULL);
     triton_list_init(&ctl->children);
     ctl->refcount = 1;
     triton_uint128_setzero(ctl->current_op_id);

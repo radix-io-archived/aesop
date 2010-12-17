@@ -204,9 +204,6 @@ __blocking int aesop_main(int argc, char **argv)
     ret = ae_hints_type_register("triton.mock.self", 0, NULL);
     triton_error_assert(ret);
 
-    ret = triton_msg_enable_method("mock");
-    triton_error_assert(ret);
-
     do_remote_test(atoi(argv[1]), AER_DEFAULT_CTX);
 
     return 0;

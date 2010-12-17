@@ -191,9 +191,6 @@ int main(int argc, char *argv[])
     ret = ae_hints_type_register("triton.mock.self", 0, NULL);
     triton_error_assert(ret);
 
-    ret = triton_msg_enable_method("mock");
-    triton_error_assert(ret);
-
     ret = aer_remote_register_test_remote_mock_buf();
     triton_error_assert(ret);
 
