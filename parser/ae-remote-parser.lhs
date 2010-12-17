@@ -419,7 +419,7 @@ CTypeOfType CDecl NodeInfo
 >     when (isNothing tparam) $ invalid "not a known encoding type" ni
 >     stmts <- mkInitStmts (fromJust tparam) fields ni
 >     return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
->                       [(CTypeQual (CInlineQual ni))]
+>                       []
 >                       ("aer_init_" ++ sname)
 >                       ([mkCDecl (CVoidType ni) [CPtrDeclr [] ni] "vx" ni] ++ params)
 >                       stmts
