@@ -70,7 +70,7 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format, int r
 /* macro to calculate the number of resources passed in as string 
  * arguments so we don't have to pass in the count explicitly. */
 #define ae_context_create(_context, ...) \
-    _ae_context_create(_context, MAKE_VARARG_ARGS(__VA_ARGS__) , ##__VA_ARGS__)
+    _ae_context_create(_context, FORMAT_ARGS(__VA_ARGS__) , ##__VA_ARGS__)
 
 /* Context destruction.  Called to cleanup state allocated in ae_context_create.
  */
