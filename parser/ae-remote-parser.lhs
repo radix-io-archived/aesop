@@ -342,8 +342,8 @@ CTypeOfType CDecl NodeInfo
 >                          mkCDecl (CVoidType ni) [CPtrDeclr [] ni] "vx" ni]
 >                         stmts
 
-> mkPtrInitNullBlock :: NodeInfo -> String -> String -> Bool -> RemoteT [CStat]
-> mkPtrInitNullBlock ni typeName fieldName _ = do
+> mkPtrInitNullBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
+> mkPtrInitNullBlock ni _ typeName fieldName _ = do
 >       mkStmtFromRemote "AER_MK_INIT_PTR_NULL" [typeName, fieldName] ni
 
 > mkInitNullBlock :: NodeInfo -> String -> String -> String -> Bool -> RemoteT [CStat]
@@ -362,12 +362,13 @@ CTypeOfType CDecl NodeInfo
 >       ptrFieldInfo <- mapM getFieldInfo ptrFields
 >       nonPtrFieldsInfo <- mapM getFieldInfo nonPtrFields
 >       when (isNothing baseTypeName) $ invalid ("type '" ++ (show $ pretty stype) ++ "does not have a known encoding type") ni
+>       nullBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkPtrInitNullBlock ni $ fromJust baseTypeName) ptrFieldInfo
 >       initBlocks <- liftM concat $ sequence $ map (uncurry3 $ mkInitNullBlock ni $ fromJust baseTypeName) nonPtrFieldsInfo
 >       initDecls <- mkDeclsFromRemote "AER_MK_INIT_DECLS" [show $ pretty anonSType] ni
 >       startStmts <- mkStmtFromRemote "AER_MK_INIT_STMTS_START" [show $ pretty anonSType] ni
 >       endStmts <- mkStmtFromRemote "AER_MK_INIT_STMTS_END" [] ni
 
->       return $ mkCompoundWithDecls Nothing initDecls (startStmts ++ initBlocks ++ endStmts) ni
+>       return $ mkCompoundWithDecls Nothing initDecls (startStmts ++ nullBlocks ++ initBlocks ++ endStmts) ni
 
 > mkInitNullFun :: CDecl -> String -> [CDecl] -> NodeInfo -> RemoteT CExtDecl
 > mkInitNullFun decl sname fields ni = do

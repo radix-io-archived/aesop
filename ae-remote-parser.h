@@ -6,7 +6,7 @@
 #include "src/common/triton-error.h"
 #include "src/common/triton-log.h"
 #include "src/remote/remote.hae"
-#include "src/remote/error-encoding.h"
+#include "src/remote/encoding.h"
 #include "src/common/triton-init.h"
 #include "src/aesop/hints.h"
 #include "src/common/triton-debug.h"
@@ -48,7 +48,7 @@ extern triton_debug_mask_t encoding_dbg_mask;
 }
 
 #define AER_MK_ENCODE_DECLS(__type__) \
-    triton_ret_t ret; \
+    triton_ret_t ret = TRITON_SUCCESS; \
     __type__ x;
 
 #define AER_MK_ENCODE_STMTS_START(__type__, __canon_type__) \
@@ -90,7 +90,7 @@ extern triton_debug_mask_t encoding_dbg_mask;
 }
 
 #define AER_MK_DECODE_DECLS(__type__) \
-    triton_ret_t ret; \
+    triton_ret_t ret = TRITON_SUCCESS; \
     __type__ x;
 
 #define AER_MK_DECODE_STMTS_START(__type__, __canon_type__) \
@@ -176,7 +176,7 @@ extern triton_debug_mask_t encoding_dbg_mask;
 }
 
 #define AER_MK_INIT_DECLS(__type__) \
-    triton_ret_t ret; \
+    triton_ret_t ret = TRITON_SUCCESS; \
     __type__ x;
 
 #define AER_MK_INIT_STMTS_START(__type__) \
@@ -205,7 +205,7 @@ extern triton_debug_mask_t encoding_dbg_mask;
 }
 
 #define AER_MK_COPY_DECLS(__type__) \
-    triton_ret_t ret; \
+    triton_ret_t ret = TRITON_SUCCESS; \
     __type__ x; \
     __type__ v;
 
