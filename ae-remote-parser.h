@@ -482,8 +482,14 @@ static __attribute__((constructor)) void aer_remote_##__service_name__##_init_re
 }
 
 #define AER_MK_STRUCT_DECLS(__name__, params...) \
-    triton_ret_t aer_init_##__name__(void * vx, ##params); \
     triton_ret_t aer_copy_##__name__(void * vx, void *vv); \
-    triton_ret_t aer_destroy_##__name__(void * vx);
+    void aer_destroy_##__name__(void * vx); \
+    triton_ret_t aer_init_null_##__name__(void *vx); \
+    uint64_t aer_encode_size_##__name__(const char *varname, void *vx); \
+    triton_ret_t aer_encode_##__name__(triton_buffer_t *buf, const char *varname, void *vx); \
+    triton_ret_t aer_decode_##__name__(triton_buffer_t *buf, char **varname, void *vx);
+
+#define AER_MK_STRUCT_INIT_DECL(__name__, params...) \
+    triton_ret_t aer_init_##__name__(void *vx, ##params);
 
 #endif

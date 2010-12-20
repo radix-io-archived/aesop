@@ -273,7 +273,8 @@ CTypeOfType CDecl NodeInfo
 >     when (isNothing tparam) $ invalid "not a known encoding type" ni
 >     stmts <- mkEncodeStmts (fromJust tparam) fields ni
 >     return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
->                       [(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       --[(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       []
 >                       ("aer_encode_" ++ sname)
 >                       [mkCDecl (CTypeDef (newIdent "triton_buffer_t" ni) ni) [CPtrDeclr [] ni] "buf" ni,
 >                        mkConstCDecl (CCharType ni) [CPtrDeclr [] ni] "varname" ni,
@@ -308,7 +309,8 @@ CTypeOfType CDecl NodeInfo
 >     when (isNothing tparam) $ invalid "not a known encoding type" ni
 >     stmts <- mkDecodeStmts (fromJust tparam) fields ni
 >     return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
->                       [(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       --[(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       []
 >                       ("aer_decode_" ++ sname)
 >                       [mkCDecl (CTypeDef (newIdent "triton_buffer_t" ni) ni) [CPtrDeclr [] ni] "buf" ni,
 >                        mkCDecl (CCharType ni) [CPtrDeclr [] ni, CPtrDeclr [] ni] "varname" ni,
@@ -336,7 +338,8 @@ CTypeOfType CDecl NodeInfo
 >       when (isNothing tparam) $ invalid "not a known encoding type" ni
 >       stmts <- mkSizeStmts (fromJust tparam) fields ni
 >       return $ mkFunDef ((CTypeDef (newIdent "uint64_t" ni) ni), [])
->                         [(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                         --[(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                         []
 >                         ("aer_encode_size_" ++ sname)
 >                         [mkConstCDecl (CCharType ni) [CPtrDeclr [] ni] "varname" ni,
 >                          mkCDecl (CVoidType ni) [CPtrDeclr [] ni] "vx" ni]
@@ -377,7 +380,8 @@ CTypeOfType CDecl NodeInfo
 >     when (isNothing tparam) $ invalid "not a known encoding type" ni
 >     stmts <- mkInitNullStmts (fromJust tparam) fields ni
 >     return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
->                       [(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       --[(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       []
 >                       ("aer_init_null_" ++ sname)
 >                       ([mkCDecl (CVoidType ni) [CPtrDeclr [] ni] "vx" ni])
 >                       stmts
@@ -462,7 +466,8 @@ CTypeOfType CDecl NodeInfo
 >     when (isNothing tparam) $ invalid "not a known encoding type" ni
 >     stmts <- mkCopyStmts (fromJust tparam) fields ni
 >     return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
->                       [(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       --[(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       []
 >                       ("aer_copy_" ++ sname)
 >                       [mkVoidParam "vx", mkVoidParam "vv"]
 >                       stmts
@@ -489,7 +494,8 @@ CTypeOfType CDecl NodeInfo
 >     when (isNothing tparam) $ invalid "not a known encoding type" ni
 >     stmts <- mkDestroyStmts (fromJust tparam) fields ni
 >     return $ mkFunDef ((CVoidType ni), [])
->                       [(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       --[(CStorageSpec (CStatic ni)), (CTypeQual (CInlineQual ni))]
+>                       []
 >                       ("aer_destroy_" ++ sname)
 >                       [mkCDecl (CVoidType ni) [CPtrDeclr [] ni] "vx" ni]
 >                       stmts
@@ -538,9 +544,10 @@ CTypeOfType CDecl NodeInfo
 >               dest <- mkDestroyFun d sname allFields ni
 >               copy <- mkCopyFun d sname allFields ni
 >               encStruct <- mkEncodingStruct d sname ni
+>               decls <- mkStructFunDecls (CDeclExt d)
 >               registerFullEncoding sname ni
 >               addRemoteDecl newS ni
->               return [newS, dest, initNull, copy, size, enc, dec, init, encStruct]
+>               return $ [newS] ++ decls ++ [dest, initNull, copy, size, enc, dec, init, encStruct]
 >          else return []
 
 > transDecl :: CExtDecl -> RemoteT [CExtDecl]
@@ -937,9 +944,12 @@ CTypeOfType CDecl NodeInfo
 >           (Just (structName, fields)) = si
 >           s = getRemoteTypeName (getTypeSpec specs)
 >           sname = fromJust s
->           allFields = join $ map splitDecls fields
+>           getDeriveds (CDecl _ declrs _) = concatMap getDerivedDeclrs declrs
+>           params = map (\d -> if (any isDerivedPtr (getDeriveds d)) then d else addPtrDeclr d) fields
 
->       liftM (map CDeclExt) $ mkDeclsFromRemote "AER_MK_STRUCT_DECLS" (sname : (map (show . pretty) allFields)) ni
+>       mDecls <- mkDeclsFromRemote "AER_MK_STRUCT_DECLS" (sname : (map (show . pretty) fields)) ni
+>       initDecl <- mkDeclsFromRemote "AER_MK_STRUCT_INIT_DECL" (sname : (map (show . pretty) params)) ni
+>       return $ map CDeclExt (mDecls ++ initDecl)
 
 > mkStubs :: NodeInfo -> RemoteT CTranslUnit
 > mkStubs ni = do
