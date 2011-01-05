@@ -344,6 +344,7 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
     /* if interrupted, just exit and let the caller try again */
     if(event_count < 0 && errno == EINTR)
     {
+        free(events);
         return(TRITON_SUCCESS);
     }
 
@@ -358,6 +359,7 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
     /* this means that the epoll timed out without finding any work */
     if(event_count == 0)
     {
+        free(events);
         return(TRITON_ERR_TIMEDOUT);
     }
 
@@ -379,6 +381,7 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
         tret = poll_data->poll_context(context);
         if(tret != TRITON_SUCCESS)
         {
+            free(events);
             return(tret);
         }
     }
