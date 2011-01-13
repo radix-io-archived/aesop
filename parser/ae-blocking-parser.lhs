@@ -1756,19 +1756,19 @@ CStat:  The blocking statement
 >         Left parse_err -> error $ "Parse failed for input file: " ++ input_file ++ ": " ++ (show parse_err)
 >         Right ast      -> return ast
 
-> generateASTWithCPP :: FilePath -> [String] -> IO CTranslUnit
-> generateASTWithCPP input_file includes = do
+> {- generateASTWithCPP :: FilePath -> [String] -> IO CTranslUnit
+> generateASTWithCPP input_file = do
 >	parseResult <- parseCFile (newGCC "gcc") Nothing (("-x c"):includes) input_file
 >	case parseResult of
 >		Left p -> error $ "CPP/Parse failed for input file: " ++ input_file ++ ": " ++ (show p)
->		Right ast -> return ast
+>		Right ast -> return ast -}
 
-> parseHeader :: Bool -> FilePath -> [String] -> [(String, String)] -> Maybe FilePath  -> FilePath -> [String]-> IO ()
-> parseHeader debug headerfile includes defs report outfile gccopts = do
+> parseHeader :: Bool -> FilePath -> Maybe FilePath  -> FilePath -> Maybe FilePath -> [String]-> IO ()
+> parseHeader debug headerfile report outfile compiler gccopts = do
 >	let r = if isJust report then fromJust report else headerfile
 >	ctu <- generateAST headerfile
 >       let tdIdents = getTypeDefIdents ctu
->	w <- newWalkerState debug r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts tdIdents
+>	w <- newWalkerState debug r mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" compiler gccopts tdIdents
 >	(pairs, w) <- runStateT (getBlockingHeaderDecls ctu) w
 >	writeFile outfile "\n\n/* This is an auto-generated file created by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
 >	outputHeader r outfile pairs
@@ -1789,12 +1789,12 @@ CStat:  The blocking statement
 > mergeCTUs :: CTranslUnit -> CTranslUnit -> CTranslUnit
 > mergeCTUs (CTranslUnit das ni) (CTranslUnit dbs _) = (CTranslUnit (das ++ dbs) ni)
 
-> parseFile :: Bool -> Bool -> [String] -> [(String, String)] -> FilePath -> Maybe FilePath -> [String] -> FilePath -> IO ()
-> parseFile debug p includes defs outfile report gccopts f = do
+> parseFile :: Bool -> Bool -> FilePath -> Maybe FilePath -> Maybe FilePath -> [String] -> FilePath -> IO ()
+> parseFile debug p outfile report compiler gccopts f = do
 >	let r = if isJust report then fromJust report else f
 > 	ctu <- generateAST f
 >       let typeDefIdents = getTypeDefIdents ctu
-> 	w <- newWalkerState debug r includes defs mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" gccopts typeDefIdents
+> 	w <- newWalkerState debug r mkErrorPostHandler mkPBranchPostDoneStmts transformFuncReturnStmts "src/aesop/ae-blocking-parser.h" compiler gccopts typeDefIdents
 >       let extDecls (CTranslUnit d _) = d
 >       let (preBlockingCTU, mainCTU) = splitExtDeclsAtAesop ctu
 >       let (CTranslUnit mainExtDecls _) = mainCTU
@@ -1813,12 +1813,7 @@ CStat:  The blocking statement
 >       removeFile $ macheader $ fromJust $ blockingParser w
 > 	return ()
 
-> data ParserOpts = Debug | Pretty | Help | Include String | Report String | Outfile String | Header | Define (String, String) | GCCOpt String
-
-> getIncludes :: [ParserOpts] -> [String]
-> getIncludes ((Include s):ps) = s:(getIncludes ps)
-> getIncludes (_:ps) = getIncludes ps
-> getIncludes [] = []
+> data ParserOpts = Debug | Pretty | Help | Report String | Outfile String | Infile String | Header | Compiler String
 
 > getReportFilename :: [ParserOpts] -> Maybe String
 > getReportFilename ((Report s):ps) = Just s
@@ -1830,44 +1825,34 @@ CStat:  The blocking statement
 > getOutfile (_:ps) = getOutfile ps
 > getOutfile [] = Nothing
 
-> newDefine :: String -> ParserOpts
-> newDefine s = Define $ parseDef ([], []) s
+> getInfile :: [ParserOpts] -> Maybe String
+> getInfile ((Infile s):ps) = Just s
+> getInfile (_:ps) = getInfile ps
+> getInfile [] = Nothing
 
-> parseDef :: (String, String) -> String -> (String, String)
-> parseDef (k,v) [] = (k,[])
-> parseDef (k,v) ('=':ds) = (k,ds)
-> parseDef (k,v) (s:ds) = parseDef (k++[s], []) ds
-
-> getDefs :: [ParserOpts] -> [(String, String)]
-> getDefs ((Define s):ps) = s:(getDefs ps)
-> getDefs (_:ps) = getDefs ps
-> getDefs [] = []
-
-> getGCCOpts :: [ParserOpts] -> [String]
-> getGCCOpts ((GCCOpt s):ps) = s:(getGCCOpts ps)
-> getGCCOpts (_:ps) = getGCCOpts ps
-> getGCCOpts [] = []
+> getCompiler :: [ParserOpts] -> Maybe String
+> getCompiler ((Compiler s):ps) = Just s
+> getCompiler (_:ps) = getCompiler ps
+> getCompiler [] = Nothing
 
 > parserOpts :: [OptDescr ParserOpts]
 > parserOpts =
 >    [ Option ['p'] ["pretty"] (NoArg Pretty)
 >		"output in pretty form without source line macros"
->    , Option ['I'] ["include"] (ReqArg (\s -> Include s) "<include path>")
->		"include path for preprocessor"
 >    , Option ['h','?'] ["help"] (NoArg Help)
 >		"help text"
 >    , Option ['r'] ["report"] (ReqArg (\s -> Report s) "<report filename>")
 >		"filename to use when reporting errors"
 >    , Option ['o'] ["outfile"] (ReqArg (\s -> Outfile s) "<output file>")
 >		"filename to write translated C code"
+>    , Option ['i'] ["infile"] (ReqArg (\s -> Infile s) "<input file>")
+>               "aesop file to translate"
 >    , Option ['j'] ["header"] (NoArg Header)
 >		"parse header file instead of source"
->    , Option ['D'] ["define"] (ReqArg (\s -> newDefine s) "<cpp def>")
->               "define a CPP macro or variable"
->    , Option ['g'] ["gccopt"] (ReqArg (\s -> GCCOpt s) "<gcc option>")
->               "pass the option to invocations of gcc"
 >    , Option ['d'] ["debug"] (NoArg Debug)
 >               "output debugging info (very verbose!)"
+>    , Option ['c'] ["compiler"] (ReqArg (\s -> Compiler s) "<compiler path>")
+>               "path to compiler to be used for preprocessing generated code"
 >    ]
 
 > optPretty :: ParserOpts -> Bool
@@ -1889,21 +1874,28 @@ CStat:  The blocking statement
 > main :: IO ()
 > main = do
 >   args <- getArgs
->   let (opts, files, errs) = getOpt RequireOrder parserOpts args 
+>   let (opts, gccOpts, errs) = getOpt Permute parserOpts args 
 >	pretty = any optPretty opts
 >	help = any optHelp opts
->	includes = getIncludes opts
 >	report = getReportFilename opts
 >	outfile = getOutfile opts
+>       infile = getInfile opts
 >	pheader = any optHeader opts
->       defines = getDefs opts
->       gccopts = getGCCOpts opts
 >       debug = any optDebug opts
->	header = "Usage: ae-blocking-parser [OPTIONS...] files..."
+>       compiler = getCompiler opts
+>	header = "Usage: ae-blocking-parser [OPTIONS...] [CC OPTIONS...]"
 >   when (not $ null errs) $ ioError $ userError ((concat errs) ++
 >			     	                  (usageInfo header parserOpts))
 >   when help $ do { putStrLn $ usageInfo header parserOpts ; exitWith (ExitFailure 1) } 
->   when (isNothing outfile) $ ioError $ userError "No output file specified."
->   when pheader $ do { mapM_ (\f -> parseHeader debug f includes defines report (fromJust outfile) gccopts) files ; exitWith (ExitSuccess) }
->   mapM_ (parseFile debug pretty includes defines (fromJust outfile) report gccopts) files
 
+>   when (isNothing outfile) $ ioError $ userError "No output file specified."
+
+>   when (isNothing infile) $ ioError $ userError "No input file specified."
+
+>   -- if -j was specified, treat input file as a header and generate C header as output
+>   when pheader $ do 
+>       parseHeader debug (fromJust infile) report (fromJust outfile) compiler gccOpts
+>       exitWith ExitSuccess
+
+>   -- parse the input file, generating C source file as output
+>   parseFile debug pretty (fromJust outfile) report compiler gccOpts (fromJust infile)
