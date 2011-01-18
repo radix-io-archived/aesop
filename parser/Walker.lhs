@@ -105,6 +105,8 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 > data Walker = Walker {
 >       debug :: Bool,
 >	filename :: String,
+>       includes :: [String],
+>       defines :: [(String, String)],
 >	prefixes :: [String],
 >       errorWriter :: (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]),
 >       pbranchDone :: (Walker -> BlockingContext -> NodeInfo -> [CStat]),
@@ -117,20 +119,21 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 
 > newWalkerState :: Bool ->
 >                   String ->
+>                   [String] ->
+>                   [(String, String)] ->
 >                   (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) ->
 >                   (Walker -> BlockingContext -> NodeInfo -> [CStat]) ->
 >                   (BlockingContext -> CStat -> CStat -> WalkerT CStat) ->
 >                   FilePath ->
->                   Maybe FilePath ->
 >                   [String] ->
 >                   [Ident] ->
 >                   IO Walker
 
-> newWalkerState debug fname errorWriter pbranchDone transExit macroHeader compiler gccopts tdIdents = do
+> newWalkerState debug fname includes defines errorWriter pbranchDone transExit macroHeader gccopts tdIdents = do
 >	varReg <- newVarRegistry
->       bp <- mkParser compiler macroHeader gccopts
+>       bp <- mkParser includes defines macroHeader gccopts
 >       let nbp = addTypeIdents tdIdents bp
->	return $ Walker debug fname ["ctl"] errorWriter pbranchDone transExit [] [] varReg (Just nbp)
+>	return $ Walker debug fname includes defines ["ctl"] errorWriter pbranchDone transExit [] [] varReg (Just nbp)
 
 > setBlockingParser :: MacroParser -> WalkerT ()
 > setBlockingParser b = do
@@ -188,6 +191,21 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >	w <- get
 >       let (h:hs) = prefixes w
 >	return h
+
+> getIncludeDirs :: WalkerT [String]
+> getIncludeDirs = do
+>       w <- get
+>       return $ includes w
+
+> setIncludeDirs :: [String] -> WalkerT ()
+> setIncludeDirs is = do
+>	w <- get
+>       put w { includes = is }
+
+> getDefines :: WalkerT [(String, String)]
+> getDefines = do
+>       w <- get
+>       return $ defines w
 
 > type WalkerT = StateT Walker IO
 

@@ -50,16 +50,17 @@
 >           u2 = (fromInteger c2s) * (1e6 :: Float) + (fromInteger c2p) * (1e-6 :: Float)
 >       in u2 - u1
 
-> myCPP :: Maybe FilePath -> Maybe FilePath -> [String] -> (Either String FilePath) -> IO FilePath
-> myCPP compiler incheader options input = do
+> myCPP :: [FilePath] -> [(String, String)] -> Maybe FilePath -> [String] -> (Either String FilePath) -> IO FilePath
+> myCPP includes defines incheader options input = do
 >       inputFile <- either (\s -> tmpFile s) (\fp -> return fp) input
 >       outFile <- newTmpFile
->       let opts = ["-E"] ++ mkIncHeader ++ options ++ ["-o", outFile] ++ [inputFile]
+>       let opts = ["-E"] ++ mkIncludes ++ mkDefs ++ mkIncHeader ++ options ++ ["-o", outFile] ++ [inputFile]
+>           mkIncludes = concat [ ["-I", i] | i <- includes ]
+>           mkDefs = concat [ ["-D" ++ (fst d) ++ "=" ++ (snd d)] | d <- defines ]
 >           mkIncHeader = if isJust incheader then ["-include", fromJust incheader] else []
->           compilerPath = if isJust compiler then fromJust compiler else "gcc"
 >       (errorFP, errorH) <- tmpHandle
 >       -- st <- getClockTime
->       pid <- runProcess compilerPath opts Nothing Nothing Nothing Nothing (Just errorH)
+>       pid <- runProcess "gcc" opts Nothing Nothing Nothing Nothing (Just errorH)
 >       ec <- waitForProcess pid
 >       -- et <- getClockTime
 >       -- let td = getTimeDiff st et
@@ -121,14 +122,14 @@ Functions to generate AST objects from C template code
 > mkStmtsFromCLines :: NodeInfo -> String -> [CStat]
 > mkStmtsFromCLines ni lines = [mkStmtFromC ni lines]
 
-> data MacroParser = MacroParser { compiler :: Maybe FilePath, macheader :: FilePath, typedefs :: [Ident] }
+> data MacroParser = MacroParser { macheader :: FilePath, typedefs :: [Ident] }
 
 > addTypeIdents :: [Ident] -> MacroParser -> MacroParser
 > addTypeIdents idents m = m { typedefs = idents ++ (typedefs m) }
 
-> getTypeIdents :: Maybe FilePath -> FilePath -> [String] -> IO [Ident]
-> getTypeIdents compiler macheader gccopts = do
->       rfile <- myCPP compiler (Just macheader) gccopts (Left "\n")
+> getTypeIdents :: [FilePath] -> [(String, String)] -> FilePath -> [String] -> IO [Ident]
+> getTypeIdents idirs defines macheader gccopts = do
+>       rfile <- myCPP idirs defines (Just macheader) gccopts (Left "\n")
 >       result <- readFile rfile
 >       removeFile rfile
 >       -- run the C parser on the result stream
@@ -139,10 +140,10 @@ Functions to generate AST objects from C template code
 >               (Right (CTranslUnit decls _)) -> return $ getTypedefIdentsFromDecls decls
 >               (Left pe) -> trace ("Error parsing declarations from header " ++ macheader ++ ": " ++ (show pe)) (assert False (return []))
 
-> mkParser :: Maybe FilePath -> FilePath -> [String] -> IO MacroParser
-> mkParser compiler macheader gccopts = do
->       types <- getTypeIdents compiler macheader gccopts
->       result <- myCPP compiler Nothing (["-imacros", macheader, "-dM", "-P"] ++ gccopts) (Left "\n")
+> mkParser :: [FilePath] -> [(String, String)] -> FilePath -> [String] -> IO MacroParser
+> mkParser idirs defines macheader gccopts = do
+>       types <- getTypeIdents idirs defines macheader gccopts
+>       result <- myCPP idirs defines Nothing (["-imacros", macheader, "-dM", "-P"] ++ gccopts) (Left "\n")
 >       (errorFP, errorH) <- tmpHandle
 >       (outFile, outH) <- tmpHandle
 >       pid <- runProcess "grep" ["-v", "__STDC", result] Nothing Nothing Nothing (Just outH) (Just errorH)
@@ -160,11 +161,11 @@ Functions to generate AST objects from C template code
 >                       trace ("Preprocessor failed with return code: " ++ (show e) ++ "\n" ++ errs ++ "\n\n") $ assert False $ return "dummy_file.c"
 >                       hClose errorH
 >                       return "dummy_file.c"
->       return $ MacroParser compiler outFile types
+>       return $ MacroParser outFile types
 
 > doCPPWithParser :: MacroParser -> NodeInfo -> String -> IO String
 > doCPPWithParser p ni input = do
->       fp <- myCPP (compiler p) (Just $ macheader p) ["-P"] (Left input)
+>       fp <- myCPP [] [] (Just $ macheader p) ["-P"] (Left input) 
 >       s <- readFile fp
 >       removeFile fp
 >       return s
