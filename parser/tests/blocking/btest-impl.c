@@ -173,71 +173,102 @@ ae_define_post(int, btest_random)
     return TRITON_SUCCESS;
 }
 
-static struct bsleep_op * poll_sleep_list(void)
+static struct bsleep_op * poll_sleep_list(int *more)
 {
    struct ae_op *t;
    t = ae_ops_dequeue(&slist);
    if(t)
    {
-	   return ae_op_entry(t, struct bsleep_op, op);
+       if(ae_ops_empty(&slist))
+       {
+           *more = 0;
+       }
+       else
+       {
+           *more = 1;
+       }
+       return ae_op_entry(t, struct bsleep_op, op);
    }
    return NULL;
 }
 
-static struct btest_op * poll_list(ae_ops_t *list)
+static struct btest_op * poll_list(ae_ops_t *list, int *more)
 {
    struct ae_op *t;
    t = ae_ops_dequeue(list);
    if(t)
    {
-	   return ae_op_entry(t, struct btest_op, op);
+       if(ae_ops_empty(list))
+       {
+           *more = 0;
+       }
+       else
+       {
+           *more = 1;
+       }
+       return ae_op_entry(t, struct btest_op, op);
    }
    return NULL;
 }
 
 static triton_ret_t btest_poll(ae_context_t context)
 {
+   int more, request;
    struct btest_op *b;
    struct bsleep_op *s;
 
-   b = poll_list(&list1);
+   more = 0;
+   request = 0;
+
+   b = poll_list(&list1, &more);
    if(b)
    {
 	*(b->value) += 1;
         ae_opcache_complete_op(test_opcache, &b->op, int, 0);
    }
+   request = more;
 
-   b = poll_list(&list2);
+   b = poll_list(&list2, &more);
    if(b)
    {
 	*(b->value) += 2;
         ae_opcache_complete_op(test_opcache, &b->op, int, 0);
    }
+   request = request | more;
 
-   b = poll_list(&list3);
+   b = poll_list(&list3, &more);
    if(b)
    {
 	*(b->value) += 3;
         ae_opcache_complete_op(test_opcache, &b->op, int, 0);
    }
+   request = request | more;
 
-   b = poll_list(&clist);
+   b = poll_list(&clist, &more);
    if(b)
    {
         ae_opcache_complete_op(test_opcache, &b->op, int, -1);
    }
+   request = request | more;
 
-   b = poll_list(&rlist);
+   b = poll_list(&rlist, &more);
    if(b)
    {
        ae_opcache_complete_op(test_opcache, &b->op, int, random());
    }
+   request = request | more;
 
-   s = poll_sleep_list();
+   s = poll_sleep_list(&more);
    if(s)
    {
 	sleep(s->sleep);
         ae_opcache_complete_op(sleep_opcache, &s->op, int, 0);
+   }
+   request = request | more;
+
+   if(request)
+   {
+       ae_resource_request_poll(NULL, btest_resource_id);
    }
    return TRITON_SUCCESS;
 }
