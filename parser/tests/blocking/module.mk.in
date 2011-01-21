@@ -41,6 +41,7 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/pbreak-before-blocking.ae \
 	      $(DIR)/lonely-pbranch.ae \
 	      $(DIR)/lonely-pbranch2.ae \
+	      $(DIR)/lonely-pbranch3.ae \
               $(DIR)/pwait-in-while.ae \
               $(DIR)/pwait-in-for.ae
 
