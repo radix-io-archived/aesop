@@ -27,6 +27,15 @@ MODLDFLAGS_$(DIR)/test-remote-mpi = $(MPILDFLAGS)
 MODLIBS_$(DIR)/test-remote-mpi = $(MPILIBS)
 MODCC_$(DIR)/test-remote-mpi = $(MPICC)
 
+REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mpi_immed
+REMOTE_TESTMODSRC_$(DIR)/test_remote_mpi-immed := $(DIR)/test-remote-mpi-immed.aer
+REMOTE_TESTSRC += $(DIR)/test-remote-mpi-immed.aer
+
+MODCFLAGS_$(DIR)/test-remote-mpi-immed = $(MPICFLAGS)
+MODLDFLAGS_$(DIR)/test-remote-mpi-immed = $(MPILDFLAGS)
+MODLIBS_$(DIR)/test-remote-mpi-immed = $(MPILIBS)
+MODCC_$(DIR)/test-remote-mpi-immed = $(MPICC)
+
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_fault
 REMOTE_TESTMODSRC_$(DIR)/test_remote_fault := $(DIR)/test-remote-fault-injector.aer
 REMOTE_TESTSRC += $(DIR)/test-remote-fault-injector.aer
