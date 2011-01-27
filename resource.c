@@ -304,6 +304,8 @@ void ae_backtrace(void)
 
 #include <assert.h>
 
+#define AE_PIPE_READ_SIZE 128
+
 triton_ret_t ae_poll(ae_context_t context, int millisecs)
 {
     triton_ret_t tret;
@@ -366,14 +368,14 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
     /* poll each resource that needs attention */
     for(i=0; i<event_count; i++)
     {
-        char onebyte;
+        char pipebuf[AE_PIPE_READ_SIZE];
 
         poll_data = (struct ae_poll_data*)events[i].data.ptr;
-        /* empty the pipe */
+        /* empty the pipe (short reads are ok) */
         do
         {
-            ret = read(poll_data->pipe_fds[0], &onebyte, 1);
-        } while(ret == 1);
+            ret = read(poll_data->pipe_fds[0], pipebuf, AE_PIPE_READ_SIZE);
+        } while(ret >= 1 && ret < AE_PIPE_READ_SIZE);
         /* we better not get data on this pipe if the resource doesn't
          * provide a poll function
          */
