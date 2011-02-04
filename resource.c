@@ -38,6 +38,8 @@ struct ae_resource_entry
     struct ae_resource *resource;
 };
 
+triton_debug_mask_t aesop_debug_cancel_mask;
+
 static int ae_resource_count = 0;
 static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES];
 #ifdef __AESOP_EPOLL
@@ -291,6 +293,8 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
     triton_ret_t ret;
     int error;
 
+    triton_debug(aesop_debug_cancel_mask, "ae_cancel_op: %llu:%llu\n", llu(op_id.u), llu(op_id.l));
+
     if(triton_uint128_iszero(op_id))
     {
         return TRITON_SUCCESS;
@@ -387,6 +391,8 @@ triton_ret_t ae_cancel_children(ae_context_t context, struct ae_ctl *ctl)
     triton_ret_t ret;
     struct ae_ctl *child_ctl;
     struct triton_list_link *entry, *safe;
+
+    triton_debug(aesop_debug_cancel_mask, "ae_cancel_children: %p\n", ctl);
 
     if(triton_list_empty(&ctl->children))
     {
@@ -747,6 +753,9 @@ triton_ret_t ae_context_destroy(ae_context_t context)
 triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
 {
     triton_ret_t ret;
+
+    triton_debug(aesop_debug_cancel_mask, "ae_cancel_branches: %p\n", ctl);
+
     if(!ctl)
     {
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
