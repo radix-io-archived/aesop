@@ -278,7 +278,7 @@ __ae_post_end: \
     __ae_local_cb = ctl->__ae_callback; \
     __ae_local_up = ctl->user_ptr; \
     triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_refcount = ae_ctl_refcount(&ctl->gen); \
+    __ae_refcount = ae_ctl_refdec(&ctl->gen); \
     assert(__ae_refcount >= 0); \
     triton_mutex_unlock(&ctl->gen.mutex); \
     __ae_local_cb(__ae_local_up); \
@@ -296,7 +296,7 @@ __ae_post_end: \
     __ae_local_up = ctl->user_ptr; \
     __ae_ret = __ret_param_expr; \
     triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_refcount = ae_ctl_refcount(&ctl->gen); \
+    __ae_refcount = ae_ctl_refdec(&ctl->gen); \
     assert(__ae_refcount >= 0); \
     triton_mutex_unlock(&ctl->gen.mutex); \
     __ae_local_cb(__ae_local_up, __ae_ret); \
@@ -312,9 +312,9 @@ __ae_post_end: \
     __ae_local_cb = ctl->__ae_callback; \
     __ae_local_up = ctl->user_ptr; \
     triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_refcount = ae_ctl_refcount(&ctl->gen); \
-    assert(__ae_refcount >= 0); \
+    __ae_refcount = ae_ctl_refdec(&ctl->gen); \
     triton_mutex_unlock(&ctl->gen.mutex); \
+    assert(__ae_refcount >= 0); \
     __ae_local_cb(__ae_local_up); \
     if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
     __ae_postret = TRITON_SUCCESS; \
@@ -331,9 +331,9 @@ __ae_post_end: \
     __ae_local_up = ctl->user_ptr; \
     __ae_ret = __ret_param_expr; \
     triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_refcount = ae_ctl_refcount(&ctl->gen); \
-    assert(__ae_refcount >= 0); \
+    __ae_refcount = ae_ctl_refdec(&ctl->gen); \
     triton_mutex_unlock(&ctl->gen.mutex); \
+    assert(__ae_refcount >= 0); \
     __ae_local_cb(__ae_local_up, __ae_ret); \
     if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
     __ae_postret = TRITON_SUCCESS; \
