@@ -273,6 +273,7 @@ void ae_hints_destroy(ae_hints_t h)
     {
         tmp = next;
         next = tmp->next;
+        if(tmp->value) free(tmp->value);
         free(tmp);
     }
 }
