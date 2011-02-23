@@ -1,0 +1,54 @@
+
+#include "src/aesop/aesop.h"
+#include "src/common/resources/timer/timer.hae"
+
+__blocking void do_blocking3(void)
+{
+    triton_ret_t ret;
+    int sleep;
+
+    ret = aesop_hints_get("aesop.test.sleepy_time", sizeof(sleep), &sleep);
+    triton_error_assert(ret);
+
+    ret = triton_timer(sleep);
+    triton_error_assert(ret);
+}
+
+__blocking void do_blocking2(void)
+{
+    pwait
+    {
+        pbranch
+        {
+            do_blocking3();
+        }
+
+        pbranch
+        {
+            do_blocking3();
+        }
+    }
+}
+
+__blocking void do_blocking1(void)
+{
+    int sleep = 1000;
+    triton_ret_t ret;
+
+    ret = aesop_hints_put("aesop.test.sleepy_time", sizeof(sleep), &sleep, 1);
+    triton_error_assert(ret);
+
+    do_blocking2();
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    ae_hints_type_register("aesop.test.sleepy_time", 0, &aer_encoder_uint32_t);
+
+    do_blocking1();
+
+    do_blocking3();
+
+    return 0;
+}
+aesop_main_set_with_init(NULL, "triton.core", aesop_main, "sched", "timer");
