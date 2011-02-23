@@ -616,17 +616,6 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
         return(TRITON_ERR_NOMEM);
     }
 #endif
-
-    for(i=0; i<resource_count; i++)
-    {
-#ifdef __AESOP_EPOLL
-        c->poll_data[i].pipe_fds[0] = -1;
-        c->poll_data[i].pipe_fds[1] = -1;
-#endif
-#ifdef __AESOP_LIBEV
-        ev_async_init(&c->poll_data[i].async, ev_async_cb);
-#endif
-    }
 #ifdef __AESOP_EPOLL
     c->efd = epoll_create(32);
     if(c->efd < 0)
@@ -664,7 +653,7 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
                 fcntl(c->poll_data[reindex].pipe_fds[1], F_SETFL, O_NONBLOCK);
 #endif
 #ifdef __AESOP_LIBEV
-    /* TODO: fill this in */
+                ev_async_init(&c->poll_data[reindex].async, ev_async_cb);
 #endif
                 c->poll_data[reindex].poll_context = 
                     ae_resource_entries[j].poll_data.poll_context;
