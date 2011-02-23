@@ -2,6 +2,7 @@
 #include "src/aesop/hints.h"
 #include "src/common/triton-hash.h"
 #include "src/common/jenkins-hash.h"
+#include "src/common/triton-list.h"
 
 /**
  * hint info structure for static hint definitions.
@@ -16,10 +17,7 @@ struct ae_hint_info
     struct triton_hash_link type_link;
 };
 
-/**
- * actual hint structure
- */
-struct ae_hints
+struct ae_hint_entry
 {
     uint32_t type;
     int flags;
@@ -27,7 +25,7 @@ struct ae_hints
     struct aer_encoder *encoding;
     void *value;
     int length;
-    struct ae_hints *next;
+    struct triton_hash_link link;
 };
 
 static struct triton_hash_table *hints_type_key_table = NULL;
@@ -68,15 +66,7 @@ static void ae_hint_info_destroy(void * hi)
 
 #include "src/common/triton-init.h"
 
-__attribute__((constructor)) void ae_hints_init_register(void);
-
-__attribute__((constructor)) void ae_hints_init_register(void)
-{
-    triton_init_register("aesop.hints", ae_hints_init, ae_hints_finalize, NULL);
-}
-
-
-triton_ret_t ae_hints_init(void)
+static triton_ret_t ae_hints_component_init(void)
 {
     if(hints_type_key_table != NULL)
     {
@@ -99,16 +89,25 @@ triton_ret_t ae_hints_init(void)
     return TRITON_SUCCESS;
 }
 
-void ae_hints_finalize(void)
+static void ae_hints_component_finalize(void)
 {
     assert(hints_type_key_table != NULL);
-    triton_hash_destroy_and_finalize(hints_type_key_table, struct ae_hint_info, key_link, ae_hint_info_destroy);
+    triton_hash_destroy_and_finalize(
+        hints_type_key_table, struct ae_hint_info, key_link, ae_hint_info_destroy);
     hints_type_key_table = NULL;
 
     assert(hints_type_table != NULL);
     triton_hash_finalize(hints_type_table);
     hints_type_table = NULL;
 }
+
+__attribute__((constructor)) void ae_hints_init_register(void);
+
+__attribute__((constructor)) void ae_hints_init_register(void)
+{
+    triton_init_register("aesop.hints", ae_hints_component_init, ae_hints_component_finalize, NULL);
+}
+
 
 triton_ret_t ae_hints_type_register(
     const char *key,
@@ -121,7 +120,7 @@ triton_ret_t ae_hints_type_register(
 
     if(hints_type_key_table == NULL)
     {
-        ret = ae_hints_init();
+        ret = ae_hints_component_init();
         if(ret != TRITON_SUCCESS)
         {
             return ret;
@@ -138,6 +137,7 @@ triton_ret_t ae_hints_type_register(
     bj_hashlittle2(newtype->key, strlen(newtype->key), &pc, &pb);
     newtype->type = pc;
     newtype->encoding = encoder;
+    newtype->flags = flags;
 
     triton_list_link_clear(&newtype->key_link);
     triton_hash_add(hints_type_key_table, newtype->key, &newtype->key_link);
@@ -147,8 +147,6 @@ triton_ret_t ae_hints_type_register(
     
     return TRITON_SUCCESS;
 }
-
-static inline triton_ret_t ae_hints_check(ae_hints_t hints, int type);
 
 static inline struct ae_hint_info *ae_hints_get_info_by_key(const char *key)
 {
@@ -172,9 +170,16 @@ static inline struct ae_hint_info *ae_hints_get_info_by_type(int type)
     return NULL;
 }
 
-static triton_ret_t make_new_hint(ae_hints_t *new_hint, int length, void *value, uint32_t type, int flags, struct aer_encoder *encoding)
+static triton_ret_t make_new_hint(
+    struct ae_hint_entry **new_hint,
+    int length,
+    void *value,
+    uint32_t type,
+    int flags,
+    struct aer_encoder *encoding,
+    int copy_value)
 {
-    struct ae_hints *h;
+    struct ae_hint_entry *h;
 
     h = malloc(sizeof(*h));
     if (!h)
@@ -183,66 +188,142 @@ static triton_ret_t make_new_hint(ae_hints_t *new_hint, int length, void *value,
     }
 
     h->length = length;
-    h->value = malloc(h->length);
-    if(!h->value)
-    {
-        free(h);
-        return TRITON_ERR_NOMEM;
-    }
 
-    memcpy(h->value, value, length);
+    if(copy_value)
+    {
+        h->value = malloc(h->length);
+        if(!h->value)
+        {
+            free(h);
+            return TRITON_ERR_NOMEM;
+        }
+
+        memcpy(h->value, value, length);
+    }
+    else
+    {
+        h->value = value;
+    }
 
     h->type = type;
     h->flags = flags;
     h->encoding = encoding;
-
+    triton_list_link_clear(&h->link);
     *new_hint = h;
     return TRITON_SUCCESS;
+}
+
+triton_ret_t ae_hints_init(ae_hints_t *hints)
+{
+    triton_list_init(&hints->entries);
+    hints->parent = NULL;
+    triton_mutex_init(&hints->lock, NULL);
+    hints->refcount = 1;
+    hints->needs_free = 0;
+    return TRITON_SUCCESS;
+}
+
+static void delete_hint(struct ae_hint_entry *h)
+{
+    if(h->value) free(h->value);
+    free(h);
+}
+
+triton_ret_t ae_hints_del(ae_hints_t *hints, const char *key)
+{
+    struct ae_hint_info *info;
+    struct ae_hint_entry *entry, *tmpentry;
+    triton_ret_t ret;
+
+    info = ae_hints_get_info_by_key(key);
+    if(!info)
+    {
+        return TRITON_ERR_HINT_MISSING_TYPE;
+    }
+
+    triton_mutex_lock(&hints->lock);
+
+    triton_list_for_each_entry(entry, tmpentry, &hints->entries, struct ae_hint_entry, link)
+    {
+        if(entry->type == info->type)
+        {
+            triton_list_del(&entry->link);
+            if(entry->flags & AE_HINT_TRANSFER_FLAG)
+            {
+                hints->transfer_count--;
+            }
+            delete_hint(entry);
+            triton_mutex_unlock(&hints->lock);
+            return TRITON_SUCCESS;
+        }
+    }
+    triton_mutex_unlock(&hints->lock);
+    return TRITON_ERR_NOENT;
 }
 
 triton_ret_t ae_hints_put(ae_hints_t *hints,
                           const char *key,
                           int length,
-                          void *value)
+                          void *value,
+                          int overwrite)
 {
     struct ae_hint_info *info;
+    struct ae_hint_entry *entry, *tmpentry;
     triton_ret_t ret;
-    struct ae_hints *new_hint;
 
     info = ae_hints_get_info_by_key(key);
     if(!info)
     {
         return TRITON_ERR_HINT_MISSING_TYPE;
     }
-    else
+
+    triton_mutex_lock(&hints->lock);
+
+    ret = TRITON_ERR_EXIST;
+    triton_list_for_each_entry(entry, tmpentry, &hints->entries, struct ae_hint_entry, link)
     {
-        ret = ae_hints_check(*hints, info->type);
-        if(ret == TRITON_ERR_EXIST)
+        if(entry->type == info->type)
         {
+            if(overwrite)
+            {
+                free(entry->value);
+                entry->value = malloc(length);
+                memcpy(value, entry->value, length);
+                entry->length = length;
+                ret = TRITON_SUCCESS;
+            }
+            triton_mutex_unlock(&hints->lock);
             return ret;
         }
     }
 
-    ret = make_new_hint(&new_hint, length, value, info->type, info->flags, info->encoding);
+    ret = make_new_hint(&entry, length, value, info->type, info->flags, info->encoding, 1);
     if(ret != TRITON_SUCCESS)
     {
+        triton_mutex_unlock(&hints->lock);
         return ret;
     }
-    new_hint->next = *hints;
-    *hints = new_hint;
 
+    triton_queue_enqueue(&entry->link, &hints->entries);
+    if(entry->flags & AE_HINT_TRANSFER_FLAG)
+    {
+        hints->transfer_count++;
+    }
+
+    triton_mutex_unlock(&hints->lock);
     return TRITON_SUCCESS;
 }
 
-triton_ret_t ae_hints_get(ae_hints_t hints,
+triton_ret_t ae_hints_get(ae_hints_t *hints,
                           const char *key,
                           int length,
                           void *value)
 {
-    struct ae_hints *tmp;
+    struct ae_hint_entry *entry, *tmpentry;
     struct ae_hint_info *info;
+    ae_hints_t *p;
 
-    if(!hints) return TRITON_SUCCESS;
+    assert(hints);
 
     info = ae_hints_get_info_by_key(key);
     if(!info)
@@ -250,93 +331,185 @@ triton_ret_t ae_hints_get(ae_hints_t hints,
         return TRITON_ERR_HINT_MISSING_TYPE;
     }
 
-    tmp = hints;
-    while(tmp)
+    while(hints)
     {
-        if(tmp->type == info->type)
+        triton_mutex_lock(&hints->lock);
+        triton_list_for_each_entry(entry, tmpentry, &hints->entries, struct ae_hint_entry, link)
         {
-            memcpy(value, tmp->value, tmp->length);
-            return TRITON_SUCCESS;
+            if(entry->type == info->type)
+            {
+                memcpy(value, entry->value, entry->length);
+                triton_mutex_unlock(&hints->lock);
+                return TRITON_SUCCESS;
+            }
         }
-        tmp = tmp->next;
+        triton_mutex_unlock(&hints->lock);
+        hints = hints->parent;
     }
-    return TRITON_SUCCESS;
-
+    return TRITON_ERR_NOENT;
 }
 
-void ae_hints_destroy(ae_hints_t h)
+void ae_hints_destroy(ae_hints_t *hints)
 {
-    struct ae_hints *tmp, *next;
+    struct ae_hint_entry *entry, *tmpentry;
+    int r;
 
-    next = h;
-    while(next)
+    triton_mutex_lock(&hints->lock);
+    assert(hints->refcount > 0);
+    r = --hints->refcount;
+    if(r == 0)
     {
-        tmp = next;
-        next = tmp->next;
-        if(tmp->value) free(tmp->value);
-        free(tmp);
+        triton_list_for_each_entry(entry, tmpentry, &hints->entries, struct ae_hint_entry, link)
+        {
+            triton_list_del(&entry->link);
+            if(entry->flags & AE_HINT_TRANSFER_FLAG)
+            {
+                hints->transfer_count--;
+            }
+            delete_hint(entry);
+        }
     }
+    triton_mutex_unlock(&hints->lock);
+    if(hints->parent) ae_hints_destroy(hints->parent);
+    hints->parent = NULL;
+
+    if(r == 0 && hints->needs_free) free(hints);
 }
 
-triton_ret_t ae_hints_copy(ae_hints_t oldh, ae_hints_t *newh)
+triton_ret_t ae_hints_dup(ae_hints_t *oldh, ae_hints_t **newh)
+{
+    struct ae_hints *h;
+    triton_ret_t ret;
+
+    h = malloc(sizeof(*h));
+    if(!h) return TRITON_ERR_NOMEM;
+
+    ret = ae_hints_init(h);
+    if(ret != TRITON_SUCCESS)
+    {
+        free(h);
+        return ret;
+    }
+    ret = ae_hints_copy(oldh, h);
+    if(ret != TRITON_SUCCESS)
+    {
+        free(h);
+        return ret;
+    }
+    h->needs_free = 1;
+    *newh = h;
+    return TRITON_SUCCESS;
+}
+
+triton_ret_t ae_hints_copy(ae_hints_t *oldh, ae_hints_t *newh)
+{
+    ae_hints_init(newh);
+
+    triton_mutex_lock(&oldh->lock);
+    oldh->refcount++;
+    newh->parent = oldh;
+    triton_mutex_unlock(&oldh->lock);
+
+    return TRITON_SUCCESS;
+}
+
+triton_ret_t ae_hints_clone(ae_hints_t *oldh, ae_hints_t *newh)
 {
     triton_ret_t ret;
-    struct ae_hints *tmp, *nh;
-    tmp = oldh;
-    *newh = NULL;
-    if(oldh == NULL) return TRITON_SUCCESS;
+    ae_hints_t *tmp;
+    struct ae_hint_entry *nh, *entry, *tmpentry;
 
+    ret = ae_hints_init(newh);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
+
+    /* for safety, lock old hint while copying hints */
+    triton_mutex_lock(&oldh->lock);
+    tmp = oldh;
     while(tmp)
     {
-        ret = make_new_hint(&nh, tmp->length, tmp->value, tmp->type, tmp->flags, tmp->encoding);
-        if(ret != TRITON_SUCCESS)
+
+        triton_list_for_each_entry(entry, tmpentry, &tmp->entries, struct ae_hint_entry, link)
         {
-            ae_hints_destroy(*newh);
-            return ret;
+            ret = make_new_hint(&nh, entry->length, entry->value, entry->type, entry->flags, entry->encoding, 1);
+            if(ret != TRITON_SUCCESS)
+            {
+                goto error;
+            }
+            triton_queue_enqueue(&nh->link, &newh->entries);
+            if(entry->flags & AE_HINT_TRANSFER_FLAG)
+            {
+                newh->transfer_count++;
+            }
         }
-        nh->next = *newh;
-        *newh = nh;
-        
-        tmp = tmp->next;
+        tmp = tmp->parent;
     }
-    return TRITON_SUCCESS;
+
+    goto done;
+error:
+    ae_hints_destroy(newh);
+done:
+    triton_mutex_unlock(&oldh->lock);
+    return ret;
 }
 
-static inline triton_ret_t ae_hints_check(ae_hints_t hints, int type)
+triton_ret_t ae_hints_check(ae_hints_t *hints, int type)
 {
-    struct ae_hints *tmp;
+    struct ae_hint_entry *entry, *tmpentry;
 
-    if(!hints) return TRITON_SUCCESS;
-
-    tmp = hints;
-    while(tmp)
+    triton_mutex_lock(&hints->lock);
+    triton_list_for_each_entry(entry, tmpentry, &hints->entries, struct ae_hint_entry, link)
     {
-        if(tmp->type == type)
+        if(entry->type == type)
         {
+            triton_mutex_unlock(&hints->lock);
             return TRITON_ERR_EXIST;
         }
-        tmp = tmp->next;
     }
-    return TRITON_SUCCESS;
+    triton_mutex_unlock(&hints->lock);
+    if(hints->parent) return ae_hints_check(hints->parent, type);
+}
+
+static uint32_t count_transferable_hints(struct ae_hints *h)
+{
+    uint64_t count = 0;
+    struct ae_hints_entry *entry, *tmpentry;
+
+    while(h)
+    {
+        count += h->transfer_count;
+        h = h->parent;
+    }
+    return count;
 }
 
 uint64_t aer_encode_size_ae_hints_t(
     const char *n __unused, void *x)
 {
-    struct ae_hints *h = *(struct ae_hints **)x;
-    uint64_t count = 0;
+    uint32_t tcount;
+    uint64_t count;
+    struct ae_hints *h = (struct ae_hints *)x;
+    struct ae_hint_entry *entry, *tmpentry;
+
+    tcount = count_transferable_hints(h);
+    count = aer_encode_size_uint32_t(NULL, &tcount);
 
     while(h)
     {
-        if(h->flags & AE_HINT_TRANSFER_FLAG)
+        triton_list_for_each_entry(entry, tmpentry, &h->entries, struct ae_hint_entry, link)
         {
-            count += aer_encode_size_int32_t(NULL, &h->type);
-            count += aer_encode_size_int32_t(NULL, &h->flags);
-            count += h->encoding->encode_size(NULL, h->value);
+            if(entry->flags & AE_HINT_TRANSFER_FLAG)
+            {
+                count += aer_encode_size_int32_t(NULL, &entry->type);
+                count += aer_encode_size_int32_t(NULL, &entry->flags);
+                count += entry->encoding->encode_size(NULL, entry->value);
+            }
         }
-        h = h->next;
+
+        h = h->parent;
     }
-    count += 8; 
 
     return count;
 }
@@ -344,42 +517,58 @@ uint64_t aer_encode_size_ae_hints_t(
 triton_ret_t aer_encode_ae_hints_t(
     triton_buffer_t *buf, const char *n __unused, void *x)
 {
+    uint32_t hcount;
     triton_ret_t ret;
     int null_type = 0;
-    struct ae_hints *h = *(struct ae_hints **)x;
+    struct ae_hints *h = (struct ae_hints *)x;
+    struct ae_hint_entry *entry, *tmpentry;
+
     assert(buf);
     assert(x);
 
-    /* TODO: fix hints encode/decode functions */
-    assert(0);
+    hcount = count_transferable_hints(h);
+
+    ret = aer_encode_uint32_t(buf, "count", &hcount);
+    if(ret != TRITON_SUCCESS)
+    {
+        return ret;
+    }
 
     while(h)
     {
-        if(h->flags & AE_HINT_TRANSFER_FLAG)
+        triton_list_for_each_entry(entry, tmpentry, &h->entries, struct ae_hint_entry, link)
         {
-            ret = aer_encode_int32_t(buf, "type", &h->type);
-            if(ret != TRITON_SUCCESS)
+            if(entry->flags & AE_HINT_TRANSFER_FLAG)
             {
-                return ret;
-            }
+                ret = aer_encode_uint32_t(buf, "type", &entry->type);
+                if(ret != TRITON_SUCCESS)
+                {
+                    return ret;
+                }
 
-            ret = aer_encode_int32_t(buf, "flags", &h->flags);
-            if(ret != TRITON_SUCCESS)
-            {
-                return ret;
-            }
+                ret = aer_encode_int32_t(buf, "flags", &entry->flags);
+                if(ret != TRITON_SUCCESS)
+                {
+                    return ret;
+                }
 
-            ret = h->encoding->encode(buf, NULL, h->value);
-            if(ret != TRITON_SUCCESS)
-            {
-                return ret;
+                ret = aer_encode_uint32_t(buf, "length", &entry->length);
+                if(ret != TRITON_SUCCESS)
+                {
+                    return ret;
+                }
+
+                ret = entry->encoding->encode(buf, NULL, entry->value);
+                if(ret != TRITON_SUCCESS)
+                {
+                    return ret;
+                }
             }
         }
 
-        h = h->next;
+        h = h->parent;
     }
 
-    ret = h->encoding->encode(buf, NULL, &null_type);
     return TRITON_SUCCESS;
 }
 
@@ -389,64 +578,104 @@ triton_ret_t aer_decode_ae_hints_t(
     triton_ret_t ret;
     struct ae_hint_info *info;
 
-    uint32_t count;
-    struct ae_hints *h, *tmp;
-    uint32_t type;
+    uint32_t hcount, length, type;
+    int flags;
+    struct ae_hints *h;
+    int i;
+    void *v;
+
     assert(buf);
     assert(x);
 
-    /* TODO: fix hints encode/decode functions */
-    assert(0);
-    tmp = NULL;
+    h = (struct ae_hints *)x;
 
-    while(1)
+    triton_mutex_lock(&h->lock);
+
+    ret = aer_decode_uint32_t(buf, NULL, &hcount);
+    if(ret != TRITON_SUCCESS)
     {
+        goto error;
+    }
+
+    for(i = 0; i < hcount; ++i)
+    {
+        int found;
+        struct ae_hint_entry *entry, *tmpentry;
+
         ret = aer_decode_int32_t(buf, NULL, &type);
         if(ret != TRITON_SUCCESS)
         {
-            ae_hints_destroy(tmp);
-            return ret;
+            goto error;
         }
 
-        if(type == 0)
+        ret = aer_decode_int32_t(buf, NULL, &flags);
+        if(ret != TRITON_SUCCESS)
         {
-            break;
+            goto error;
         }
 
         info = ae_hints_get_info_by_type(type);
         if(info == NULL)
         {
-            ae_hints_destroy(tmp);
-            return TRITON_ERR_HINT_MISSING_TYPE;
+            ret = TRITON_ERR_HINT_MISSING_TYPE;
+            goto error;
         }
 
-        h = malloc(sizeof(*h));
-        if(!h)
-        {
-            ae_hints_destroy(tmp);
-            return TRITON_ERR_NOMEM;
-        }
-        h->type = type;
-        h->key = strdup(info->key);
-
-        ret = aer_decode_int32_t(buf, NULL, &h->flags);
+        ret = aer_decode_uint32_t(buf, NULL, &length);
         if(ret != TRITON_SUCCESS)
         {
-            return ret;
+            goto error;
         }
 
-        ret = h->encoding->decode(buf, NULL, h->value);
+        v = malloc(length);
+        if(v == NULL)
+        {
+            ret = TRITON_ERR_NOMEM;
+            goto error;
+        }
+
+        ret = info->encoding->decode(buf, NULL, v);
         if(ret != TRITON_SUCCESS)
         {
-            return ret;
+            free(v);
+            goto error;
         }
 
-        h->next = tmp;
-        tmp = h;
+        /* if it already exists, replace it with decoded value */
+        found = 0;
+        triton_list_for_each_entry(entry, tmpentry, &h->entries, struct ae_hint_entry, link)
+        {
+            if(entry->type == info->type)
+            {
+                free(entry->value);
+                entry->value = v;
+                entry->length = length;
+                found = 1;
+                break;
+            }
+        }
+            
+        if(!found)
+        {
+            struct ae_hint_entry *nh;
+            /* otherwise make a new hint and insert at end */
+            ret = make_new_hint(&nh, length, v, type, flags, info->encoding, 0);
+            if(ret != TRITON_SUCCESS)
+            {
+                goto error;
+            }
+
+            triton_queue_enqueue(&nh->link, &h->entries);
+            h->transfer_count++;
+        }
     }
         
-    *((struct ae_hints **)x) = h;
-    return TRITON_SUCCESS;
+    goto done;
+error:
+    triton_mutex_unlock(&h->lock);
+
+done:
+    return ret;
 }
 
 triton_ret_t aer_init_null_ae_hints_t(void *x)
@@ -457,7 +686,7 @@ triton_ret_t aer_init_null_ae_hints_t(void *x)
 
 triton_ret_t aer_copy_ae_hints_t(void *x, void *y)
 {
-    return ae_hints_copy(*(ae_hints_t *)x, (ae_hints_t *)y);
+    return ae_hints_copy((ae_hints_t *)x, (ae_hints_t *)y);
 }
 
 void aer_destroy_ae_hints_t(void *x)

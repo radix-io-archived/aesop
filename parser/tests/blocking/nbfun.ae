@@ -16,68 +16,8 @@ static __blocking int run_outer_nbfun1(void)
 	return run_inner_nbfun1();
 }
 
-static int done = 0;
-static void cb(void *ptr, int i)
+__blocking int aesop_main(int argc, char **argv)
 {
-    printf("%p\n", ptr);
-    printf("done: %d\n", i);
-    done = 1;
+    return run_outer_nbfun1();
 }
-
-static __blocking int run_nbfun2(int a)
-{
-	if(a == 0)
-	{
-	    printf("reached dynamic no blocking\n");
-	    return a;
-	}
-	else
-	{
-	    return btest1(&a);
-	}
-
-	return 0;
-}
-
-static int done2 = 0;
-static void cb2(void *ptr, int r)
-{
-    printf("%p\n", ptr);
-    printf("done: %d\n", r);
-    done2 = 1;
-}
-
-int main(int argc, char *argv[])
-{
-	ae_op_id_t id;
-	void *myptr = malloc(1);
-
-	btest_init();
-	printf("%p\n", myptr);
-	ae_post_blocking(run_outer_nbfun1, cb, myptr, NULL, NULL, &id);
-
-	while(done == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	ae_post_blocking(run_nbfun2, cb2, myptr, NULL, NULL, &id, 20);
-
-	while(done2 == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	done2 = 0;
-	ae_post_blocking(run_nbfun2, cb2, myptr, NULL, NULL, &id, 0);
-
-	while(done2 == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	btest_finalize();
-	free(myptr);
-
-	return 0;
-}
+btest_main_set(aesop_main, "btest");

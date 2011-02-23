@@ -84,32 +84,12 @@ static __blocking void run_threefors(void)
 		}
 	}
 }
-	
-static int done = 0;
-static void basic_cb(void *ptr)
+
+
+__blocking int aesop_main(int argc, char **argv)
 {
-    printf("%p\n", ptr);
-    printf("done\n");
-    done = 1;
+    run_threefors();
+    return 0;
 }
+btest_main_set(aesop_main, "btest");
 
-int main(int argc, char *argv[])
-{
-	ae_op_id_t op_id;
-	void *myptr = malloc(1);
-
-	btest_init();
-	printf("%p\n", myptr);
-
-	val = atoi(argv[1]);
-	ae_post_blocking(run_threefors, basic_cb, myptr, NULL, NULL, &op_id);
-
-	while(done == 0)
-	{
-	    ae_poll(NULL, 0);
-	}
-
-	btest_finalize();
-	free(myptr);
-	return 0;
-}

@@ -9,7 +9,7 @@ typedef struct ae_op
     void *callback;
     int (*op_worker)(struct ae_op* op);
     void *user_ptr;
-    ae_hints_t hints;
+    ae_hints_t *hints;
     ae_context_t ctx;
     int cache_id;
     triton_list_link_t link;

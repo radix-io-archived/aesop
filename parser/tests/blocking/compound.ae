@@ -43,31 +43,9 @@ static __blocking int run_compound(void)
         return 0;
 }
 
-static int done = 0;
-static void compound_cb(void *ptr, int ret)
+__blocking int aesop_main(int argc, char **argv)
 {
-    printf("return: %d\n", ret);
-    printf("%p\n", ptr);
-    printf("done\n");
-    done = 1;
+    return run_compound();
 }
+btest_main_set(aesop_main, "btest");
 
-int main(int argc, char *argv[])
-{
-	ae_op_id_t id;
-	void *myptr = malloc(1);
-
-	btest_init();
-	printf("%p\n", myptr);
-	ae_post_blocking(run_compound, compound_cb, myptr, NULL, NULL, &id);
-
-	while(done == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	btest_finalize();
-	free(myptr);
-
-	return 0;
-}

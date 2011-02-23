@@ -51,68 +51,28 @@ static __blocking int do_atype_blocking(atype *t)
     return t->p->myfun(t->b);
 }
 
-static int done = 0;
-static void *myptr;
-
-static void basic_cb(void *ptr, int a)
+__blocking int aesop_main(int argc, char **argv)
 {
-    assert(myptr == ptr);
-    printf("done\n");
-    done = 1;
+    struct mystruct s;
+    mytype t;
+
+    s.myfun = blocking1;
+    s.a = 0;
+    do_blocking(&s);
+
+    t.p = &s;
+    t.b = 100;
+    do_mtype_blocking(&t);
+
+    t.p = &s;
+    t.b = 100;
+    do_ttype_blocking(&t);
+
+    t.p = &s;
+    t.b = 100;
+    do_atype_blocking(&t);
+
+    return 0;
 }
+btest_main_set(aesop_main, "btest");
 
-int main(int argc, char *argv[])
-{
-	ae_op_id_t id;
-	struct mystruct s;
-	mytype t;
-	myptr = malloc(1);
-
-	btest_init();
-
-	s.myfun = blocking1;
-	s.a = 0;
-        ae_post_blocking(do_blocking, basic_cb, myptr, NULL, NULL, &id, &s);
-
-	while(done == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	done = 0;
-	t.p = &s;
-	t.b = 100;
-        ae_post_blocking(do_mtype_blocking, basic_cb, myptr, NULL, NULL, &id, &t);
-
-	while(done == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	done = 0;
-	t.p = &s;
-	t.b = 100;
-
-        ae_post_blocking(do_ttype_blocking, basic_cb, myptr, NULL, NULL, &id, &t);
-
-	while(done == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	done = 0;
-	t.p = &s;
-	t.b = 100;
-
-        ae_post_blocking(do_atype_blocking, basic_cb, myptr, NULL, NULL, &id, &t);
-
-	while(done == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	btest_finalize();
-	free(myptr);
-
-	return 0;
-}

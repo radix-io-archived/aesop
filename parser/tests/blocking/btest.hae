@@ -50,7 +50,38 @@ __blocking int ictest1(int *a);
  */
 __blocking int tctest1(int *a);
 
-int btest_init(void);
-void btest_finalize(void);
-
+#define btest_main_set(__main_blocking_function__, ...) \
+static int __main_done=0; \
+static int __main_ret; \
+static void __main_cb(void *user_ptr, int t) \
+{ \
+      __main_done = 1; \
+      __main_ret = t; \
+} \
+void btest_init_register(void); \
+int main(int argc, char **argv)  \
+{ \
+    ae_context_t __main_ctx; \
+    ae_hints_t __main_hints; \
+    ae_op_id_t __main_opid; \
+    triton_ret_t ret; \
+    btest_init_register(); \
+    ret = triton_init("aesop.blocking.test"); \
+    triton_error_assert(ret); \
+    ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
+    triton_error_assert(ret); \
+    ret = ae_hints_init(&__main_hints); \
+    ret = ae_post_blocking(__main_blocking_function__, __main_cb, NULL, &__main_hints, __main_ctx, &__main_opid, argc, argv); \
+    triton_error_assert(ret); \
+    while(!__main_done) \
+    { \
+        ret = ae_poll(__main_ctx, 0); \
+        triton_error_assert(ret); \
+    } \
+    ae_hints_destroy(&__main_hints); \
+    ae_context_destroy(__main_ctx); \
+    triton_finalize(); \
+    return __main_ret; \
+}
+   
 #endif

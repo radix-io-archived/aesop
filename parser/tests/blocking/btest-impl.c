@@ -7,6 +7,7 @@
 #include "src/aesop/aesop.h"
 #include "src/common/triton-list.h"
 #include "src/aesop/parser/tests/blocking/btest.h"
+#include "src/common/triton-init.h"
 
 static int btest_resource_id;
 
@@ -300,7 +301,7 @@ struct ae_resource btest_resource =
     .cancel = btest_cancel
 };
 
-int btest_init(void)
+static triton_ret_t btest_init(void)
 {
     ae_resource_register(&btest_resource, &btest_resource_id);
 
@@ -315,15 +316,21 @@ int btest_init(void)
     ae_ops_init(&flist);
     ae_ops_init(&rlist);
 
-    return 0;
+    return TRITON_SUCCESS;
 }
 
-void btest_finalize(void)
+static void btest_finalize(void)
 {
     ae_resource_unregister(btest_resource_id);
 
     ae_opcache_destroy(sleep_opcache);
     ae_opcache_destroy(test_opcache);
+}
+
+__attribute__((constructor)) void btest_init_register(void);
+__attribute__((constructor)) void btest_init_register(void)
+{
+    triton_init_register("aesop.blocking.test", btest_init, btest_finalize, NULL, "aesop.control");
 }
 
 /*

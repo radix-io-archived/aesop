@@ -169,6 +169,7 @@ int main(int argc, char *argv[])
     triton_ret_t ret;
     ae_op_id_t op_id;
     ae_context_t mpi_resource_ctx;
+    ae_hints_t hints;
     int scan_ret;
 
     triton_init("triton.client");
@@ -201,12 +202,15 @@ int main(int argc, char *argv[])
     ret = aer_remote_register_test_remote_fault();
     triton_error_assert(ret);
 
+    ae_hints_init(&hints);
+
     ae_context_create(&mpi_resource_ctx, "mpi", "sched", "timer");
-    ret = ae_post_blocking(do_remote_test, cb, NULL, NULL, mpi_resource_ctx, &op_id);
+    ret = ae_post_blocking(do_remote_test, cb, NULL, &hints, mpi_resource_ctx, &op_id);
     while(!done)
     {
         ae_poll(mpi_resource_ctx, 0);
     }
+    ae_hints_destroy(&hints);
 
     triton_finalize();
     return 0;

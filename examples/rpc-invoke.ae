@@ -74,60 +74,23 @@ __blocking static void many_looping()
 	}
     }
 }
-
-static int many_looping_done = 0;
-static void many_looping_cb(void *up)
+__blocking int aesop_main(int argc, char **argv)
 {
-    many_looping_done = 1;
-}
-
-static int done = 0;
-static int manydone = 0;
-
-static void cb(void *up, int ret)
-{
-    done++;
-}
-
-static void many_cb(void *up)
-{
-    manydone=1;
-}
-
-int main(int argc, char *argv[])
-{
-    ae_context_t ctx;
-    int i;
-
-    triton_timer_init();
-    btest_init();
-
-    ae_context_create(&ctx, "btest", "timer");
-
-    for(i = 0; i < 100; ++i)
+    pwait
     {
-	ae_post_blocking(rpc_invoke, cb, NULL, NULL, NULL, NULL);
+        pprivate int i;
+
+        for(i = 0; i < 100; ++i)
+        {
+            pbranch { rpc_invoke(); }
+        }
     }
 
-    while(done < 100)
-    {
-	ae_poll(ctx, 100);
-    }
+    invoke_many(200);
 
-    ae_post_blocking(invoke_many, many_cb, NULL, NULL, NULL, NULL, 200);
-    while(manydone == 0)
-    {
-	ae_poll(ctx, 100);
-    }
+    many_looping();
 
-    ae_post_blocking(many_looping, many_looping_cb, NULL, NULL, NULL, NULL);
-    while(many_looping_done == 0)
-    {
-	ae_poll(ctx, 100);
-    }
-
-    ae_context_destroy(ctx);
-    btest_finalize();
-    triton_timer_finalize();
     return 0;
 }
+btest_main_set(aesop_main, "btest", "timer");
+

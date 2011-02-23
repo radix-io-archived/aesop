@@ -24,30 +24,10 @@ static __blocking int pbranch_with_return(void)
     return 0;
 }
 
-static int done = 0;
-static void cb(void *ptr, int i)
+__blocking int aesop_main(int argc, char **argv)
 {
-    printf("%p\n", ptr);
-    printf("done: %d\n", i);
-    done = 1;
+    pbranch_with_return();
+    return 0;
 }
+btest_main_set(aesop_main, "btest");
 
-int main(int argc, char *argv[])
-{
-	ae_op_id_t id;
-	void *myptr = malloc(1);
-
-	btest_init();
-	printf("%p\n", myptr);
-	ae_post_blocking(pbranch_with_return, cb, myptr, NULL, NULL, &id);
-
-	while(done == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	btest_finalize();
-	free(myptr);
-
-	return 0;
-}

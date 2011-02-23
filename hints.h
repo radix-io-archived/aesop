@@ -3,40 +3,95 @@
 
 #include "src/common/triton-base.h"
 #include "src/common/triton-types.h"
+#include "src/common/triton-list.h"
+#include "src/common/triton-thread.h"
 
-typedef struct ae_hints *ae_hints_t;
+struct ae_hints
+{
+    triton_list_t entries;
+    int transfer_count;
+    struct ae_hints *parent;
+    triton_mutex_t lock;
+    int refcount;
+    int needs_free;
+};
+typedef struct ae_hints ae_hints_t;
 
 #define AE_HINT_TRANSFER_FLAG 0x1
 
 #include "src/common/triton-error.h"
 
 #ifdef AESOP_PARSER
-#define aesop_hints_get(__key, __length, __value) ae_hints_get(ctl->gen.hints, __key, __length, __value)
-#define aesop_hints_put(__key, __length, __value) ae_hints_put(&ctl->gen.hints, __key, __length, __value)
+#define aesop_hints_get(__key, __length, __value) \
+    ae_hints_get(ctl->gen.hints, __key, __length, __value)
+#define aesop_hints_put(__key, __length, __value, __overwrite) \
+    ae_hints_put(ctl->gen.hints, __key, __length, __value, __overwrite)
 #else
 
 /* dummy functions to allow for compiling */
-static inline triton_ret_t aesop_hints_get(const char *key, int length, void *value) { return TRITON_ERR_NOSYS; }
-static inline triton_ret_t aesop_hints_put(const char *key, int length, void *value) { return TRITON_ERR_NOSYS; }
+static inline triton_ret_t aesop_hints_get(const char *key, int length, void *value)
+{
+    return TRITON_ERR_NOSYS;
+}
+static inline triton_ret_t aesop_hints_put(const char *key, int length, void *value)
+{
+    return TRITON_ERR_NOSYS;
+}
 #endif
-
-triton_ret_t ae_hints_init(void);
-void ae_hints_finalize(void);
 
 triton_ret_t ae_hints_put(ae_hints_t *hints,
                           const char *key,
                           int length,
-                          void *value);
+                          void *value,
+                          int overwrite);
 
-triton_ret_t ae_hints_get(ae_hints_t hints,
+triton_ret_t ae_hints_get(ae_hints_t *hints,
                           const char *key,
                           int length,
                           void *value);
 
-triton_ret_t ae_hints_copy(ae_hints_t oldh, ae_hints_t *newh);
+triton_ret_t ae_hints_del(ae_hints_t *hints,
+                          const char *key);
 
-void ae_hints_destroy(ae_hints_t h);
 
+/**
+ * Copy all hints by incrementing refcount on old hints and pointing new
+ * hints to old.  Hints added to the new hints will not show up on the old hints
+ */
+triton_ret_t ae_hints_copy(ae_hints_t *oldh, ae_hints_t *newh);
+
+/**
+ * Deep copy of all hints from old to new.  Updates to old or new are not reflected
+ * in the other.
+ */
+triton_ret_t ae_hints_clone(ae_hints_t *oldh, ae_hints_t *newh);
+
+/**
+ * Allocates a pointer for new hints and does a ae_hints_copy.
+ */
+triton_ret_t ae_hints_dup(ae_hints_t *oldh, ae_hints_t **newh);
+
+/**
+ * Check that hints hold a value for a particular hint type.
+ */
+triton_ret_t ae_hints_check(ae_hints_t *hints, int type);
+
+/**
+ * Initialize members of hint structure.
+ */
+triton_ret_t ae_hints_init(ae_hints_t *h);
+
+/**
+ * Destroy members of hint structure, including all hints.  If
+ * the refcount is non-zero, just decrements refcount.  If hints struct
+ * has a parent pointer, calls ae_hints_destroy on parent.
+ */
+void ae_hints_destroy(ae_hints_t *h);
+
+/**
+ * Calls destroy on hint structure and then frees pointer.  Companion to ae_hints_dup.
+ */
+void ae_hints_free(ae_hints_t *h);
 #include "src/common/triton-buffer.h"
 
 uint64_t aer_encode_size_ae_hints_t(const char *n, void *x);

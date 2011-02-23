@@ -64,32 +64,12 @@ static __blocking void run_par1(void)
 	printf("pwait done\n");
 }
 
-static int done = 0;
-static void basic_cb(void *ptr)
+__blocking int aesop_main(int argc, char **argv)
 {
-    printf("%p\n", ptr);
-    printf("done\n");
-    done = 1;
+    run_par1();
+    return 0;
 }
-
-int main(int argc, char *argv[])
-{
-	ae_op_id_t op_id;
-	void *myptr = malloc(1);
-
-	btest_init();
-	printf("%p\n", myptr);
-	ae_post_blocking(run_par1, basic_cb, myptr, NULL, NULL, &op_id);
-
-	while(done == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	btest_finalize();
-	free(myptr);
-	return 0;
-}
+btest_main_set(aesop_main, "btest");
 
 /*
  * Local variables:

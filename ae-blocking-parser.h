@@ -180,7 +180,14 @@
     } \
     ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context, 1, parent_ctl); \
     ctl->parent = parent_ctl; \
-    ae_hints_copy(parent_ctl->gen.hints, &ctl->gen.hints); \
+    ctl->gen.hints = malloc(sizeof(*ctl->gen.hints)); \
+    if(ctl->gen.hints == NULL) \
+    { \
+        triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for hints structure failed!\n", #__fname, __location); \
+        assert(ctl->gen.hints != NULL); \
+        goto __ae_##__pbranch_id##_end; \
+    } \
+    ae_hints_dup(parent_ctl->gen.hints, &ctl->gen.hints); \
     ctl->params = parent_ctl->params; \
     memcpy(&ctl->__pwait_ctl.private, &parent_ctl->__pwait_ctl.private, sizeof(ctl->__pwait_ctl.private)); \
     ctl->__pwait_ctl.shared_params = &parent_ctl->__pwait_ctl.shared; \
@@ -211,7 +218,7 @@
     } \
     ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context, 1, parent_ctl); \
     ctl->parent = parent_ctl; \
-    ae_hints_copy(parent_ctl->gen.hints, &ctl->gen.hints); \
+    ae_hints_dup(parent_ctl->gen.hints, &ctl->gen.hints); \
     ctl->params = parent_ctl->params; \
     triton_list_link_clear(&ctl->gen.link); \
     ae_lone_pbranches_add(&ctl->gen); \
@@ -245,7 +252,7 @@
 
 #define AE_MK_BLOCKING_PARAMS_FOR_POST_DECLS() \
     void *__ae_user_ptr; \
-    ae_hints_t __ae_hints; \
+    ae_hints_t *__ae_hints; \
     ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal;
@@ -253,7 +260,7 @@
 
 #define AE_MK_BLOCKING_PARAMS_FUN_PTR_DECLS() \
     void *__ae_user_ptr; \
-    ae_hints_t __ae_hints; \
+    ae_hints_t *__ae_hints; \
     ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal;
@@ -282,7 +289,9 @@ __ae_post_end: \
     assert(__ae_refcount >= 0); \
     triton_mutex_unlock(&ctl->gen.mutex); \
     __ae_local_cb(__ae_local_up); \
-    if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    if(__ae_refcount == 0) { \
+        ae_ctl_destroy(ctl, &ctl->gen); \
+    } \
     goto __ae_callback_end; \
 }
 
@@ -300,7 +309,9 @@ __ae_post_end: \
     assert(__ae_refcount >= 0); \
     triton_mutex_unlock(&ctl->gen.mutex); \
     __ae_local_cb(__ae_local_up, __ae_ret); \
-    if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
+    if(__ae_refcount == 0) { \
+        ae_ctl_destroy(ctl, &ctl->gen); \
+    } \
     goto __ae_callback_end; \
 }
 

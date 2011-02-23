@@ -28,7 +28,7 @@
 #define ae_define_post(__ret_type, __fname, __fargs...)                    \
     triton_ret_t __fname(void (*__ae_callback)(void *ptr, __ret_type ret), \
                          void *__ae_user_ptr,                              \
-                         ae_hints_t __ae_hints,                            \
+                         ae_hints_t *__ae_hints,                           \
                          ae_context_t __ae_ctx,                            \
                          ae_op_id_t *__ae_op_id,                           \
                          int __ae_internal,                                \
@@ -103,14 +103,14 @@ struct ae_ctl
     int allposted;
     int hit_pbreak;
     int in_pwait;
-    ae_hints_t hints;
+    ae_hints_t *hints;
     ae_context_t context;
     int refcount;
 };
 
 static inline void ae_ctl_init(struct ae_ctl *ctl,
                                const char *name,
-                               ae_hints_t hints,
+                               ae_hints_t *hints,
                                ae_context_t context,
                                int internal,
                                void *user_ptr)
@@ -121,7 +121,13 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     ctl->allposted = 0;
     ctl->hit_pbreak = 0;
     ctl->in_pwait = 0;
+
+    /* by default, we just set the hints pointer, assuming the lifetime
+     * of the hint pointer passed in will live for the entire blocking call
+     * this control structure is allocated for
+     */
     ctl->hints = hints;
+
     ctl->context = context;
     ctl->cancelled = 0;
     triton_mutex_init(&ctl->mutex, NULL);
@@ -203,6 +209,16 @@ triton_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, triton_ret_t);
 static inline triton_ret_t aesop_error_wrap_stack(triton_ret_t ret) { return ret; }
 #endif
 
+/* A macro to implement the boilerplate main function that posts an initial
+ * blocking function.  The blocking function should have the same signature as main().
+ * The variable parameters are the const char * names of the resources to initialize
+ * for the context.  In this macro, triton_init() is called with no parameters, so
+ * all modules get initialized.
+ *
+ * Example:
+ * __blocking int aesop_main(int argc, char **argv) { ... }
+ * aesop_main_set(aesop_main, "timer", "bdb", "sched");
+ */
 #define aesop_main_set(__main_blocking_function__, ...) \
 static int __main_done=0; \
 static int __main_ret; \
@@ -214,24 +230,86 @@ static void __main_cb(void *user_ptr, int t) \
 int main(int argc, char **argv)  \
 { \
     ae_context_t __main_ctx; \
+    ae_hints_t __main_hints; \
     ae_op_id_t __main_opid; \
     triton_ret_t ret; \
-    ret = triton_init("triton.client"); \
+    ret = triton_init(); \
     triton_error_assert(ret); \
     ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
     triton_error_assert(ret); \
-    ret = ae_post_blocking(__main_blocking_function__, __main_cb, NULL, NULL, __main_ctx, &__main_opid, argc, argv); \
+    ret = ae_hints_init(&__main_hints); \
+    ret = ae_post_blocking(__main_blocking_function__, __main_cb, NULL, &__main_hints, __main_ctx, &__main_opid, argc, argv); \
     triton_error_assert(ret); \
     while(!__main_done) \
     { \
-        ret = ae_poll(__main_ctx, 0); \
+        ret = ae_poll(__main_ctx, 10); \
+        if(ret == TRITON_ERR_TIMEDOUT) continue; \
         triton_error_assert(ret); \
     } \
+    ae_hints_destroy(&__main_hints); \
     ae_context_destroy(__main_ctx); \
     triton_finalize(); \
     return __main_ret; \
 }
 
+/* Similar to above, but this one takes an initialization function
+ * that gets called before triton_init,
+ * and a single string to specify the triton module to initialize.
+ *
+ * Example:
+ *
+ * __blocking int aesop_main(int argc, char **argv) { ... }
+ * triton_ret_t set_zeroconf_params(void) { ... }
+ * aesop_main_set_with_init(set_zeroconf_params, "triton.client", aesop_main, "bdb", "file");
+ */
+#define aesop_main_set_with_init(__init_before_triton__, \
+                                 __init_module__, \
+                                 __main_blocking_function__, ...) \
+static int __main_done=0; \
+static int __main_ret; \
+static void __main_cb(void *user_ptr, int t) \
+{ \
+      __main_done = 1; \
+      __main_ret = t; \
+} \
+int main(int argc, char **argv)  \
+{ \
+    ae_context_t __main_ctx; \
+    ae_hints_t __main_hints; \
+    ae_op_id_t __main_opid; \
+    triton_ret_t ret; \
+    triton_ret_t (*__main_init_func)(void) = __init_before_triton__; \
+    if(__init_before_triton__) \
+    { \
+        ret = __main_init_func(); \
+        triton_error_assert(ret); \
+    } \
+    ret = triton_init(__init_module__); \
+    triton_error_assert(ret); \
+    ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
+    triton_error_assert(ret); \
+    ret = ae_hints_init(&__main_hints); \
+    ret = ae_post_blocking( \
+        __main_blocking_function__, \
+        __main_cb, \
+        NULL, \
+        &__main_hints, \
+        __main_ctx, \
+        &__main_opid, \
+        argc, \
+        argv); \
+    triton_error_assert(ret); \
+    while(!__main_done) \
+    { \
+        ret = ae_poll(__main_ctx, 10); \
+        if(ret == TRITON_ERR_TIMEDOUT) continue; \
+        triton_error_assert(ret); \
+    } \
+    ae_hints_destroy(&__main_hints); \
+    ae_context_destroy(__main_ctx); \
+    triton_finalize(); \
+    return __main_ret; \
+}
 #endif /* __AE_RESOURCE_H__ */
 
 /*

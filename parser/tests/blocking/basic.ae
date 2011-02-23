@@ -21,31 +21,10 @@ static __blocking void run_basic(void)
 	assert(ret == 0);
 }
 
-static int done = 0;
-static void basic_cb(void *ptr)
+__blocking int aesop_main(int argc, char **argv)
 {
-    printf("%p\n", ptr);
-    printf("done\n");
-    done = 1;
+    run_basic();
+    return 0;
 }
+aesop_main_set(aesop_main, "btest");
 
-int main(int argc, char *argv[])
-{
-	ae_op_id_t id;
-	void *myptr = malloc(1);
-
-	btest_init();
-	printf("%p\n", myptr);
-
-	ae_post_blocking(run_basic, basic_cb, myptr, NULL, NULL, &id);
-
-	while(done == 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	btest_finalize();
-	free(myptr);
-
-	return 0;
-}

@@ -40,33 +40,12 @@ static __blocking void lonely_pbranch(void)
         printf("lonely_pbranch done! returning...\n");
 }
 
-static int done = 0;
-static void basic_cb(void *ptr)
+__blocking int aesop_main(int argc, char **argv)
 {
-    printf("%p\n", ptr);
-    printf("done\n");
-    done = 1;
+    lonely_pbranch();
+    return 0;
 }
-
-int main(int argc, char *argv[])
-{
-	ae_op_id_t op_id;
-	void *myptr = malloc(1);
-
-	btest_init();
-        triton_timer_init();
-	printf("%p\n", myptr);
-	ae_post_blocking(lonely_pbranch, basic_cb, myptr, NULL, NULL, &op_id);
-
-	while(done == 0 || ae_lone_pbranches_count() > 0)
-        {
-	    ae_poll(NULL, 0);
-        }
-
-	btest_finalize();
-	free(myptr);
-	return 0;
-}
+btest_main_set(aesop_main, "btest");
 
 /*
  * Local variables:
