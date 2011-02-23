@@ -652,25 +652,26 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
         {
             if(!strcmp(ae_resource_entries[j].resource->resource_name, rname))
             {
+#ifdef __AESOP_EPOLL
+                ep_ret = pipe(c->poll_data[reindex].pipe_fds);
+                if(ep_ret < 0)
+                {
+                    /* TODO: clean up better here */
+                    triton_err(triton_log_default, "Error: could not create pipe for resource polling.\n");
+                    return(TRITON_ERR_EPOLL);
+                }
+                fcntl(c->poll_data[reindex].pipe_fds[0], F_SETFL, O_NONBLOCK);
+                fcntl(c->poll_data[reindex].pipe_fds[1], F_SETFL, O_NONBLOCK);
+#endif
+#ifdef __AESOP_LIBEV
+    /* TODO: fill this in */
+#endif
+                c->poll_data[reindex].poll_context = 
+                    ae_resource_entries[j].poll_data.poll_context;
+                c->poll_data[reindex].context = c;
+
                 if(ae_resource_entries[j].resource->register_context)
                 {
-                    /* if the resource supports contexts, then give it a
-                     * separate pipe fd to use just for this context
-                     */
-#ifdef __AESOP_EPOLL
-                    ep_ret = pipe(c->poll_data[reindex].pipe_fds);
-                    if(ep_ret < 0)
-                    {
-                        /* TODO: clean up better here */
-                        triton_err(triton_log_default, "Error: could not create pipe for resource polling.\n");
-                        return(TRITON_ERR_EPOLL);
-                    }
-                    fcntl(c->poll_data[reindex].pipe_fds[0], F_SETFL, O_NONBLOCK);
-                    fcntl(c->poll_data[reindex].pipe_fds[1], F_SETFL, O_NONBLOCK);
-#endif
-                    c->poll_data[reindex].poll_context = 
-                        ae_resource_entries[j].poll_data.poll_context;
-                    c->poll_data[reindex].context = c;
                     ret = ae_resource_entries[j].resource->register_context(c);
                     if(ret != TRITON_SUCCESS)
                     {
@@ -678,14 +679,6 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
                         va_end(ap);
                         return ret;
                     }
-                }
-                else
-                {
-                    /* resource doesn't do anything special for contexts;
-                     * just re-use its global pipe fd
-                     */
-                    /* TODO: does this work ok in the libev case? */
-                    c->poll_data[reindex] = ae_resource_entries[j].poll_data;
                 }
 
 #ifdef __AESOP_EPOLL
