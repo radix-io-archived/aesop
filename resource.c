@@ -11,6 +11,7 @@
 #ifdef __AESOP_LIBEV
 #include "src/common/libev/ev.h"
 #endif
+#include <stddef.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -27,6 +28,7 @@ struct ae_poll_data
     ev_async async;
 #endif
     triton_ret_t (*poll_context)(ae_context_t context);
+    ae_context_t context;
 };
 
 struct ae_resource_entry
@@ -42,7 +44,7 @@ static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES];
 static int efd = -1;
 #endif
 #ifdef __AESOP_LIBEV
-static struct ev_loop *loop = EV_DEFAULT;
+static struct ev_loop *eloop = NULL;
 #endif
 
 #define AE_RESOURCE_IDX2ID(reindex) (reindex+16)
@@ -58,7 +60,7 @@ struct ae_context
     int efd;
 #endif
 #ifdef __AESOP_LIBEV
-    struct ev_loop *loop;
+    struct ev_loop *eloop;
 #endif
 };
 
@@ -99,6 +101,7 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
     fcntl(ae_resource_entries[reindex].poll_data.pipe_fds[1], F_SETFL, O_NONBLOCK);
     ae_resource_entries[reindex].poll_data.poll_context =
         resource->poll_context;
+    ae_resource_entries[reindex].poll_data.context = NULL;
     event.data.ptr = &ae_resource_entries[reindex].poll_data;
     event.events = EPOLLIN;
     ret = epoll_ctl(efd, EPOLL_CTL_ADD, 
@@ -127,7 +130,7 @@ static void ev_async_cb(EV_P_ ev_async *w, int revents)
         (struct ae_poll_data*)(((char*)w)-offsetof(struct ae_poll_data, async));
 
     assert(poll_data->poll_context);
-    tret = poll_data->poll_context(context);
+    tret = poll_data->poll_context(poll_data->context);
     /* TODO: error handling? */
     triton_error_assert(tret);
     
@@ -143,6 +146,11 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
     int reindex = ae_resource_count;
     int ret;
 
+    if(eloop == NULL)
+    {
+        eloop = EV_DEFAULT;
+    }
+
     if(ae_resource_count == AE_MAX_RESOURCES)
     {
 	return TRITON_ERR_INVAL;
@@ -151,7 +159,8 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
     ev_async_init(&ae_resource_entries[reindex].poll_data.async, ev_async_cb);
     ae_resource_entries[reindex].poll_data.poll_context =
         resource->poll_context;
-    ev_async_start(loop, &ae_resource_entries[reindex].poll_data.async);
+    ae_resource_entries[reindex].poll_data.context = NULL;
+    ev_async_start(eloop, &ae_resource_entries[reindex].poll_data.async);
 
     ae_resource_entries[reindex].id = AE_RESOURCE_IDX2ID(reindex);
     ae_resource_entries[reindex].resource = resource;
@@ -176,7 +185,7 @@ void ae_resource_unregister(int id)
     close(ae_resource_entries[idx].poll_data.pipe_fds[1]);
 #endif
 #ifdef __AESOP_LIBEV
-    ev_async_stop(loop, &ae_resource_entries[idx].poll_data.async);
+    ev_async_stop(eloop, &ae_resource_entries[idx].poll_data.async);
 #endif
 
     if(idx != (ae_resource_count -1))
@@ -247,7 +256,7 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
             if(resource_id == context->resource_ids[i])
             {
                 async = &context->poll_data[i].async;
-                target_loop = context->loop;
+                target_loop = context->eloop;
                 break;
             }
         }
@@ -257,7 +266,7 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
         /* find this resource in the global list */
         ridx = AE_RESOURCE_ID2IDX(resource_id);
         async = &ae_resource_entries[ridx].poll_data.async;
-        target_loop = loop;
+        target_loop = eloop;
     }
 
     assert(async);
@@ -531,17 +540,17 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
     if(context)
     {
         /* use context specific event loop */
-        target_loop = context->loop;
+        target_loop = context->eloop;
     }
     else
     {
         /* use global event loop */
-        target_loop = loop;
+        target_loop = eloop;
     }
 
-    if(milliseconds > 0)
+    if(millisecs > 0)
     {
-        timeout->data = &hit_timeout;
+        timeout.data = &hit_timeout;
         ev_timer_init(&timeout, timeout_cb, (double)millisecs * 1000.0, 0);
         ev_timer_start(target_loop, &timeout);
         ev_run(target_loop, 0);
@@ -598,8 +607,8 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
     }
 
 #ifdef __AESOP_LIBEV
-    c->loop = ev_loop_new(EVFLAG_AUTO);
-    if(!c->loop)
+    c->eloop = ev_loop_new(EVFLAG_AUTO);
+    if(!c->eloop)
     {
         triton_err(triton_log_default, "Error: could not create libev event loop.\n");
         free(c->resource_ids);
@@ -661,6 +670,7 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
 #endif
                     c->poll_data[reindex].poll_context = 
                         ae_resource_entries[j].poll_data.poll_context;
+                    c->poll_data[reindex].context = c;
                     ret = ae_resource_entries[j].resource->register_context(c);
                     if(ret != TRITON_SUCCESS)
                     {
@@ -692,7 +702,7 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
                 }
 #endif
 #ifdef __AESOP_LIBEV
-                ev_async_start(c->loop, &c->poll_data[reindex].async);
+                ev_async_start(c->eloop, &c->poll_data[reindex].async);
 #endif
 
                 c->resource_ids[reindex] = ae_resource_entries[j].id;
@@ -734,7 +744,7 @@ triton_ret_t ae_context_destroy(ae_context_t context)
             close(context->poll_data[i].pipe_fds[1]);
 #endif
 #ifdef __AESOP_LIBEV
-        ev_async_stop(&context->poll_data[i].async);
+        ev_async_stop(context->eloop, &context->poll_data[i].async);
 #endif
     }
     free(context->resource_ids);
@@ -747,7 +757,7 @@ triton_ret_t ae_context_destroy(ae_context_t context)
     close(context->efd);
 #endif
 #ifdef __AESOP_LIBEV
-    ev_loop_destroy(context->loop);
+    ev_loop_destroy(context->eloop);
 #endif
     return TRITON_SUCCESS;
 }
