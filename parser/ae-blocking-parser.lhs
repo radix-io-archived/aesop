@@ -181,20 +181,31 @@ either from a pbreak, or from an external cancel call of the entire blocking fun
 > mkPostRetDecl :: NodeInfo -> WalkerT CDecl
 > mkPostRetDecl ni = liftM head $ mkDeclsFromBlocking "AE_MK_RET_DECL" [] ni
 
-> getLastStmtInCompounds :: CStat -> CStat
-> getLastStmtInCompounds (CCompound _ bitems _) = assert (isJust lastStmt) r
->       where lastStmt = getBlockStmt $ last bitems
->             r = getLastStmtInCompounds $ fromJust lastStmt
-> getLastStmtInCompounds s = s
+> getLastStmtInCompounds :: CStat -> Maybe CStat
+> getLastStmtInCompounds (CCompound _ bitems _) 
+>       | null bitems = Nothing
+>       | isJust s = getLastStmtInCompounds $ fromJust s
+>       | otherwise = s
+>               where s = getBlockStmt $ last bitems
+> getLastStmtInCompounds c = Just c
 
 > checkForReturn :: CFunDef -> WalkerT CFunDef
 > checkForReturn f@(CFunDef specs declarator decls c@(CCompound idents stmts cni) ni)
->	| (isVoidReturn $ getFunDefReturn f) && (isJust $ getBlockStmt $ last stmts) && (not $ isReturnStmt $ fromJust $ getBlockStmt $ last stmts) = 
->		return $ (CFunDef specs declarator decls (CCompound idents (stmts ++ [CBlockStmt (CReturn Nothing ni)]) cni) ni)
->	| (not $ isVoidReturn $ getFunDefReturn f) && (not $ isReturnStmt $ getLastStmtInCompounds c) = do
->		invalid ("The blocking function: " ++ (getFunDefName f) ++ " does not have a final return statement\n") ni
->		return f
->	| otherwise = return f
+
+>	| isVoidReturn $ getFunDefReturn f =
+>               if null stmts then addVoidReturn
+>                 else if isNothing $ getBlockStmt $ last stmts then addVoidReturn
+>                   else if not $ isReturnStmt $ fromJust $ getBlockStmt $ last stmts then addVoidReturn
+>                     else return f
+
+>	| otherwise = do
+>               when (null stmts) $ errorNonVoidReturn
+>               when (isNothing $ getLastStmtInCompounds c) $ errorNonVoidReturn
+>               when (not $ isReturnStmt $ fromJust $ getLastStmtInCompounds c) $ errorNonVoidReturn
+>               return f
+
+>           where addVoidReturn = return $ (CFunDef specs declarator decls (CCompound idents (stmts ++ [CBlockStmt (CReturn Nothing ni)]) cni) ni)
+>                 errorNonVoidReturn = invalid ("The blocking function: " ++ (getFunDefName f) ++ " does not have a final return statement\n") ni
 
 > getLocals :: BlockingContext -> [CDecl]
 > getLocals (FunContext funDef _ _ _ _) = getFuncLocalDecls funDef
