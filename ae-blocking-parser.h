@@ -180,13 +180,6 @@
     } \
     ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context, 1, parent_ctl); \
     ctl->parent = parent_ctl; \
-    ctl->gen.hints = malloc(sizeof(*ctl->gen.hints)); \
-    if(ctl->gen.hints == NULL) \
-    { \
-        triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for hints structure failed!\n", #__fname, __location); \
-        assert(ctl->gen.hints != NULL); \
-        goto __ae_##__pbranch_id##_end; \
-    } \
     ae_hints_dup(parent_ctl->gen.hints, &ctl->gen.hints); \
     ctl->params = parent_ctl->params; \
     memcpy(&ctl->__pwait_ctl.private, &parent_ctl->__pwait_ctl.private, sizeof(ctl->__pwait_ctl.private)); \
