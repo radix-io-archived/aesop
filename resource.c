@@ -863,6 +863,15 @@ triton_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, triton_ret_t parent)
 
     return ret;
 }
+#ifdef __AESOP_LIBEV
+struct ev_loop * ae_resource_get_eloop(ae_context_t context)
+{
+    if(!context)
+        return(eloop);
+    else
+        return(context->eloop);
+}
+#endif
 
 
 /*
