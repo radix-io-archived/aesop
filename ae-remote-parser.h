@@ -386,6 +386,7 @@ __blocking triton_ret_t __service_##__fname__( \
     } \
     sret = __fname__(__ptr__ __inname__, &__outname__); \
     retsize = aer_encode_size_triton_ret_t("error", &sret); \
+    aer_destroy_##__incanontype__(&__inname__); \
     outsize = 0; \
     if(sret == TRITON_SUCCESS) \
     { \
