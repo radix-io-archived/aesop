@@ -486,7 +486,7 @@ static uint32_t count_transferable_hints(struct ae_hints *h)
 }
 
 uint64_t aer_encode_size_ae_hints_t(
-    const char *n __unused, void *x)
+    const char *n __unused__, void *x)
 {
     uint32_t tcount;
     uint64_t count;
@@ -515,7 +515,7 @@ uint64_t aer_encode_size_ae_hints_t(
 }
 
 triton_ret_t aer_encode_ae_hints_t(
-    triton_buffer_t *buf, const char *n __unused, void *x)
+    triton_buffer_t *buf, const char *n __unused__, void *x)
 {
     uint32_t hcount;
     triton_ret_t ret;
@@ -573,7 +573,7 @@ triton_ret_t aer_encode_ae_hints_t(
 }
 
 triton_ret_t aer_decode_ae_hints_t(
-    triton_buffer_t *buf, char **n __unused, void *x)
+    triton_buffer_t *buf, char **n __unused__, void *x)
 {
     triton_ret_t ret;
     struct ae_hint_info *info;
