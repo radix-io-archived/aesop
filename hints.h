@@ -96,7 +96,7 @@ void ae_hints_free(ae_hints_t *h);
 
 uint64_t aer_encode_size_ae_hints_t(const char *n, void *x);
 triton_ret_t aer_encode_ae_hints_t(triton_buffer_t *buf, const char *n, void *x);
-triton_ret_t aer_decode_ae_hints_t(triton_buffer_t *buf, char **n __unused, void *x);
+triton_ret_t aer_decode_ae_hints_t(triton_buffer_t *buf, char **n __unused__, void *x);
 triton_ret_t aer_init_null_ae_hints_t(void *x);
 triton_ret_t aer_copy_ae_hints_t(void *x, void *y);
 void aer_destroy_ae_hints_t(void *x);
