@@ -129,6 +129,7 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
         op = ae_ops_dequeue(&cache->free_list);
     }
     triton_mutex_unlock(&cache->mutex);
+    assert(op);
     return op;
 }
 
