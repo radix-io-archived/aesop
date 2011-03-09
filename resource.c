@@ -566,6 +566,8 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
         ev_run(target_loop, EVRUN_NOWAIT);
     }
 
+    ev_timer_stop(target_loop, &timeout);
+
     /* this means that the event loop timed out without finding any work */
     if(hit_timeout == 1)
     {
