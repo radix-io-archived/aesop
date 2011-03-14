@@ -1,0 +1,43 @@
+
+#include <assert.h>
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+struct foo
+{
+    int x;
+};
+
+static __blocking struct foo* fn(void)
+{
+    struct foo* test;
+
+    test = malloc(sizeof(*test));
+    assert(test);
+
+    test->x = 0;
+
+    btest1(&test->x);
+
+    return(test);
+};
+
+static __blocking void run_basic(void)
+{
+	int ret;
+        struct foo* test;
+
+        test = fn();
+
+        printf("Got value of %d in struct return.\n", test->x);
+
+        return;
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    run_basic();
+    return 0;
+}
+aesop_main_set(aesop_main, "btest");
+

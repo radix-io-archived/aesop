@@ -4,6 +4,7 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/tcpfor.ae \
 	      $(DIR)/afterwhile.ae \
 	      $(DIR)/basic.ae \
+	      $(DIR)/basic-struct-return.ae \
 	      $(DIR)/compound.ae \
 	      $(DIR)/params.ae \
 	      $(DIR)/forloop.ae \
