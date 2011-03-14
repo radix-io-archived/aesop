@@ -1,0 +1,29 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+
+static __blocking void run_forloop(void)
+{
+	int i;
+        int j;
+	int a = 0;
+	int ret;
+	
+	for(i = 0; i < 5; ++i)
+	{
+            for(j = 0; j < 5; ++j)
+            {
+		ret = btest1(&a);
+                printf("i: %d, j: %d, a: %d\n", i, j, a);
+            }
+	}
+	
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    run_forloop();
+    return 0;
+}
+btest_main_set(aesop_main, "btest");
+
