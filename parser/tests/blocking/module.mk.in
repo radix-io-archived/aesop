@@ -14,6 +14,7 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/parallel4.ae \
 	      $(DIR)/parallelfor.ae \
 	      $(DIR)/parallelfor2.ae \
+	      $(DIR)/parallelfor3.ae \
 	      $(DIR)/whilebreak.ae \
 	      $(DIR)/whilebreak2.ae \
 	      $(DIR)/whilebreak3.ae \
