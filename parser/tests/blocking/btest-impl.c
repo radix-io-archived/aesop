@@ -28,6 +28,7 @@ struct btest_op
 static ae_ops_t list1;
 static ae_ops_t list2;
 static ae_ops_t list3;
+static ae_ops_t list_fail10;
 static ae_ops_t slist;
 static ae_ops_t clist;
 static ae_ops_t flist;
@@ -68,6 +69,23 @@ ae_define_post(int, tctest1, int *a)
     *__ae_op_id = bop->id;
     pthread_create(&tid, NULL, tctest1_threadfun, op);
     usleep(1000);
+
+    return TRITON_SUCCESS;
+}
+
+ae_define_post(triton_ret_t, btest_fail10, int *a)
+{
+    struct ae_op *op;
+    struct btest_op *bop;
+    printf("BTEST_FAIL10: %d\n", *a);
+    op = ae_opcache_get(test_opcache);
+    ae_op_fill(op);
+    bop = ae_op_entry(op, struct btest_op, op);
+    bop->value = a;
+    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    *__ae_op_id = bop->id;
+    ae_ops_enqueue(op, &list_fail10);
+    ae_resource_request_poll(op->ctx, btest_resource_id);
 
     return TRITON_SUCCESS;
 }
@@ -242,6 +260,23 @@ static triton_ret_t btest_poll(ae_context_t context)
    {
 	*(b->value) += 3;
         ae_opcache_complete_op(test_opcache, &b->op, int, 0);
+   }
+   request = request | more;
+
+   b = poll_list(&list_fail10, &more);
+   if(b)
+   {
+	*(b->value) += 1;
+        if(*(b->value) >= 10)
+        {
+            printf("BTEST_FAIL10 returning success.\n");
+            ae_opcache_complete_op(test_opcache, &b->op, triton_ret_t, TRITON_SUCCESS);
+        }
+        else
+        {
+            printf("BTEST_FAIL10 returning TRITON_ERR_AGAIN.\n");
+            ae_opcache_complete_op(test_opcache, &b->op, triton_ret_t, TRITON_ERR_AGAIN);
+        }
    }
    request = request | more;
 

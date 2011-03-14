@@ -7,6 +7,7 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/compound.ae \
 	      $(DIR)/params.ae \
 	      $(DIR)/forloop.ae \
+	      $(DIR)/dowhileloop.ae \
 	      $(DIR)/whileloop.ae \
 	      $(DIR)/parallel1.ae \
 	      $(DIR)/parallel2.ae \

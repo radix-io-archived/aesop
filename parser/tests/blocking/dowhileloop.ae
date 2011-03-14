@@ -1,0 +1,28 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+
+static __blocking void run_forloop(void)
+{
+	int a = 0;
+        triton_ret_t tret;
+	
+        /* The btest_fail10() function will increment a by 1 each time it is
+         * called.  It will return TRITON_ERR_AGAIN until a gets to 10, then
+         * it will start returning TRITON_SUCCESS.
+         */
+        do
+        {
+		tret = btest_fail10(&a);
+	} while(tret == TRITON_ERR_AGAIN);
+
+        assert(a >= 10);
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    run_forloop();
+    return 0;
+}
+btest_main_set(aesop_main, "btest");
+
