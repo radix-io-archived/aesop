@@ -1,0 +1,37 @@
+
+#include <assert.h>
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+
+struct foo
+{
+    int x;
+    int y;
+};
+
+static void normal_function(void)
+{
+    struct foo bar = {1,2};
+
+    return;
+}
+
+static __blocking void run_basic(void)
+{
+	int ret;
+	int a = 0;
+        struct foo bar = {1, 2};
+
+	ret = btest1(&a);
+	assert(a == 1);
+	assert(ret == 0);
+
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    run_basic();
+    return 0;
+}
+aesop_main_set(aesop_main, "btest");
+
