@@ -346,6 +346,7 @@ static triton_ret_t btest_init(void)
     ae_ops_init(&list1);
     ae_ops_init(&list2);
     ae_ops_init(&list3);
+    ae_ops_init(&list_fail10);
     ae_ops_init(&slist);
     ae_ops_init(&clist);
     ae_ops_init(&flist);
