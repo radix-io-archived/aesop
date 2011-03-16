@@ -425,6 +425,7 @@ __blocking triton_ret_t __service_##__fname__( \
             aer_message_destroy(ctx, out_message); \
             return ret; \
         } \
+        aer_destroy_##__outcanontype__(&__outname__); \
         ret = aer_encoding_finish(&(out_message->buffer)); \
         triton_debug(encoding_dbg_mask, "---------- encoding request completed: " #__fname__ " cptr=%p ----------\n", \
                      triton_buffer_cptr(&out_message->buffer)); \
