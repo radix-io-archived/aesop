@@ -105,9 +105,6 @@
 }
 
 #define AE_MK_PBRANCH_CB_DONE_STMTS(__id) \
-    triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_pwait_done = ctl->gen.allposted == 1 && ctl->gen.posted == ctl->gen.completed; \
-    triton_mutex_unlock(&ctl->gen.mutex); \
     if(!__ae_pwait_done) goto __ae_callback_end;
 
 #define AE_MK_PBRANCH_POST_DONE_STMTS(__pbranch_id) \
