@@ -33,7 +33,7 @@ static inline triton_ret_t aesop_hints_get(const char *key, int length, void *va
 {
     return TRITON_ERR_NOSYS;
 }
-static inline triton_ret_t aesop_hints_put(const char *key, int length, void *value)
+static inline triton_ret_t aesop_hints_put(const char *key, int length, void *value, int overwrite)
 {
     return TRITON_ERR_NOSYS;
 }

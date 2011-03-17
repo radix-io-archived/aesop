@@ -358,7 +358,13 @@ extern triton_debug_mask_t encoding_dbg_mask;
 
 #define AER_MK_SERVICE_DECL(__fname__) \
     __blocking triton_ret_t __service_##__fname__( \
-        aer_remote_ctx_t ctx, aer_message_t *send_message, aer_message_t *recv_message);
+        aer_remote_ctx_t ctx, aer_message_t *send_message, aer_message_t *recv_message, triton_ret_t *service_error); \
+    triton_ret_t __service_init_##__fname__( \
+        aer_remote_ctx_t ctx, aer_message_t *in_message, aer_message_t *out_message); \
+    void __service_destroy_##__fname__( \
+        aer_remote_ctx_t ctx, triton_ret_t service_return, aer_message_t *in_message, aer_message_t *out_message); \
+    struct aer_service_ctx __service_##__fname__##_ctx;
+   
 
 #define AER_MK_SERVICE_FNDEF(__fname__, \
                              __intype__, \
@@ -369,28 +375,26 @@ extern triton_debug_mask_t encoding_dbg_mask;
                              __outname__, \
                              __ptr__) \
 __blocking triton_ret_t __service_##__fname__( \
-   aer_remote_ctx_t ctx, aer_message_t *in_message, aer_message_t *out_message) \
+   aer_remote_ctx_t ctx, aer_message_t *in_message, aer_message_t *out_message, triton_ret_t *service_error) \
 { \
     triton_ret_t ret, sret; \
     uint32_t outsize, retsize; \
-    __intype__ __inname__; \
-    __outtype__ __outname__; \
     triton_debug(encoding_dbg_mask, "---------- decoding request: " #__fname__ " cptr=%p ----------\n", \
                  triton_buffer_cptr(&in_message->buffer)); \
-    ret = aer_decode_##__incanontype__(&(in_message->buffer), NULL, &__inname__); \
+    ret = aer_decode_##__incanontype__(&(in_message->buffer), NULL, in_message->param); \
     triton_debug(encoding_dbg_mask, "---------- decoding request completed: " #__fname__ " cptr=%p ----------\n", \
                  triton_buffer_cptr(&in_message->buffer)); \
     if(ret != TRITON_SUCCESS) \
     { \
         return ret; \
     } \
-    sret = __fname__(__ptr__ __inname__, &__outname__); \
+    sret = __fname__(__ptr__ (__intype__ *)in_message->param, (__outtype__ *)out_message->param); \
+    *service_error = sret; \
     retsize = aer_encode_size_triton_ret_t("error", &sret); \
-    aer_destroy_##__incanontype__(&__inname__); \
     outsize = 0; \
     if(sret == TRITON_SUCCESS) \
     { \
-        outsize = aer_encode_size_##__outcanontype__(#__outname__, &__outname__); \
+        outsize = aer_encode_size_##__outcanontype__(#__outname__, out_message->param); \
     } \
     ret = aer_message_init(ctx, out_message, AER_MESSAGE_RESPONSE, retsize+outsize); \
     if(ret != TRITON_SUCCESS) \
@@ -417,7 +421,7 @@ __blocking triton_ret_t __service_##__fname__( \
     } \
     if(sret == TRITON_SUCCESS) \
     { \
-        ret = aer_encode_##__outcanontype__(&(out_message->buffer), #__outname__, &__outname__); \
+        ret = aer_encode_##__outcanontype__(&(out_message->buffer), #__outname__, out_message->param); \
         if(ret != TRITON_SUCCESS) \
         { \
             triton_debug(encoding_dbg_mask, "---------- encoding response completed: " #__fname__ " cptr=%p ----------\n", \
@@ -425,7 +429,6 @@ __blocking triton_ret_t __service_##__fname__( \
             aer_message_destroy(ctx, out_message); \
             return ret; \
         } \
-        aer_destroy_##__outcanontype__(&__outname__); \
         ret = aer_encoding_finish(&(out_message->buffer)); \
         triton_debug(encoding_dbg_mask, "---------- encoding request completed: " #__fname__ " cptr=%p ----------\n", \
                      triton_buffer_cptr(&out_message->buffer)); \
@@ -449,6 +452,64 @@ __blocking triton_ret_t __service_##__fname__( \
     return ret; \
 }
 
+#define AER_MK_SERVICE_INIT(__fname__, \
+                            __intype__, \
+                            __incanontype__, \
+                            __inname__, \
+                            __outtype__, \
+                            __outcanontype__, \
+                            __outname__, \
+                            __ptr__) \
+triton_ret_t __service_init_##__fname__( \
+   aer_remote_ctx_t ctx, aer_message_t *in_message, aer_message_t *out_message) \
+{ \
+    triton_ret_t ret, sret; \
+    assert(in_message && out_message); \
+    in_message->param = malloc(sizeof(__intype__)); \
+    if(!in_message->param) \
+    { \
+        return TRITON_ERR_NOMEM; \
+    } \
+    out_message->param = malloc(sizeof(__outtype__)); \
+    if(!out_message->param) \
+    { \
+        free(out_message->param); \
+        out_message->param = NULL; \
+        return TRITON_ERR_NOMEM; \
+    } \
+    return TRITON_SUCCESS; \
+}
+
+#define AER_MK_SERVICE_DESTROY(__fname__, \
+                               __intype__, \
+                               __incanontype__, \
+                               __inname__, \
+                               __outtype__, \
+                               __outcanontype__, \
+                               __outname__, \
+                               __ptr__) \
+void __service_destroy_##__fname__( \
+   aer_remote_ctx_t ctx, triton_ret_t service_return, aer_message_t *in_message, aer_message_t *out_message) \
+{ \
+    assert(in_message && out_message); \
+    if(service_return == TRITON_SUCCESS) \
+    { \
+        aer_destroy_##__incanontype__(in_message->param); \
+        aer_destroy_##__outcanontype__(out_message->param); \
+    } \
+    free(in_message->param); \
+    in_message->param = NULL; \
+    free(out_message->param); \
+    out_message->param = NULL; \
+}
+
+#define AER_MK_SERVICE_CTX(__fname__) \
+    struct aer_service_ctx __service_##__fname__##_ctx = \
+    { .service_init = __service_init_##__fname__, \
+      .service_destroy = __service_destroy_##__fname__, \
+      .invoke_fn = __service_##__fname__ \
+    };
+
 #define AER_MK_OP_STMTS(__fname__) \
 { \
     if(__op_id_##__fname__) \
@@ -464,7 +525,7 @@ __blocking triton_ret_t __service_##__fname__( \
 
 #define AER_MK_REG_BLOCK(__fname__) \
 { \
-    ret = aer_service_register(__get_op_id_##__fname__(), #__fname__, __service_##__fname__); \
+    ret = aer_service_register(__get_op_id_##__fname__(), #__fname__, &__service_##__fname__##_ctx); \
     if(ret != TRITON_SUCCESS) return ret; \
 }
 

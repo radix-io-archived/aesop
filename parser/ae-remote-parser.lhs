@@ -666,9 +666,9 @@ CTypeOfType CDecl NodeInfo
 >           let [inputdecl, outputdecl] = params
 >               origDecl = CDeclExt $ (CDecl newspecs inits ni)
 >           stubDecl <- mkStubDecl (identToString fname) returnType params ni
->           serviceDecl <- mkServiceDecl ni (identToString fname)
+>           serviceDecls <- mkServiceDecl ni (identToString fname)
 
->           return [origDecl, stubDecl, serviceDecl]
+>           return $ [origDecl, stubDecl] ++ serviceDecls
 
 >       | isFunDecl d = do
 >               let (fname, _, _) = splitFunDecl d
@@ -807,7 +807,7 @@ CTypeOfType CDecl NodeInfo
 >                  ((genCDecl "triton_addr_t" "id" ni) : params)) -- parameters
 >                  stubStmts
 
-> mkServiceFun :: CFunDef -> RemoteT CExtDecl
+> mkServiceFun :: CFunDef -> RemoteT [CExtDecl]
 > mkServiceFun fundef = do
 >       let fname = getFunDefName fundef
 >           [inparam, outparam]= getFunDefParams fundef
@@ -822,7 +822,7 @@ CTypeOfType CDecl NodeInfo
 >           canonOutType = getRemoteTypeName $ getTypeSpecFromDecl outparam
 >           (CDecl _ inDerived _) = inparam
 >           isInPtr = any isDerivedPtr (join $ map getDerivedDeclrs inDerived)
->           ptrParam = if isInPtr then "&" else ""
+>           ptrParam = if isInPtr then "" else "*"
 >       when (not $ isJust canonInType) $
 >               invalid ("'" ++ inTypeName ++ "'" ++ 
 >                        " is not a recognized encoding type for input parameter '" ++ inParamName ++ "' to function: " ++ fname) ni
@@ -838,7 +838,32 @@ CTypeOfType CDecl NodeInfo
 >                                     fromJust canonOutType,
 >                                     outParamName,
 >                                     ptrParam] ni
->       return $ addDeclSpecs fdef newspecs
+>       [fdefInit] <- mkFunDefFromRemote (fname ++ "_init_block") [] "AER_MK_SERVICE_INIT"
+>                                    [fname,
+>                                     inTypeName,
+>                                     fromJust canonInType,
+>                                     inParamName,
+>                                     outTypeName,
+>                                     fromJust canonOutType,
+>                                     outParamName,
+>                                     ptrParam] ni
+>       [fdefDestroy] <- mkFunDefFromRemote (fname ++ "_destroy_block") [] "AER_MK_SERVICE_DESTROY"
+>                                    [fname,
+>                                     inTypeName,
+>                                     fromJust canonInType,
+>                                     inParamName,
+>                                     outTypeName,
+>                                     fromJust canonOutType,
+>                                     outParamName,
+>                                     ptrParam] ni
+>       return $ [fdefInit, fdefDestroy, addDeclSpecs fdef newspecs]
+
+> mkServiceCtx :: CFunDef -> RemoteT CExtDecl
+> mkServiceCtx fundef = do
+>       let fname = getFunDefName fundef
+>           ni = nodeInfo fundef
+>       [structCtx] <- mkDeclsFromRemote "AER_MK_SERVICE_CTX" [fname] ni
+>       return $ CDeclExt structCtx
 
 > mkOpStmts :: String -> NodeInfo -> RemoteT [CStat]
 > mkOpStmts fname ni = mkStmtFromRemote "AER_MK_OP_STMTS" [fname] ni
@@ -866,13 +891,15 @@ CTypeOfType CDecl NodeInfo
 >                   ni = nodeInfo funDef
 >               stub <- mkStubFun funDef
 >               servF <- mkServiceFun funDef
+>               servDecls <- mkServiceDecl ni $ getFunDefName funDef
+>               servCtx <- mkServiceCtx funDef
 >               let rstub = removeRemoteSpecFromFunDef stub
->                   rservF = removeRemoteSpecFromFunDef servF
+>                   rservF = map removeRemoteSpecFromFunDef servF
 >                   opfundecl = mkOpIdDecl (nodeInfo funDef) (getFunDefName funDef)
 >               opfun <- mkOpFun funDef
 >               sop <- liftM (map CDeclExt) $ mkDeclsFromRemote "AER_MK_STATIC_OP_DECL" [getFunDefName funDef] ni
 >               registerRemoteFun (getFunDefName funDef) (getFunDefReturn funDef) (getFunDefParams funDef)
->               return $ sop ++ [opfundecl, opfun, re, rstub, rservF]
+>               return $ sop ++ [opfundecl, opfun, re, rstub] ++ servDecls ++ rservF ++ [servCtx]
 >       | otherwise = return [e]
 > transformRemote e = return [e]
 
@@ -914,15 +941,14 @@ CTypeOfType CDecl NodeInfo
 >       rs <- getRemoteNames
 >       return $ map (mkOpIdDecl ni) rs 
 
-> mkServiceDecl :: NodeInfo -> String -> RemoteT CExtDecl
+> mkServiceDecl :: NodeInfo -> String -> RemoteT [CExtDecl]
 > mkServiceDecl ni s = do
->       [decl] <- liftM (map CDeclExt) $ mkDeclsFromRemote "AER_MK_SERVICE_DECL" [s] ni
->       return $ decl
+>       liftM (map CDeclExt) $ mkDeclsFromRemote "AER_MK_SERVICE_DECL" [s] ni
 
 > mkServiceDecls :: NodeInfo -> RemoteT [CExtDecl]
 > mkServiceDecls ni = do
 >       rs <- getRemoteNames
->       sequence $ map (mkServiceDecl ni) rs 
+>       liftM concat $ sequence $ map (mkServiceDecl ni) rs
 
 > addRegisterFun :: String -> NodeInfo -> RemoteT CTranslUnit
 > addRegisterFun sname ni = do
