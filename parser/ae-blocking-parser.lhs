@@ -638,9 +638,9 @@ From a blocking function definition, Construct an external declaration parameter
 >            sharedPWaitDecls = zip ids (map getPWaitSharedDecls pwaits) -- :: [(pwait_id, [shared_decl])]
 >            private = map removeInits privatePWaitDecls -- :: [(pwait_id, [private_decl_no_inits])]
 >            shared = map removeInits sharedPWaitDecls -- :: [(pwait_id, [shared_decl_no_inits])]
->	     sharedWithPBranch = zipWith (addPBranchParams funDef) pwaits shared -- :: [(pwait_id, [shared_decl_no_inits] ++ [pbranch_struct_decl])]
->            privatePWaitStructs = map (\p -> mkPWaitExtDecl (mkPrivateParamPWaitName fname) p ni) private
->            sharedPWaitStructs = map (\p -> mkPWaitExtDecl (mkSharedParamPWaitName fname) p ni) sharedWithPBranch
+>	     privateWithPBranch = zipWith (addPBranchParams funDef) pwaits private -- :: [(pwait_id, [shared_decl_no_inits] ++ [pbranch_struct_decl])]
+>            privatePWaitStructs = map (\p -> mkPWaitExtDecl (mkPrivateParamPWaitName fname) p ni) privateWithPBranch
+>            sharedPWaitStructs = map (\p -> mkPWaitExtDecl (mkSharedParamPWaitName fname) p ni) shared
 >            pwaitParams = map (\id -> (id, [mkStructDecl (mkPrivateParamPWaitName fname id) mkPrivateName ni,
 >                                            mkStructDecl (mkSharedParamPWaitName fname id) mkSharedName ni,
 >                                            mkStructPtrDecl (mkSharedParamPWaitName fname id) mkSharedPtrName ni])) ids  -- [(pwait_id, [private_struct, shared_struct])]
@@ -733,6 +733,11 @@ Each callback function defined for a given blocking function must have a unique 
 >       | isCallIn locals expr = addStructPtrPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
 >	| otherwise = expr
 
+addParams2PtrPrefixes "foo" "bar" "baz" [locals] localvar
+
+if localvar is in [locals]
+results in:  foo->bar->baz.localvar
+
 > addParams2PtrPrefixes :: String -> String -> String -> [Ident] -> CStat -> CStat
 > addParams2PtrPrefixes ctlPrefix p1Prefix p2Prefix idents stmts =
 >       everywhere (mkT $ addParams2PtrPrefixToExpr ctlPrefix p1Prefix p2Prefix idents) stmts
@@ -758,11 +763,11 @@ runfun(ctl->fields.a, ctl->fields.b, ctl->fields.c, ctl->fields.d);
 >          
 >              -- pbranch has a parameter struct in the pwait struct for the control struct
 >              -- myvar becomes:  ctl->pwait_100_23.pbranch_123_10.myvar
->	       addParams2PtrPrefixes ctlPrefix
->	   	                     ((mkPWaitName (getPWaitId pwaitCtx)) ++ "." ++ mkSharedPtrName)
->		                     (mkParamPBranchName (getPBranchId pbranchCtx))
->			             locals
->                                    stmt
+>	       addParams2Prefixes ctlPrefix
+>	   	                  ((mkPWaitName (getPWaitId pwaitCtx)) ++ "." ++ mkPrivateName)
+>		                  (mkParamPBranchName (getPBranchId pbranchCtx))
+>			          locals
+>                                 stmt
 
 >          else
 >              -- a lone pbranch has a parameter struct in the control struct

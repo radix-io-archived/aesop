@@ -599,11 +599,15 @@ ctl->params.blah
 >	CMember (CMember (CVar (newIdent sname ni) ni)
 >		 	 (newIdent pname ni) True ni) name False ni
 
+ctl->params1.params2.blah
+
 > addStructPrefixPrefix :: String -> String -> String -> CExpr -> CExpr
 > addStructPrefixPrefix sname p1name p2name (CVar name ni) =
 >	CMember (CMember (CMember (CVar (newIdent sname ni) ni)
 >			 	  (newIdent p1name ni) True ni)
 >			 (newIdent p2name ni) False ni) name False ni
+
+ctl->params1->params2.blah
 
 > addStructPtrPrefixPrefix :: String -> String -> String -> CExpr -> CExpr
 > addStructPtrPrefixPrefix sname p1name p2name (CVar name ni) =
