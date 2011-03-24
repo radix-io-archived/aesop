@@ -14,11 +14,8 @@
 #include "src/net/mpi/mpi.hae"
 #include "src/net/mpi/mpi-method.h"
 #include "src/net/fault-injector/fault-method.h"
-#include "src/common/triton-init.h"
-
 #include "src/remote/service.hae"
-
-#include "mpi.h"
+#include "src/common/triton-init.h"
 
 
 /* normally you don't have to declare this, but we do here because
@@ -27,6 +24,7 @@
  */
 triton_ret_t aer_remote_register_test_remote_fault(void); 
 
+#include "mpi.h"
 
 static float failure_rate = 0;
 
@@ -44,9 +42,9 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     int32_t res1 = 0, res2 = 0;
     aer_remote_ctx_t rctx;
 
-    /* we need to get the remote context from the hints, since
-     * we call the remote_scatter_gather stub function locally.
-     */
+    ret = aesop_hints_get("triton.remote.context", sizeof(rctx), &rctx);
+    triton_error_assert(ret);
+    assert(rctx != NULL);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -65,14 +63,12 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
         r2 = r1 + 2;
     }
 
-    sprintf(n1str, "mpi://%d", r1);
+    sprintf(n1str, "fault://%d", r1);
     ret = triton_addr_lookup(n1str, &n1);
     triton_error_assert(ret);
-    sprintf(n2str, "mpi://%d", r2);
-    ret = triton_addr_lookup(n2str, &n2);
-    triton_error_assert(ret);
 
-    ret = aesop_hints_get("triton.remote.context", sizeof(rctx), &rctx);
+    sprintf(n2str, "fault://%d", r2);
+    ret = triton_addr_lookup(n2str, &n2);
     triton_error_assert(ret);
 
     pwait
@@ -82,10 +78,11 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
             pbranch
             {
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r1, in);
+                assert(rctx != NULL);
                 ret1 = remote_scatter_gather(rctx, n1, in, &res1);
                 if(ret1 != TRITON_SUCCESS)
                 {
-                    aesop_cancel_branches();
+                    pbreak;
                 }
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d) done!\n", rank, r1, in);
             }
@@ -96,10 +93,11 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
             pbranch
             {
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d)\n", rank, r2, in);
+                assert(rctx != NULL);
                 ret2 = remote_scatter_gather(rctx, n2, in, &res2);
                 if(ret2 != TRITON_SUCCESS)
                 {
-                    aesop_cancel_branches();
+                    pbreak;
                 }
                 printf("scatter_gather: rank=%d :: remote_scatter_gather(node=%d, in=%d) done!\n", rank, r2, in);
             }
@@ -115,25 +113,20 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     else
     {
         ret = (ret1 == TRITON_SUCCESS) ? ret2 : ret1;
+        self = triton_addr_self("mpi");
+        ret = triton_error_wrap(ret, self, "Error at remote scatter_gather");
     }
 
     return ret;
 }
 
-__blocking void do_remote_test(void)
+__blocking void do_remote_test(aer_remote_ctx_t rctx)
 {
     triton_ret_t ret;
     int32_t result;
     int rank;
 
-    /* used by service side */
-    aer_remote_ctx_t rctx;
-
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    printf("Setting msg failure rate on rank %d to %f\n", rank, (double)failure_rate);
-    triton_msg_fault_set_failure_rate(failure_rate);
-
 
     if(rank == 0)
     {
@@ -160,25 +153,16 @@ __blocking void do_remote_test(void)
     else
     {
         /* service a single scatter/gather request */
-        ret = aer_service_requests(AER_DEFAULT_CTX, 1);
+        assert(rctx != NULL);
+        ret = aer_service_requests(rctx, 1);
     }
 }
 
-static int done = 0;
-static void cb(void *up)
-{
-    done=1;
-}
-
-int main(int argc, char *argv[])
+__blocking int aesop_main(int argc, char **argv)
 {
     triton_ret_t ret;
     ae_op_id_t op_id;
-    ae_context_t mpi_resource_ctx;
-    ae_hints_t hints;
     int scan_ret;
-
-    triton_init("triton.client");
 
     if(argc != 2)
     {
@@ -203,24 +187,17 @@ int main(int argc, char *argv[])
     triton_zeroconf_set("triton.net.fault_injector.failure_rate", argv[1]);
     triton_zeroconf_set("triton.net.fault_injector.base_method", "mpi");
 
-    triton_debug_stderr_enable("all");
-
+    /* triton_debug_stderr_enable("all"); */
+ 
     ret = aer_remote_register_test_remote_fault();
     triton_error_assert(ret);
 
-    ae_hints_init(&hints);
+    do_remote_test(AER_DEFAULT_CTX);
 
-    ae_context_create(&mpi_resource_ctx, "mpi", "sched", "timer");
-    ret = ae_post_blocking(do_remote_test, cb, NULL, &hints, mpi_resource_ctx, &op_id);
-    while(!done)
-    {
-        ae_poll(mpi_resource_ctx, 0);
-    }
-    ae_hints_destroy(&hints);
-
-    triton_finalize();
     return 0;
 }
+aesop_main_set_with_init(NULL, "triton.client", aesop_main, "mpi", "sched", "timer");
+
 
 /*
  * Local variables:
