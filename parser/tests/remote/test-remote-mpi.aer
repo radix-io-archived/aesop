@@ -105,7 +105,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     if(ret1 == TRITON_SUCCESS && ret2 == TRITON_SUCCESS)
     {
         *out = res1 + res2 + rank + in;
-        printf("scatter_gather: rank=%d => out=%d\n", rank, in, *out);
+        printf("scatter_gather: rank=%d => out=%d\n", rank, *out);
         ret = TRITON_SUCCESS;
     }
     else
