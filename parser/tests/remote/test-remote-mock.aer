@@ -215,7 +215,7 @@ __blocking int aesop_main(int argc, char **argv)
 
     return 0;
 }
-aesop_main_set(aesop_main, "sched", "timer");
+aesop_main_set_with_init(NULL, "triton.client", aesop_main, "sched", "timer");
 
 /*
  * Local variables:
