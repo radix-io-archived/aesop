@@ -145,6 +145,12 @@ __blocking void do_remote_test(void)
         ret = triton_timer(1000);
         triton_error_assert(ret);
 
+        /* must set the remote context as a hint because we're about to call
+         * scatter_gather as a local call
+         */
+        ret = aesop_hints_put("triton.remote.context", sizeof(rctx), &rctx, 1);
+        triton_error_assert(ret);
+
         /* rank 0 calls local scatter_gather, which starts everything */
         ret = scatter_gather(50, &result);
         triton_error_assert(ret);
