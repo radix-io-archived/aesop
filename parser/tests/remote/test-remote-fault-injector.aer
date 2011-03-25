@@ -196,7 +196,18 @@ __blocking int aesop_main(int argc, char **argv)
 
     return 0;
 }
-aesop_main_set_with_init(NULL, "triton.client", aesop_main, "mpi", "sched", "timer");
+
+static triton_ret_t init_zeroconf_params(void)
+{
+    triton_ret_t tret;
+
+    tret = triton_zeroconf_set("aesop.remote.default_net", "fault");
+    triton_error_assert(tret);
+    
+    return(TRITON_SUCCESS);
+}
+
+aesop_main_set_with_init(init_zeroconf_params, "triton.client", aesop_main, "mpi", "sched", "timer");
 
 
 /*
