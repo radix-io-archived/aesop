@@ -235,14 +235,16 @@ static void __main_cb(void *user_ptr, int t) \
 } \
 int main(int argc, char **argv)  \
 { \
-    ae_context_t __main_ctx; \
+    ae_context_t __main_ctx = NULL; \
     ae_hints_t __main_hints; \
     ae_op_id_t __main_opid; \
     triton_ret_t ret; \
     ret = triton_init(); \
     triton_error_assert(ret); \
-    ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
-    triton_error_assert(ret); \
+    if(COUNT_ARGS(__VA_ARGS__) > 0){ \
+        ret = ae_context_create(&__main_ctx, ##__VA_ARGS__); \
+        triton_error_assert(ret); \
+    } \
     ret = ae_hints_init(&__main_hints); \
     ret = ae_post_blocking(__main_blocking_function__, __main_cb, NULL, &__main_hints, __main_ctx, &__main_opid, argc, argv); \
     triton_error_assert(ret); \
@@ -253,7 +255,9 @@ int main(int argc, char **argv)  \
         triton_error_assert(ret); \
     } \
     ae_hints_destroy(&__main_hints); \
-    ae_context_destroy(__main_ctx); \
+    if(COUNT_ARGS(__VA_ARGS__) > 0){ \
+        ae_context_destroy(__main_ctx); \
+    } \
     triton_finalize(); \
     return __main_ret; \
 }
@@ -280,7 +284,7 @@ static void __main_cb(void *user_ptr, int t) \
 } \
 int main(int argc, char **argv)  \
 { \
-    ae_context_t __main_ctx; \
+    ae_context_t __main_ctx = NULL; \
     ae_hints_t __main_hints; \
     ae_op_id_t __main_opid; \
     triton_ret_t ret; \
@@ -292,7 +296,10 @@ int main(int argc, char **argv)  \
     } \
     ret = triton_init(__init_module__); \
     triton_error_assert(ret); \
-    ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
+    if(COUNT_ARGS(__VA_ARGS__) > 0){ \
+        ret = ae_context_create(&__main_ctx, ##__VA_ARGS__); \
+        triton_error_assert(ret); \
+    } \
     triton_error_assert(ret); \
     ret = ae_hints_init(&__main_hints); \
     ret = ae_post_blocking( \
@@ -312,7 +319,9 @@ int main(int argc, char **argv)  \
         triton_error_assert(ret); \
     } \
     ae_hints_destroy(&__main_hints); \
-    ae_context_destroy(__main_ctx); \
+    if(COUNT_ARGS(__VA_ARGS__) > 0){ \
+        ae_context_destroy(__main_ctx); \
+    } \
     triton_finalize(); \
     return __main_ret; \
 }
