@@ -284,10 +284,10 @@ int main(int argc, char **argv)  \
     ae_hints_t __main_hints; \
     ae_op_id_t __main_opid; \
     triton_ret_t ret; \
-    triton_ret_t (*__main_init_func)(void) = __init_before_triton__; \
+    triton_ret_t (*__main_init_func)(int, char**) = __init_before_triton__; \
     if(__init_before_triton__) \
     { \
-        ret = __main_init_func(); \
+        ret = __main_init_func(argc, argv); \
         triton_error_assert(ret); \
     } \
     ret = triton_init(__init_module__); \

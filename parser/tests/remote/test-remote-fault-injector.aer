@@ -197,7 +197,7 @@ __blocking int aesop_main(int argc, char **argv)
     return 0;
 }
 
-static triton_ret_t init_zeroconf_params(void)
+static triton_ret_t init_zeroconf_params(int argc, char** argv)
 {
     triton_ret_t tret;
 
