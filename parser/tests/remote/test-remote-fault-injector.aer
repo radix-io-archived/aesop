@@ -16,7 +16,8 @@
 #include "src/net/fault-injector/fault-method.h"
 #include "src/remote/service.hae"
 #include "src/common/triton-init.h"
-
+#include "src/remote/client_server_shutdown_module.h"
+#include "src/remote/client_server_shutdown_stubs.hae"
 
 /* normally you don't have to declare this, but we do here because
  * it gets declared in <module>_module.h (myclientserver_module.h)
@@ -113,7 +114,7 @@ __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out)
     else
     {
         ret = (ret1 == TRITON_SUCCESS) ? ret2 : ret1;
-        self = triton_addr_self("mpi");
+        self = triton_addr_self("fault");
         ret = triton_error_wrap(ret, self, "Error at remote scatter_gather");
     }
 
@@ -125,8 +126,14 @@ __blocking void do_remote_test(aer_remote_ctx_t rctx)
     triton_ret_t ret;
     int32_t result;
     int rank;
+    int i;
+    int size;
+    char addr_str[100];
+    triton_addr_t addr;
+    uint32_t out;
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     if(rank == 0)
     {
@@ -148,13 +155,25 @@ __blocking void do_remote_test(aer_remote_ctx_t rctx)
         ret = scatter_gather(50, &result);
         triton_error_assert(ret);
         printf("FINAL RESULT: %d\n", result);
+        /* shut down the other ranks which are acting as servers */
+        printf("shutting down processes...\n");
+        for(i=1; i<size; i++)
+        {
+            sprintf(addr_str, "fault://%d", i);
+            ret = triton_addr_lookup(addr_str, &addr);
+            triton_error_assert(ret);
 
+            ret = remote_triton_server_shutdown(rctx, addr, 0, &out);
+                            triton_error_assert(ret);
+            triton_error_assert(ret);
+        }
+        printf("done shutting down.\n");
     }
     else
     {
         /* service a single scatter/gather request */
         assert(rctx != NULL);
-        ret = aer_service_requests(rctx, 1);
+        aer_service_engine_start(rctx);
     }
 }
 
@@ -190,6 +209,8 @@ __blocking int aesop_main(int argc, char **argv)
     /* triton_debug_stderr_enable("all"); */
  
     ret = aer_remote_register_test_remote_fault();
+    triton_error_assert(ret);
+    ret = aer_remote_register_client_server_shutdown();
     triton_error_assert(ret);
 
     do_remote_test(AER_DEFAULT_CTX);
