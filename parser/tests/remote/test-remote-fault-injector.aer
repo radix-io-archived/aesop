@@ -204,7 +204,7 @@ __blocking int aesop_main(int argc, char **argv)
         return(-1);
     }
     triton_zeroconf_set("triton.net.fault_injector.failure_rate", argv[1]);
-    triton_zeroconf_set("triton.net.fault_injector.base_method", "mpi");
+    triton_zeroconf_set("triton.net.fault_injector.base_method", "triton.net.mpi");
 
     /* triton_debug_stderr_enable("all"); */
  
