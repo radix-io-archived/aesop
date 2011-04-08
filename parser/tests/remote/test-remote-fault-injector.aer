@@ -28,6 +28,7 @@ triton_ret_t aer_remote_register_test_remote_fault(void);
 #include "mpi.h"
 
 static float send_timeout_rate = 0;
+static float recv_timeout_rate = 0;
 
 __remote __blocking triton_ret_t scatter_gather(int32_t in, int32_t *out);
 
@@ -183,27 +184,15 @@ __blocking int aesop_main(int argc, char **argv)
     ae_op_id_t op_id;
     int scan_ret;
 
-    if(argc != 2)
+    if(argc != 3)
     {
         fprintf(stderr, 
-            "Usage: test-remote-fault-injector <send timeout rate (%%)>\n");
+            "Usage: test-remote-fault-injector <send timeout rate (%%)> <recv timeout rate (%%)>\n");
         return(-1);
     }
 
-    scan_ret = sscanf(argv[1], "%f", &send_timeout_rate);
-    if(scan_ret != 1)
-    {
-        fprintf(stderr, 
-            "Usage: test-remote-fault-injector <send timeout rate (%%)>\n");
-        return(-1);
-    }
-    if(send_timeout_rate > 100 || send_timeout_rate < 0)
-    {
-        fprintf(stderr, 
-            "Usage: test-remote-fault-injector <send timeout rate (%%)>\n");
-        return(-1);
-    }
     triton_zeroconf_set("triton.net.fault_injector.insert_send_timeouts_at_rate", argv[1]);
+    triton_zeroconf_set("triton.net.fault_injector.insert_recv_timeouts_at_rate", argv[2]);
     triton_zeroconf_set("triton.net.fault_injector.base_method", "triton.net.mpi");
 
     /* triton_debug_stderr_enable("all"); */
