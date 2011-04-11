@@ -261,6 +261,45 @@ triton_ret_t ae_hints_del(ae_hints_t *hints, const char *key)
     return TRITON_ERR_NOENT;
 }
 
+triton_ret_t ae_hints_modify(ae_hints_t *hints,
+                          const char *key,
+                          int length,
+                          void *value)
+{
+    struct ae_hint_info *info;
+    struct ae_hint_entry *entry, *tmpentry;
+    triton_ret_t ret;
+
+    info = ae_hints_get_info_by_key(key);
+    if(!info)
+    {
+        return TRITON_ERR_HINT_MISSING_TYPE;
+    }
+
+    while(hints)
+    {
+        triton_mutex_lock(&hints->lock);
+        triton_list_for_each_entry(entry, tmpentry, &hints->entries, struct ae_hint_entry, link)
+        {
+            if(entry->type == info->type)
+            {
+                if(length != entry->length)
+                {
+                    triton_mutex_unlock(&hints->lock);
+                    return TRITON_ERR_INVAL;
+                }
+                memcpy(entry->value, value, entry->length);
+                triton_mutex_unlock(&hints->lock);
+                return TRITON_SUCCESS;
+            }
+        }
+        triton_mutex_unlock(&hints->lock);
+        hints = hints->parent;
+    }
+    return TRITON_ERR_NOENT;
+}
+
+
 triton_ret_t ae_hints_put(ae_hints_t *hints,
                           const char *key,
                           int length,

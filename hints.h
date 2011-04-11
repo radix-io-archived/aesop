@@ -26,6 +26,8 @@ typedef struct ae_hints ae_hints_t;
     ae_hints_get(ctl->gen.hints, __key, __length, __value)
 #define aesop_hints_put(__key, __length, __value, __overwrite) \
     ae_hints_put(ctl->gen.hints, __key, __length, __value, __overwrite)
+#define aesop_hints_modify(__key, __length, __value) \
+    ae_hints_modify(ctl->gen.hints, __key, __length, __value)
 #else
 
 /* dummy functions to allow for compiling */
@@ -34,6 +36,10 @@ static inline triton_ret_t aesop_hints_get(const char *key, int length, void *va
     return TRITON_ERR_NOSYS;
 }
 static inline triton_ret_t aesop_hints_put(const char *key, int length, void *value, int overwrite)
+{
+    return TRITON_ERR_NOSYS;
+}
+static inline triton_ret_t aesop_hints_modify(ae_hints_t *hints, const char *key, int length, void *value)
 {
     return TRITON_ERR_NOSYS;
 }
@@ -46,6 +52,16 @@ triton_ret_t ae_hints_put(ae_hints_t *hints,
                           int overwrite);
 
 triton_ret_t ae_hints_get(ae_hints_t *hints,
+                          const char *key,
+                          int length,
+                          void *value);
+
+/* This is different from a put() with overwrite, because it will walk up to
+ * parent hints, and it will return ENOENT if the hint in question is not
+ * found.  It is intended for lower level components that need to modify a
+ * hint that was injected by a higher level component.
+ */
+triton_ret_t ae_hints_modify(ae_hints_t *hints,
                           const char *key,
                           int length,
                           void *value);
