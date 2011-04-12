@@ -35,13 +35,20 @@ __blocking int btest_sleep(int secs);
  * The operation is placed on a queue, and if a call to ae_cancel occurs the operation
  * is completed, otherwise the operation remains on the queue indefinitely.
  */
-__blocking int btest_forever();
+__blocking int btest_forever(void);
 
 /* This function simply returns a random value.  The operation is first placed
  * on a queue, and during polling the random value is calculated and the operation
  * completed.
  */
-__blocking int btest_random();
+__blocking int btest_random(void);
+
+/* This function sleeps for a random number of microsecs (up to 1 sec) before returning.
+ * The operation is placed on a queue, and during polling, the random value is calculated,
+ * the sleep is performed, and then the operation is completed.
+ */
+__blocking int btest_sleep_random(void);
+
 
 /* This function tests immediate completion.  It increments the parameter passed in
  * directly in the post function and calls the callback from the post function, returning
@@ -49,12 +56,23 @@ __blocking int btest_random();
  */
 __blocking int ictest1(int *a);
 
+/* Also tests immediate completion, but sleeps for a random number of microsecs
+ * (up to 1 sec) before completing immediately.
+ */
+__blocking int ictest_random();
+
 /* This function tests completion in a separate thread, where the completion callback may
  * be called before the post call actually completes.  The post call starts a thread that
  * increments the value and calls the callback.  After the post call starts the thread it
  * sleeps for 1000 microseconds before returning TRITON_POSTED.
  */
 __blocking int tctest1(int *a);
+
+/* Also tests completion in a separate thread, but sleeps for a random number of microsecs
+ * (up to 1 sec) before calling the callback, and sleeps for a (different) random number
+ * of microsecs (also up to 1 sec) before returning from the post call.
+ */
+__blocking int tctest_random();
 
 #define btest_main_set(__main_blocking_function__, ...) \
 static int __main_done=0; \
@@ -77,7 +95,7 @@ int main(int argc, char **argv)  \
     ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
     triton_error_assert(ret); \
     ret = ae_hints_init(&__main_hints); \
-    ret = ae_post_blocking(__main_blocking_function__, __main_cb, NULL, &__main_hints, __main_ctx, &__main_opid, argc, argv); \
+    ret = ae_post_blocking(__main_blocking_function__, __main_cb, NULL, &__main_hints, __main_ctx, &__main_opid, &__main_ret, argc, argv); \
     triton_error_assert(ret); \
     while(!__main_done) \
     { \

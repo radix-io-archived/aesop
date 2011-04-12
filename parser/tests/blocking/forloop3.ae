@@ -9,16 +9,19 @@ static __blocking void run_forloop(void)
 	int ret;
         triton_ret_t tret;
 
-        for(tret = TRITON_ERR_AGAIN; tret == TRITON_ERR_AGAIN; )
+        while(a < 100)
         {
-            tret = btest_fail10(&a);
-            if(tret == TRITON_ERR_AGAIN)
+            for(tret = TRITON_ERR_AGAIN; tret == TRITON_ERR_AGAIN; )
             {
-                printf("FOO.\n");
-            }
-            else if(tret == TRITON_SUCCESS)
-            {
-                ret = btest1(&a);
+                tret = btest_fail10(&a);
+                if(tret == TRITON_ERR_AGAIN)
+                {
+                    printf("FOO.\n");
+                }
+                else if(tret == TRITON_SUCCESS)
+                {
+                    ret = btest1(&a);
+                }
             }
         }
 }

@@ -1,252 +1,30 @@
-#ifndef __AE_BLOCKING_H__
-#define __AE_BLOCKING_H__
+#ifndef __AE_BLOCKING_PARSER_H__
+#define __AE_BLOCKING_PARSER_H__
 
 /**
- * Defines macros that get used by the parser to generate C code for blocking and remote parsers.
- * Each macro translates a set of parameters into either a C statement or a C declaration.
- * C statements can "one line" statements of the form:
- *
- * baz = foo(bar);
- *
- * or can be compound statements:
- *
- * {
- *     int foo1, foo2;
- *     baz1 = bar(foo1);
- *     baz2 = bar(foo2);
- * }
- *
- * or can be more complex statements:
- *
- * if(foo == 1) { baz = bar(foo); return baz; }
- *
- * Note that in the one line case, the statement _must_ end with a semi-colon, whereas in the compound statement
- * and if conditional, the curly braces end the statement.
- *
- * Declarations are of the form:
- *
- * int bar;
- * struct foo foo1, foo2;
- * char *baz = "foobar";
- *
- * Note that declarations must always end with a semi-colon.
+ * Defines macros that get used by the AESOP parser to generate C code from
+ * aesop files.
+ * Each macro translates a set of parameters into
+ * either a C statement, a C declaration, or a C expression.
  */
 
 #include "src/aesop/aesop.h"
-#include "src/common/triton-error.h"
-#include "src/common/triton-log.h"
-#include "src/common/triton-debug.h"
+#include "src/aesop/ae-error.h"
+#include "src/aesop/ae-log.h"
+#include "src/aesop/ae-debug.h"
 
 #define AE_MK_START_OF_BLOCKING(__fname__) \
-    triton_debug(ae_debug_blocking_funs, "[START]: %s (%p)\n", #__fname__, ctl);
+    ae_debug_blocking("[START]: %s (%p)\n", #__fname__, __ae_ctl);
 
-#define AE_MK_END_OF_BLOCKING(__fname__) \
-    triton_debug(ae_debug_blocking_funs, "[END]: %s (%p)\n", #__fname__, ctl);
+#define AE_MK_END_OF_BLOCKING(__fname__, __string) \
+    ae_debug_blocking("[END%s]: %s (%p)\n", __string, #__fname__, __ae_ctl);
 
-#define AE_MK_RET_DECL() \
-    triton_ret_t __ae_postret __attribute__ ((unused));
-    
-#define AE_MK_POSTCB_STMT(__fname, __ret_type, __ctl_name, __location) \
-    if(__ae_postret != TRITON_SUCCESS) \
-    { \
-        triton_err(triton_log_default, "INVALID STATE: %s:%d: post call did not return AE_POSTED or AE_COMPLETE, trace exiting\n", #__fname, __location); \
-        triton_error_assert(__ae_postret); \
-        return; \
-    }
-
-#define AE_MK_POST_STMT(__fname, __ret_type, __ctl_name, __location) \
-    if(__ae_postret != TRITON_SUCCESS) \
-    { \
-        triton_err(triton_log_default, "INVALID STATE: %s:%d: post call did not return AE_POSTED or AE_COMPLETE, trace exiting\n", #__fname, __location); \
-        triton_error_assert(__ae_postret); \
-        return __ae_postret; \
-    }
-
-#define AE_MK_PBREAK_DECLS() \
-    triton_ret_t __ae_cancel_ret;
-
-#define AE_MK_PBREAK_STMTS(__prefix, __fname, __location) \
-{ \
-    done_ctl->parent->gen.hit_pbreak = 1; \
-    triton_uint128_setzero(done_ctl->gen.current_op_id); \
-    triton_list_del(&done_ctl->gen.link); \
-}
-
-#define AE_MK_PBRANCH_CB_START_DECLS(__prefix, __ctl_name) \
-    int __ae_pwait_done; \
-    struct __ctl_name *done_ctl;
-
-#define AE_MK_PBRANCH_CB_START_STMTS(__prefix) \
-{ \
-    done_ctl = __prefix; \
-    triton_mutex_lock(&done_ctl->parent->gen.mutex); \
-}
-
-#define AE_MK_PBRANCH_POST_START_DECLS(__prefix, __ctl_name) \
-    int __ae_pwait_done; \
-    struct __ctl_name *done_ctl;
-
-#define AE_MK_PBRANCH_POST_START_STMTS(__prefix) \
-{ \
-    done_ctl = __prefix; \
-    triton_mutex_lock(&done_ctl->parent->gen.mutex); \
-}
-
-#define AE_MK_PBRANCH_DELETE_STMTS() \
-    triton_list_del(&done_ctl->gen.link);
-
-#define AE_MK_PBRANCH_DONE_STMTS() \
-{ \
-    done_ctl->parent->gen.completed++; \
-    __ae_pwait_done = done_ctl->parent->gen.allposted == 1 && done_ctl->parent->gen.posted == done_ctl->parent->gen.completed; \
-    triton_mutex_unlock(&done_ctl->parent->gen.mutex); \
-    ae_hints_destroy(done_ctl->gen.hints); \
-    ae_ctl_destroy(done_ctl, &done_ctl->gen); \
-}
-
-#define AE_MK_PBRANCH_CB_DONE_STMTS(__id) \
-    if(!__ae_pwait_done) goto __ae_callback_end;
-
-#define AE_MK_PBRANCH_POST_DONE_STMTS(__pbranch_id) \
-    triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_pwait_done = ctl->gen.allposted == 1 && ctl->gen.posted == ctl->gen.completed; \
-    triton_mutex_unlock(&ctl->gen.mutex); \
-    if(!__ae_pwait_done) goto __ae_##__pbranch_id##_end;
-
-#define AE_MK_CB_DECLS(__ctl, __ctl_type) \
-    struct __ctl_type *__ctl;
-
-#define AE_MK_CB_INIT_STMTS(__ctl, __ctl_type) \
-    __ctl = (struct __ctl_type *) __ae_ptr; \
-    triton_mutex_lock(&__ctl->gen.mutex); \
-    triton_uint128_setzero(__ctl->gen.current_op_id); \
-    triton_mutex_unlock(&__ctl->gen.mutex);
-
-#define AE_MK_CB_DONE_STMTS() \
-    goto __ae_callback_end;
-
-#define AE_MK_CB_DONE_CTL_SET_STMTS(__prefix) \
-    __prefix = done_ctl->parent;
-
-#define AE_MK_PWAIT_INIT_STMTS(__pwait_params, __ctl, __pwait_name) \
-{ \
-    __ctl->parent = NULL; \
-    __ctl->gen.in_pwait = 1; \
-    __ctl->__pwait_params.shared_params = &__ctl->__pwait_params.shared; \
-}
-
-#define AE_MK_PWAIT_FINISH_STMTS(__ctl, __pwait_id) \
-{ \
-    int __ae_pwait_done; \
-    triton_mutex_lock(&__ctl->gen.mutex); \
-    __ae_pwait_done = __ctl->gen.posted == __ctl->gen.completed; \
-    __ctl->gen.allposted = 1; \
-    triton_mutex_unlock(&__ctl->gen.mutex); \
-    if(!__ae_pwait_done) goto __ae_pwait_##__pwait_id##_not_done; \
-}
-
-#define AE_MK_PWAIT_NOT_DONE_STMTS(__ctl, __pwait_id) \
-    __ae_pwait_##__pwait_id##_not_done: {}
-
-#define AE_MK_POST_FUN_INIT_STMTS(__ctl, __fname) \
-{ \
-    __ctl = malloc(sizeof(*__ctl)); \
-    if(__ctl == NULL) \
-    { \
-        return TRITON_ERR_NOMEM; \
-    } \
-    ae_ctl_init(&__ctl->gen, #__fname, __ae_hints, __ae_context, __ae_internal, __ae_user_ptr); \
-    __ctl->params = &__ctl->fields; \
-    __ctl->user_ptr = __ae_user_ptr; \
-    __ctl->__ae_callback = __ae_callback; \
-    if(__ae_op_id) *__ae_op_id = ae_id_gen(0, (intptr_t)ctl); \
-}
-
-#define AE_MK_PBRANCH_POST_DECLS(__ctl_type) \
-    struct __ctl_type *parent_ctl;
-
-#define AE_MK_PBRANCH_POST_STMTS(__pwait_ctl, __ctl_type, __fname, __location, __pbranch_id) \
-{ \
-    parent_ctl = ctl; \
-    ctl = malloc(sizeof(*ctl)); \
-    if(ctl == NULL) \
-    { \
-        triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for control structure failed!\n", #__fname, __location); \
-        assert(ctl != NULL); \
-        goto __ae_##__pbranch_id##_end; \
-    } \
-    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context, 1, parent_ctl); \
-    ctl->parent = parent_ctl; \
-    ae_hints_dup(parent_ctl->gen.hints, &ctl->gen.hints); \
-    ctl->params = parent_ctl->params; \
-    memcpy(&ctl->__pwait_ctl.private, &parent_ctl->__pwait_ctl.private, sizeof(ctl->__pwait_ctl.private)); \
-    ctl->__pwait_ctl.shared_params = &parent_ctl->__pwait_ctl.shared; \
-    triton_mutex_lock(&ctl->parent->gen.mutex); \
-    ctl->parent->gen.posted++; \
-    triton_list_link_clear(&ctl->gen.link); \
-    triton_queue_enqueue(&ctl->gen.link, &ctl->parent->gen.children); \
-    triton_mutex_unlock(&ctl->parent->gen.mutex); \
-}
-
-#define AE_MK_PBRANCH_POST_END_STMTS(__pwait_ctl, __ctl_type, __fname, __location, __pbranch_id) \
-{ \
-    ctl = parent_ctl; \
-}
-
-#define AE_MK_LONE_PBRANCH_POST_DECLS(__ctl_type) \
-    struct __ctl_type *parent_ctl;
-
-#define AE_MK_LONE_PBRANCH_POST_STMTS(__ctl_type, __fname, __location, __pbranch_id) \
-{ \
-    parent_ctl = ctl; \
-    ctl = malloc(sizeof(*ctl)); \
-    if(ctl == NULL) \
-    { \
-        triton_err(triton_log_default, "INVALID STATE: %s:%d: memory allocation for control structure failed!\n", #__fname, __location); \
-        assert(ctl != NULL); \
-        goto __ae_##__pbranch_id##_end; \
-    } \
-    ae_ctl_init(&ctl->gen, #__ctl_type ":" #__pbranch_id, NULL, parent_ctl->gen.context, 1, parent_ctl); \
-    ctl->parent = parent_ctl; \
-    ae_hints_dup(parent_ctl->gen.hints, &ctl->gen.hints); \
-    ctl->params = parent_ctl->params; \
-    triton_list_link_clear(&ctl->gen.link); \
-    ae_lone_pbranches_add(&ctl->gen); \
-    triton_mutex_lock(&ctl->parent->gen.mutex); \
-    ae_ctl_refinc(&ctl->parent->gen); \
-    triton_mutex_unlock(&ctl->parent->gen.mutex); \
-}
-
-#define AE_MK_LONE_PBRANCH_POST_END_STMTS(__ctl_type, __fname, __location, __pbranch_id) \
-{ \
-    ctl = parent_ctl; \
-}
-
-#define AE_MK_LONE_PBRANCH_DONE_STMTS() \
-{ \
-    int prc; \
-    ae_lone_pbranches_remove(&ctl->gen); \
-    triton_mutex_lock(&ctl->parent->gen.mutex); \
-    prc = ae_ctl_refdec(&ctl->parent->gen); \
-    triton_mutex_unlock(&ctl->parent->gen.mutex); \
-    if(prc == 0) ae_ctl_destroy(ctl->parent, &ctl->parent->gen); \
-    ae_hints_destroy(ctl->gen.hints); \
-    ae_ctl_destroy(ctl, &ctl->gen); \
-}
 #define AE_MK_PARENT_POINTER_DECL(__parent) \
     struct __parent##_ctl *parent;
 
 #define AE_MK_BLOCKING_PARAMS_FOR_STRUCT_DECLS() \
     struct ae_ctl gen; \
     void *user_ptr;
-
-#define AE_MK_BLOCKING_PARAMS_FOR_POST_DECLS() \
-    void *__ae_user_ptr; \
-    ae_hints_t *__ae_hints; \
-    ae_context_t __ae_context; \
-    ae_op_id_t *__ae_op_id; \
-    int __ae_internal;
-    /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
 
 #define AE_MK_BLOCKING_PARAMS_FUN_PTR_DECLS() \
     void *__ae_user_ptr; \
@@ -257,88 +35,583 @@
     /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
 
 
-#define AE_MK_POST_FUN_DECLS(__ctl_type) \
-    struct __ctl_type##_ctl *ctl; \
-    triton_ret_t __ae_postret;
-
-#define AE_MK_POST_FUN_FINISHED_STMTS() \
-__ae_post_end: \
-{ \
-    return __ae_postret; \
-} \
-
-#define AE_MK_NULL_RETURN_CALLBACK() \
-{ \
-    void (* __ae_local_cb)(void *); \
-    void *__ae_local_up; \
-    int __ae_refcount; \
-    __ae_local_cb = ctl->__ae_callback; \
-    __ae_local_up = ctl->user_ptr; \
-    triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_refcount = ae_ctl_refdec(&ctl->gen); \
-    assert(__ae_refcount >= 0); \
-    triton_mutex_unlock(&ctl->gen.mutex); \
-    __ae_local_cb(__ae_local_up); \
-    if(__ae_refcount == 0) { \
-        ae_ctl_destroy(ctl, &ctl->gen); \
-    } \
-    goto __ae_callback_end; \
+#define AE_MK_CB_FN_START(__fname)                     \
+    ae_ret_t cbret;                                    \
+    enum ae_ctl_state state;                           \
+    struct __fname##_ctl *__ae_ctl;                    \
+    struct __fname##_ctl *__ae_ctl_done __unused__;    \
+                                                       \
+    __ae_ctl = (struct __fname##_ctl *)__ae_ptr;       \
+    ae_mutex_lock(&__ae_ctl->gen.mutex);               \
+    state = AE_CTL_CALL_COMPLETE;                      \
+    ae_op_id_clear(__ae_ctl->gen.current_op_id);       \
+    ae_mutex_unlock(&__ae_ctl->gen.mutex);
+ 
+#define AE_MK_CB_FN_INVOKE_WORKER(__bfun, __fname, __pos_str) \
+    cbret = __ae_worker_##__bfun(__ae_ctl, &state);           \
+    if(cbret != AE_SUCCESS)                                   \
+    {                                                         \
+        aesop_err(                                            \
+            "INVALID STATE: "                                 \
+            "blocking function did not return "               \
+            "AE_SUCCESS (posted) or AE_IMMEDIATE_COMPLETION " \
+            "in function: %s, trace exiting\n",               \
+            #__fname);                                        \
+        aesop_error_assert(cbret);                            \
+        return;                                               \
+    }                                                         \
+                                                              \
+    if(state & AE_CTL_PWAIT_DONE)                             \
+    {                                                         \
+        __ae_ctl_done = __ae_ctl;                             \
+        __ae_ctl = __ae_ctl->parent;                          \
+        ae_debug_pbranch("ctl_done: pwait_done: %p\n", __ae_ctl_done); \
+        ae_ctl_done(&__ae_ctl_done->gen);                     \
+    }                                                         \
+    else if(state & AE_CTL_PBRANCH_DONE ||                    \
+            state & AE_CTL_LONE_PBRANCH_DONE)                 \
+    {                                                         \
+        ae_debug_pbranch("ctl_done: pbranch_done: %p\n", __ae_ctl); \
+        ae_ctl_done(&__ae_ctl->gen);                          \
+        return;                                               \
+    }
+ 
+#define AE_MK_DONE_DECLS()                       \
+        void * __ae_local_up;                    \
+        int __ae_refcount;                       \
+        __ae_local_cb = __ae_ctl->__ae_callback; \
+        __ae_local_up = __ae_ctl->user_ptr;
+ 
+#define AE_MK_CALLBACK_FN(__bfun, __fname, __pos_str, __fret_type, __cb_ret_type, __cb_ret_param)     \
+static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr, __cb_ret_type __cb_ret_param) \
+{                                                                                                     \
+    AE_MK_CB_FN_START(__bfun);                                                                        \
+                                                                                                      \
+    __ae_ctl->return_params.__cb_ret_param = __cb_ret_param;                                          \
+                                                                                                      \
+    AE_MK_CB_FN_INVOKE_WORKER(__bfun, __fname, __pos_str);                                            \
+                                                                                                      \
+    /* if the blocking function has completed, call its callback */                                   \
+    if(state & AE_CTL_FN_COMPLETE)                                                                    \
+    {                                                                                                 \
+        void (* __ae_local_cb)(void *, __fret_type);                                                  \
+        __fret_type __ae_ret = __ae_ctl->return_value;                                                \
+        AE_MK_DONE_DECLS();                                                                           \
+                                                                                                      \
+        AE_MK_END_OF_BLOCKING(__bfun, "");                                                            \
+        ae_debug_pbranch("ctl_done: cb: fn_complete: %p\n", __ae_ctl);                                \
+        ae_ctl_done(&__ae_ctl->gen);                                                                  \
+        __ae_local_cb(__ae_local_up, __ae_ret);                                                       \
+    }                                                                                                 \
+                                                                                                      \
+    return;                                                                                           \
 }
 
-#define AE_MK_RETURN_CALLBACK(__ret_param_expr, __ret_type) \
-{ \
-    void (* __ae_local_cb)(void *, __ret_type); \
-    void *__ae_local_up; \
-    int __ae_refcount; \
-    __ret_type __ae_ret; \
-    __ae_local_cb = ctl->__ae_callback; \
-    __ae_local_up = ctl->user_ptr; \
-    __ae_ret = __ret_param_expr; \
-    triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_refcount = ae_ctl_refdec(&ctl->gen); \
-    assert(__ae_refcount >= 0); \
-    triton_mutex_unlock(&ctl->gen.mutex); \
-    __ae_local_cb(__ae_local_up, __ae_ret); \
-    if(__ae_refcount == 0) { \
-        ae_ctl_destroy(ctl, &ctl->gen); \
-    } \
-    goto __ae_callback_end; \
+#define AE_MK_CALLBACK_VOIDFN(__bfun, __fname, __pos_str, __cb_ret_type, __cb_ret_param)              \
+static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr, __cb_ret_type __cb_ret_param) \
+{                                                                                                     \
+    AE_MK_CB_FN_START(__bfun);                                                                        \
+                                                                                                      \
+    __ae_ctl->return_params.__cb_ret_param = __cb_ret_param;                                          \
+                                                                                                      \
+    AE_MK_CB_FN_INVOKE_WORKER(__bfun, __fname, __pos_str);                                            \
+                                                                                                      \
+    if(state & AE_CTL_FN_COMPLETE)                                                                    \
+    {                                                                                                 \
+        void (* __ae_local_cb)(void *);                                                               \
+        AE_MK_DONE_DECLS();                                                                           \
+                                                                                                      \
+        AE_MK_END_OF_BLOCKING(__bfun, "");                                                            \
+        ae_debug_pbranch("ctl_done: cb: fn_complete: %p\n", __ae_ctl);                                \
+        ae_ctl_done(&__ae_ctl->gen);                                                                  \
+        __ae_local_cb(__ae_local_up);                                                                 \
+    }                                                                                                 \
+                                                                                                      \
+    return;                                                                                           \
 }
 
-#define AE_MK_NULL_POST_RETURN_CALLBACK() \
-{ \
-    void (* __ae_local_cb)(void *); \
-    void *__ae_local_up; \
-    int __ae_refcount; \
-    __ae_local_cb = ctl->__ae_callback; \
-    __ae_local_up = ctl->user_ptr; \
-    triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_refcount = ae_ctl_refdec(&ctl->gen); \
-    triton_mutex_unlock(&ctl->gen.mutex); \
-    assert(__ae_refcount >= 0); \
-    __ae_local_cb(__ae_local_up); \
-    if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
-    __ae_postret = TRITON_SUCCESS; \
-    goto __ae_post_end; \
+#define AE_MK_CALLBACK_FN_VOIDCB(__bfun, __fname, __pos_str, __fret_type)    \
+static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr)      \
+{                                                                            \
+    AE_MK_CB_FN_START(__bfun);                                               \
+                                                                             \
+    AE_MK_CB_FN_INVOKE_WORKER(__bfun, __fname, _pos_str);                    \
+                                                                             \
+    if(state & AE_CTL_FN_COMPLETE)                                           \
+    {                                                                        \
+        void (* __ae_local_cb)(void *, __fret_type);                         \
+        AE_MK_DONE_DECLS();                                                  \
+        __fret_type __ae_ret = __ae_ctl->return_value;                       \
+                                                                             \
+        AE_MK_END_OF_BLOCKING(__bfun, "");                                   \
+        ae_debug_pbranch("ctl_done: cb: fn_complete: %p\n", __ae_ctl);       \
+        ae_ctl_done(&__ae_ctl->gen);                                         \
+        __ae_local_cb(__ae_local_up, __ae_ret);                              \
+    }                                                                        \
+                                                                             \
+    return;                                                                  \
 }
 
-#define AE_MK_POST_RETURN_CALLBACK(__ret_param_expr, __ret_type) \
-{ \
-    void (* __ae_local_cb)(void *, __ret_type); \
-    void *__ae_local_up; \
-    int __ae_refcount; \
-    __ret_type __ae_ret; \
-    __ae_local_cb = ctl->__ae_callback; \
-    __ae_local_up = ctl->user_ptr; \
-    __ae_ret = __ret_param_expr; \
-    triton_mutex_lock(&ctl->gen.mutex); \
-    __ae_refcount = ae_ctl_refdec(&ctl->gen); \
-    triton_mutex_unlock(&ctl->gen.mutex); \
-    assert(__ae_refcount >= 0); \
-    __ae_local_cb(__ae_local_up, __ae_ret); \
-    if(__ae_refcount == 0) ae_ctl_destroy(ctl, &ctl->gen); \
-    __ae_postret = TRITON_SUCCESS; \
-    goto __ae_post_end; \
+#define AE_MK_CALLBACK_VOIDFN_VOIDCB(__bfun, __fname, __pos_str)        \
+static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr) \
+{                                                                       \
+    AE_MK_CB_FN_START(__bfun);                                          \
+                                                                        \
+    AE_MK_CB_FN_INVOKE_WORKER(__bfun, __fname, __pos_str);              \
+                                                                        \
+    if(state & AE_CTL_FN_COMPLETE)                                      \
+    {                                                                   \
+        void (* __ae_local_cb)(void *);                                 \
+        AE_MK_DONE_DECLS();                                             \
+                                                                        \
+        AE_MK_END_OF_BLOCKING(__bfun, "");                              \
+        ae_debug_pbranch("ctl_done: cb: fn_complete: %p\n", __ae_ctl);  \
+        ae_ctl_done(&__ae_ctl->gen);                                    \
+        __ae_local_cb(__ae_local_up);                                   \
+    }                                                                   \
+                                                                        \
+    return;                                                             \
 }
 
-#endif
+#define AE_MK_POST_CALL(__fname, __bcall, __bcallName, __pos_str)            \
+    __ae_postret = __bcall(__fname##_##__bcallName##_##__pos_str##_callback, \
+                           __ae_ctl,                                         \
+                           __ae_ctl->gen.hints,                              \
+                           __ae_ctl->gen.context,                            \
+                           &__ae_ctl->gen.current_op_id,                     \
+                           1);
+
+#define AE_MK_POST_RET_PARAM(__bcall, __pos_str)                          \
+    /* only the RHS of the assignment expression is used in this macro */ \
+    ret = &__ae_ctl->return_params.__bcall##_##__pos_str##_ret;
+
+#define AE_MK_WORKER_PARAMS(__fname) \
+    struct __fname##_ctl *__ae_ctl; \
+    enum ae_ctl_state *__ae_state;
+
+#define AE_MK_WORKER_RET_DECL() \
+    ae_ret_t __ae_postret __unused__;
+
+ #define AE_MK_WORKER_DECLS() \
+    ae_ret_t __ae_postret __unused__; \
+    ae_ret_t __ae_myret;
+
+#define AE_MK_WORKER_START_STMTS()                      \
+    __ae_myret = AE_SUCCESS;                            \
+    if(*__ae_state == AE_CTL_CALL_COMPLETE)             \
+    {                                                   \
+        assert(__ae_ctl->gen.state_label);              \
+        goto *__ae_ctl->gen.state_label;                \
+    }
+
+#define AE_MK_WORKER_END_STMTS() \
+__ae_blocking_function_done:     \
+{                                \
+    return __ae_myret;           \
+}
+
+#define AE_MK_WORKER_RETURN(__ret_expr)       \
+{                                             \
+    __ae_ctl->return_value = __ret_expr;      \
+    *__ae_state |= AE_CTL_FN_COMPLETE;        \
+    goto __ae_blocking_function_done;         \
+}
+
+#define AE_MK_WORKER_VOID_RETURN()            \
+{                                             \
+    *__ae_state |= AE_CTL_FN_COMPLETE;        \
+    goto __ae_blocking_function_done;         \
+}
+
+#define AE_MK_WORKER_BEFORE_POST(__fname, __bcall, __pos_str) \
+    __fname##_##__bcall##_##__pos_str##_before_label:         \
+    __ae_ctl->gen.state_label =                               \
+        &&__fname##_##__bcall##_##__pos_str##_after_label;
+
+#define AE_MK_WORKER_AFTER_POST(__fname, __bcall, __pos_str) \
+    if(__ae_postret == AE_SUCCESS)                           \
+    {                                                        \
+       __ae_myret = AE_SUCCESS;                              \
+        *__ae_state |= AE_CTL_POST_SUCCESS;                  \
+        goto __ae_blocking_function_done;                    \
+    }                                                        \
+    else if(__ae_postret != AE_IMMEDIATE_COMPLETION)         \
+    {                                                        \
+        __ae_myret = __ae_postret;                           \
+        *__ae_state = AE_CTL_POST_FAILED;                    \
+        goto __ae_blocking_function_done;                    \
+    }                                                        \
+    __fname##_##__bcall##_##__pos_str##_after_label: {}
+
+#define AE_MK_WORKER_BEFORE_POST_IN_PBRANCH(__fname, __bcall, __pos_str, __pbranch_pos_str) \
+    __fname##_##__bcall##_##__pos_str##_before_label:                                       \
+    __ae_ctl->gen.state_label =                                                             \
+        &&__fname##_##__bcall##_##__pos_str##_after_label;                                  \
+    ae_debug_pbranch("ctl_addref: before post: %p\n", __ae_ctl);                            \
+    ae_ctl_addref(&__ae_ctl->gen);
+
+#define AE_MK_WORKER_AFTER_POST_IN_PBRANCH(__fname, __bcall, __pos_str, __pbranch_pos_str) \
+   if(__ae_postret == AE_SUCCESS)                                                          \
+   {                                                                                       \
+       *__ae_state |= AE_CTL_POST_SUCCESS;                                                 \
+       __ae_myret = AE_SUCCESS;                                                            \
+       goto __ae_pbranch_##__pbranch_pos_str##_inprogress;                                 \
+   }                                                                                       \
+   else if(__ae_postret == AE_IMMEDIATE_COMPLETION)                                        \
+   {                                                                                       \
+       ae_debug_pbranch("ctl_done: post ic: %p\n", __ae_ctl);                              \
+       ae_ctl_done(&__ae_ctl->gen);                                                        \
+   }                                                                                       \
+   else                                                                                    \
+   {                                                                                       \
+       __ae_myret = __ae_postret;                                                          \
+       *__ae_state = AE_CTL_POST_FAILED;                                                   \
+       goto __ae_blocking_function_done;                                                   \
+   }                                                                                       \
+   __fname##_##__bcall##_##__pos_str##_after_label:                                        \
+    if(*__ae_state == AE_CTL_CALL_COMPLETE)                                                \
+    {                                                                                      \
+        __ae_pbranch_##__pbranch_pos_str##_state = AE_PBRANCH_INPROGRESS;                  \
+    }
+
+#define AE_MK_WORKER_RETURN_VAR_EXPR(__bfun, __bcall, __pos_str) \
+    __ae_ctl->return_params.__bcall##_##__pos_str##_ret;
+
+#define AE_MK_WORKER_PBRANCH_DECLS(__fname, __pbranch_pos_str) \
+    enum ae_pbranch_state __ae_pbranch_##__pbranch_pos_str##_state;
+
+#define AE_MK_WORKER_PBRANCH_START_STMTS(__fname, __pwait_pos_str, __pbranch_pos_str) \
+__ae_pbranch_##__pbranch_pos_str##_start:                                             \
+{                                                                                     \
+    struct __fname##_ctl *__ae_ctl_parent;                                            \
+    __ae_pbranch_##__pbranch_pos_str##_state = AE_PBRANCH_INIT;                       \
+    __ae_ctl_parent = __ae_ctl;                                                       \
+    __ae_ctl = malloc(sizeof(*__ae_ctl));                                             \
+    if(__ae_ctl == NULL)                                                              \
+    {                                                                                 \
+        return AE_NOMEM;                                                              \
+    }                                                                                 \
+    ae_ctl_init(&__ae_ctl->gen,                                                       \
+                __ae_ctl,                                                             \
+                #__fname "_ctl:pbranch_" #__pbranch_pos_str,                          \
+                NULL,                                                                 \
+                __ae_ctl_parent->gen.context,                                         \
+                1,                                                                    \
+                __ae_ctl_parent);                                                     \
+    ae_debug_pbranch("starting pbranch: %s (ctl=%p, parent=%p)\n",                    \
+                     #__fname "_ctl:pbranch_" #__pbranch_pos_str,                     \
+                     __ae_ctl,                                                        \
+                     __ae_ctl_parent);                                                \
+    __ae_ctl->parent = __ae_ctl_parent;                                               \
+    __ae_ctl->params = __ae_ctl_parent->params;                                       \
+    memcpy(&__ae_ctl->pwait_##__pwait_pos_str##_params.private,                       \
+           &__ae_ctl_parent->pwait_##__pwait_pos_str##_params.private,                \
+           sizeof(__ae_ctl->pwait_##__pwait_pos_str##_params.private));               \
+    __ae_ctl->pwait_##__pwait_pos_str##_params.shared_params =                        \
+        &__ae_ctl_parent->pwait_##__pwait_pos_str##_params.shared;                    \
+    ae_ctl_pbranch_start(&__ae_ctl->gen);                                             \
+}
+
+/**
+ * Removes itself from the parent list of in-progress pbranches
+ * Sets __ae_ctl back to parent and jumps to pwait end
+ */
+#define AE_MK_WORKER_PBRANCH_END_STMTS(__fname, __pwait_pos_str, __pbranch_pos_str)     \
+__ae_pbranch_##__pbranch_pos_str##_done:                                                \
+{                                                                                       \
+    struct __fname##_ctl *__pbranch_ctl = __ae_ctl;                                     \
+    __ae_ctl = __ae_ctl->parent;                                                        \
+    if(__ae_pbranch_##__pbranch_pos_str##_state == AE_PBRANCH_INIT)                     \
+    {                                                                                   \
+        ae_debug_pbranch("pbranch completed inline: %s (ctl=%p, parent=%p)\n",          \
+                          #__fname "_ctl:pbranch_" #__pbranch_pos_str,                  \
+                         __pbranch_ctl,                                                 \
+                         __ae_ctl);                                                     \
+        ae_ctl_pbranch_done(&__pbranch_ctl->gen, __ae_state);                           \
+        ae_debug_pbranch("ctl_done: pbranch done (init): %p\n", __ae_ctl);              \
+        ae_ctl_done(&__pbranch_ctl->gen);                                               \
+        goto __ae_pbranch_##__pbranch_pos_str##_after;                                  \
+    }                                                                                   \
+    else                                                                                \
+    {                                                                                   \
+        ae_debug_pbranch("pbranch completed: %s (ctl=%p, parent=%p)\n",                 \
+                          #__fname "_ctl:pbranch_" #__pbranch_pos_str,                  \
+                         __pbranch_ctl,                                                 \
+                         __ae_ctl);                                                     \
+        __ae_pwait_##__pwait_pos_str##_command =                                        \
+            ae_ctl_pbranch_done(&__pbranch_ctl->gen, __ae_state);                       \
+        goto __ae_pwait_##__pwait_pos_str##_end;                                        \
+    }                                                                                   \
+}                                                                                       \
+__ae_pbranch_##__pbranch_pos_str##_inprogress:                                          \
+{                                                                                       \
+    struct __fname##_ctl *__pbranch_ctl = __ae_ctl;                                     \
+    __ae_ctl = __ae_ctl->parent;                                                        \
+    if(__ae_pbranch_##__pbranch_pos_str##_state == AE_PBRANCH_INIT)                     \
+    {                                                                                   \
+        ae_debug_pbranch("pbranch init -> inprogress: %s (ctl=%p, parent=%p)\n",        \
+                          #__fname "_ctl:pbranch_" #__pbranch_pos_str,                  \
+                         __pbranch_ctl,                                                 \
+                         __ae_ctl);                                                     \
+        ae_debug_pbranch("ctl_done: pbranch inprogress (init): %p\n", __ae_ctl);        \
+        ae_ctl_done(&__pbranch_ctl->gen);                                               \
+        goto __ae_pbranch_##__pbranch_pos_str##_after;                                  \
+    }                                                                                   \
+    else                                                                                \
+    {                                                                                   \
+        ae_debug_pbranch("pbranch inprogress -> inprogress: %s (ctl=%p, parent=%p)\n",  \
+                          #__fname "_ctl:pbranch_" #__pbranch_pos_str,                  \
+                         __pbranch_ctl,                                                 \
+                         __ae_ctl);                                                     \
+        ae_debug_pbranch("ctl_done: pbranch inprogress: %p\n", __ae_ctl);               \
+        ae_ctl_done(&__pbranch_ctl->gen);                                               \
+        __ae_pwait_##__pwait_pos_str##_command = AE_PWAIT_YIELD;                        \
+        goto __ae_pwait_##__pwait_pos_str##_end;                                        \
+    }                                                                                   \
+}                                                                                       \
+__ae_pbranch_##__pbranch_pos_str##_after: {}
+
+#define AE_MK_WORKER_PWAIT_DECLS(__fname, __pwait_pos_str) \
+    enum ae_pwait_command __ae_pwait_##__pwait_pos_str##_command;
+
+#define AE_MK_WORKER_PWAIT_START_STMTS(__fname, __pwait_pos_str)                  \
+__ae_pwait_##__pwait_pos_str##_start:                                             \
+    __ae_pwait_##__pwait_pos_str##_command = AE_PWAIT_NONE;                       \
+    __ae_ctl->pwait_##__pwait_pos_str##_params.shared_params =                    \
+        &__ae_ctl->pwait_##__pwait_pos_str##_params.shared;                       \
+    ae_ctl_pwait_start(&__ae_ctl->gen);
+
+#define AE_MK_WORKER_PWAIT_END_STMTS(__fname, __pwait_pos_str)                         \
+__ae_pwait_##__pwait_pos_str##_init_done:                                              \
+{                                                                                      \
+    ae_debug_pbranch("pwait completed: %s (ctl=%p)\n",                                 \
+                     #__fname "_ctl:pwait_" #__pwait_pos_str,                          \
+                     __ae_ctl);                                                        \
+    __ae_pwait_##__pwait_pos_str##_command =                                           \
+        ae_ctl_pwait_init_done(&__ae_ctl->gen);                                        \
+}                                                                                      \
+__ae_pwait_##__pwait_pos_str##_end:                                                    \
+{                                                                                      \
+    assert(__ae_pwait_##__pwait_pos_str##_command != AE_PWAIT_NONE);                   \
+    ae_debug_pbranch("pwait end: %s (command=%s, ctl=%p)\n",                           \
+                     #__fname "_ctl:pwait_" #__pwait_pos_str,                          \
+                     ae_pwait_command_string(__ae_pwait_##__pwait_pos_str##_command),  \
+                     __ae_ctl);                                                        \
+    if(__ae_pwait_##__pwait_pos_str##_command == AE_PWAIT_YIELD)                       \
+    {                                                                                  \
+        goto __ae_blocking_function_done;                                              \
+    }                                                                                  \
+}                                                                                      \
+__ae_pwait_##__pwait_pos_str##_after: {}
+
+#define AE_MK_WORKER_PBREAK(__pbranch_pos_str, __pbreak_pos_str) \
+__ae_pbreak_##__pbreak_pos_str: {                                \
+    goto __ae_pbranch_##__pbranch_pos_str##_done;                \
+}
+
+#define AE_MK_WORKER_LONE_PBRANCH_DECLS(__fname, __pbranch_pos_str) \
+    enum ae_pbranch_state __ae_pbranch_##__pbranch_pos_str##_state;
+
+#define AE_MK_WORKER_LONE_PBRANCH_START_STMTS(__fname, __pbranch_pos_str) \
+__ae_pbranch_##__pbranch_pos_str##_start:                                 \
+{                                                                         \
+    struct __fname##_ctl *__ae_ctl_parent;                                \
+    __ae_pbranch_##__pbranch_pos_str##_state = AE_PBRANCH_INIT;           \
+    __ae_ctl_parent = __ae_ctl;                                           \
+    __ae_ctl = malloc(sizeof(*__ae_ctl));                                 \
+    if(__ae_ctl == NULL)                                                  \
+    {                                                                     \
+        return AE_NOMEM;                                                  \
+    }                                                                     \
+    ae_ctl_init(&__ae_ctl->gen,                                           \
+                __ae_ctl,                                                 \
+                #__fname "_ctl:pbranch_" #__pbranch_pos_str,              \
+                NULL,                                                     \
+                __ae_ctl_parent->gen.context,                             \
+                1,                                                        \
+                __ae_ctl_parent);                                         \
+    ae_debug_pbranch("starting lone pbranch: %s (ctl=%p, parent=%p)\n",   \
+                     #__fname "_ctl:pbranch_" #__pbranch_pos_str,         \
+                     __ae_ctl,                                            \
+                     __ae_ctl_parent);                                    \
+    __ae_ctl->parent = __ae_ctl_parent;                                   \
+    __ae_ctl->params = __ae_ctl_parent->params;                           \
+    ae_ctl_lone_pbranch_start(&__ae_ctl->gen);                            \
+}
+
+#define AE_MK_WORKER_LONE_PBRANCH_END_STMTS(__fname, __pbranch_pos_str)               \
+__ae_pbranch_##__pbranch_pos_str##_done:                                              \
+{                                                                                     \
+    struct __fname##_ctl *__pbranch_ctl = __ae_ctl;                                   \
+    __ae_ctl = __ae_ctl->parent;                                                      \
+    ae_ctl_lone_pbranch_done(&__pbranch_ctl->gen, __ae_state);                        \
+    if(__ae_pbranch_##__pbranch_pos_str##_state == AE_PBRANCH_INIT)                   \
+    {                                                                                 \
+        ae_debug_pbranch("lone pbranch completed inline: %s (ctl=%p, parent=%p)\n",   \
+                          #__fname "_ctl:pbranch_" #__pbranch_pos_str,                \
+                         __pbranch_ctl,                                               \
+                         __ae_ctl);                                                   \
+        ae_ctl_done(&__pbranch_ctl->gen);                                             \
+        goto __ae_pbranch_##__pbranch_pos_str##_after;                                \
+    }                                                                                 \
+    else                                                                              \
+    {                                                                                 \
+        ae_debug_pbranch("lone pbranch completed: %s (ctl=%p, parent=%p)\n",          \
+                          #__fname "_ctl:pbranch_" #__pbranch_pos_str,                \
+                         __pbranch_ctl,                                               \
+                         __ae_ctl);                                                   \
+        goto __ae_blocking_function_done;                                             \
+    }                                                                                 \
+}                                                                                     \
+__ae_pbranch_##__pbranch_pos_str##_inprogress:                                        \
+{                                                                                     \
+    struct __fname##_ctl *__pbranch_ctl = __ae_ctl;                                   \
+    __ae_ctl = __ae_ctl->parent;                                                      \
+    if(__ae_pbranch_##__pbranch_pos_str##_state == AE_PBRANCH_INIT)                   \
+    {                                                                                 \
+        ae_debug_pbranch("lone pbranch init -> inprogress: %s (ctl=%p, parent=%p)\n", \
+                          #__fname "_ctl:pbranch_" #__pbranch_pos_str,                \
+                         __pbranch_ctl,                                               \
+                         __ae_ctl);                                                   \
+        ae_ctl_done(&__pbranch_ctl->gen);                                             \
+        goto __ae_pbranch_##__pbranch_pos_str##_after;                                \
+    }                                                                                 \
+    else                                                                              \
+    {                                                                                 \
+        ae_debug_pbranch(                                                             \
+            "lone pbranch inprogress -> inprogress: %s (ctl=%p, parent=%p)\n",        \
+            #__fname "_ctl:pbranch_" #__pbranch_pos_str,                              \
+            __pbranch_ctl,                                                            \
+            __ae_ctl);                                                                \
+        ae_ctl_done(&__pbranch_ctl->gen);                                             \
+        goto __ae_blocking_function_done;                                             \
+    }                                                                                 \
+}                                                                                     \
+__ae_pbranch_##__pbranch_pos_str##_after: {}
+
+#define AE_MK_BFUN_RET_DECL() \
+    ae_ret_t __ae_myret;
+
+#define AE_MK_BFUN_PARAMS_FOR_STRUCT_DECLS() \
+    struct ae_ctl gen; \
+    void *user_ptr;
+
+#define AE_MK_BFUN_PARAMS_DECLS() \
+    void *__ae_user_ptr; \
+    ae_hints_t *__ae_hints; \
+    ae_context_t __ae_context; \
+    ae_op_id_t *__ae_op_id; \
+    int __ae_internal;
+    /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
+
+#define AE_MK_BFUN_PARAMS_FUN_PTR_DECLS(__ret_type) \
+    void *__ae_user_ptr; \
+    ae_hints_t *__ae_hints; \
+    ae_context_t __ae_context; \
+    ae_op_id_t *__ae_op_id; \
+    int __ae_internal; \
+    __ret_type *retval;
+    /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
+
+#define AE_MK_BFUN_DECLS(__fname)                       \
+    struct __fname##_ctl *__ae_ctl;                     \
+    ae_ret_t __ae_myret;                                \
+    enum ae_ctl_state state;
+
+#define AE_MK_BFUN_INIT_BLOCK(__fname)                                \
+    __ae_ctl = malloc(sizeof(*__ae_ctl));                             \
+    if(__ae_ctl == NULL)                                              \
+    {                                                                 \
+        return AE_NOMEM;                                              \
+    }                                                                 \
+    ae_ctl_init(&__ae_ctl->gen,                                       \
+                __ae_ctl,                                             \
+                #__fname,                                             \
+                __ae_hints,                                           \
+                __ae_context,                                         \
+                __ae_internal,                                        \
+                __ae_user_ptr);                                       \
+    AE_MK_START_OF_BLOCKING(__fname);                                 \
+    __ae_ctl->params = &__ae_ctl->fields;                             \
+    __ae_ctl->user_ptr = __ae_user_ptr;                               \
+    __ae_ctl->__ae_callback = __ae_callback;                          \
+    if(__ae_op_id) *__ae_op_id = ae_id_gen(0, (intptr_t)__ae_ctl);
+
+#define AE_MK_BFUN_INVOKE_WORKER(__fname, __ret_type)                 \
+                                                                      \
+    state = AE_CTL_START;                                             \
+                                                                      \
+    __ae_myret = __ae_worker_##__fname(__ae_ctl, &state);             \
+    if(__ae_myret != AE_SUCCESS)                                      \
+    {                                                                 \
+        aesop_err(                                                    \
+            "INVALID STATE: "                                         \
+            "blocking function did not return "                       \
+            "AE_SUCCESS"                                              \
+            "in function: %s, trace exiting\n",                       \
+            #__fname);                                                \
+        return __ae_myret;                                            \
+    }                                                                 \
+                                                                      \
+    if(!(state & AE_CTL_FN_COMPLETE))                                 \
+    {                                                                 \
+        return __ae_myret;                                            \
+    }                                                                 \
+                                                                      \
+    __fname##_immediate_completion:                                   \
+    {                                                                 \
+        void (* __ae_local_cb)(void *, __ret_type);                   \
+        AE_MK_DONE_DECLS();                                           \
+        AE_MK_END_OF_BLOCKING(__fname, " (IC)");                      \
+        if(__ae_retvalue)                                             \
+        {                                                             \
+            *__ae_retvalue = __ae_ctl->return_value;                  \
+            ae_debug_pbranch("ctl_done: bfun ic: %p\n", __ae_ctl);    \
+            ae_ctl_done(&__ae_ctl->gen);                              \
+            return AE_IMMEDIATE_COMPLETION;                           \
+        }                                                             \
+        else                                                          \
+        {                                                             \
+            __ret_type __ae_local_retval = __ae_ctl->return_value;    \
+            ae_debug_pbranch("ctl_done: bfun ic: %p\n", __ae_ctl);    \
+            ae_ctl_done(&__ae_ctl->gen);                              \
+            __ae_local_cb(__ae_local_up, __ae_local_retval);          \
+        }                                                             \
+    }                                                                 \
+    return __ae_myret;
+
+#define AE_MK_BFUN_INVOKE_WORKER_VOIDFN(__fname)                      \
+                                                                      \
+    state = AE_CTL_START;                                             \
+                                                                      \
+    __ae_myret = __ae_worker_##__fname(__ae_ctl, &state);             \
+    if(__ae_myret != AE_SUCCESS)                                      \
+    {                                                                 \
+        aesop_err(                                                    \
+            "INVALID STATE: "                                         \
+            "blocking function did not return "                       \
+            "AE_SUCCESS (posted) "                                    \
+            "in function: %s, trace exiting\n",                       \
+            #__fname);                                                \
+        return __ae_myret;                                            \
+    }                                                                 \
+                                                                      \
+    if(!(state & AE_CTL_FN_COMPLETE))                                 \
+    {                                                                 \
+        return __ae_myret;                                            \
+    }                                                                 \
+                                                                      \
+    __fname##_immediate_completion:                                   \
+    {                                                                 \
+        void (* __ae_local_cb)(void *);                               \
+        AE_MK_DONE_DECLS();                                           \
+        AE_MK_END_OF_BLOCKING(__fname, " (IC)");                      \
+        ae_debug_pbranch("ctl_done: bfun ic: %p\n", __ae_ctl);        \
+        ae_ctl_done(&__ae_ctl->gen);                                  \
+        return AE_IMMEDIATE_COMPLETION;                               \
+    }                                                                 \
+                                                                      \
+    return __ae_myret;
+
+
+#endif /* __AE_BLOCKING_PARSER_H__ */

@@ -17,6 +17,7 @@ static __blocking void run_pbreak3(void)
 		if(a > 3)
 		{
 		    printf("hit pbreak!\n");
+                    aesop_cancel_branches();
 		    pbreak;
 		}
 		ret = btest2(&a);

@@ -39,6 +39,7 @@ static __blocking void run_pbreak(void)
 	    {
 		ret4 = btest_sleep(4);
 		assert(ret4 == 0);
+                aesop_cancel_branches();
 		pbreak;
 	    }
 	}

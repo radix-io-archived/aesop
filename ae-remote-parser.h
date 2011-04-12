@@ -251,9 +251,9 @@ extern triton_debug_mask_t encoding_dbg_mask;
     s = triton_addr_is_self(id); \
     if(s) \
     { \
-        ret = ae_hints_put(ctl->gen.hints, "triton.remote.context", sizeof(ctx), &ctx, 1); \
+        ret = ae_hints_put(__ae_ctl->gen.hints, "triton.remote.context", sizeof(ctx), &ctx, 1); \
         if(ret != TRITON_SUCCESS) triton_log_error(triton_log_default, ret, "Failed to store remote context in hints\n"); \
-        ret = ae_hints_put(ctl->gen.hints, "triton.remote.from", sizeof(id), &id, 1); \
+        ret = ae_hints_put(__ae_ctl->gen.hints, "triton.remote.from", sizeof(id), &id, 1); \
         if(ret != TRITON_SUCCESS) triton_log_error(triton_log_default, ret, "Failed to store remote address in hints\n"); \
         return __fname__(__inname__, __outname__); \
     } \

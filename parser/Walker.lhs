@@ -100,7 +100,7 @@ The monad transformer that we thread through our functions
 
 The Walker is the state that we pass around our functions as we walk the AST.  It primarily holds
 the blocking call information, but is actually a tuple of:
-filename, prefix stack, blocking call registry, and blocking function pointer registry
+filename, blocking call registry, and blocking function pointer registry
 
 > data Walker = Walker {
 >       debug :: Bool,
@@ -118,20 +118,16 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 
 > newWalkerState :: Bool ->
 >                   String ->
->                   String ->
->                   (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) ->
->                   (Walker -> BlockingContext -> NodeInfo -> [CStat]) ->
->                   (BlockingContext -> CStat -> CStat -> WalkerT CStat) ->
 >                   FilePath ->
 >                   [String] ->
 >                   [Ident] ->
 >                   IO Walker
 
-> newWalkerState debug fname compiler errorWriter pbranchDone transExit macroHeader gccopts tdIdents = do
+> newWalkerState debug fname macroHeader gccopts tdIdents = do
 >	varReg <- newVarRegistry
 >       bp <- mkParser compiler macroHeader gccopts
 >       let nbp = addTypeIdents tdIdents bp
->	return $ Walker debug fname compiler ["ctl"] errorWriter pbranchDone transExit [] [] varReg (Just nbp)
+>	return $ Walker debug fname [] [] varReg (Just nbp)
 
 > setBlockingParser :: MacroParser -> WalkerT ()
 > setBlockingParser b = do
@@ -143,52 +139,6 @@ filename, prefix stack, blocking call registry, and blocking function pointer re
 >       w <- get
 >       let bp = blockingParser w
 >       return $ assert (isJust bp) (fromJust bp)
-
-> setErrorWriter :: (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]) -> WalkerT ()
-> setErrorWriter ew = do
->	w <- get
->	put $ w { errorWriter = ew }
-
-> getErrorWriter :: WalkerT (String -> ReturnType -> String -> NodeInfo -> [CStat])
-> getErrorWriter = do
->	w <- get
->	return $ (errorWriter w) w
-
-> setPBDone :: (Walker -> BlockingContext -> NodeInfo -> [CStat]) -> WalkerT ()
-> setPBDone pb = do
->	w <- get
->	put $ w { pbranchDone = pb }
-
-> getPBDone :: WalkerT (BlockingContext -> NodeInfo -> [CStat])
-> getPBDone = do
->	w <- get
->	return $ (pbranchDone w) w
-
-> setTransExit :: (BlockingContext -> CStat -> CStat -> WalkerT CStat) -> WalkerT ()
-> setTransExit tr = do
->	w <- get
->	put $ w { transExit = tr }
-
-> getTransExit :: WalkerT (BlockingContext -> CStat -> CStat -> WalkerT CStat)
-> getTransExit = do
->	w <- get
->	return $ transExit w
-
-> pushPrefix :: String -> WalkerT ()
-> pushPrefix s = do
->	w <- get
->	put $ w { prefixes = s : (prefixes w) }
-
-> popPrefix :: WalkerT ()
-> popPrefix = do
->       w <- get
->       put $ w { prefixes = tail (prefixes w) }
-
-> getPrefix :: WalkerT String
-> getPrefix = do
->	w <- get
->       let (h:hs) = prefixes w
->	return h
 
 > type WalkerT = StateT Walker IO
 

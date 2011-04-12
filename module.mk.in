@@ -3,5 +3,6 @@ DIR := src/aesop
 LIBSRC += $(DIR)/opcache.c \
 	  $(DIR)/aesop.c \
 	  $(DIR)/resource.c \
-	  $(DIR)/hints.c
+	  $(DIR)/hints.c \
+          $(DIR)/ae-ctl.c
 

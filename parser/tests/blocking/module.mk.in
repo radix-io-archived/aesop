@@ -10,6 +10,7 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/params.ae \
 	      $(DIR)/forloop.ae \
 	      $(DIR)/forloop2.ae \
+	      $(DIR)/forloop3.ae \
 	      $(DIR)/nested-forloop.ae \
 	      $(DIR)/dowhileloop.ae \
 	      $(DIR)/whileloop.ae \
@@ -49,7 +50,8 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/lonely-pbranch2.ae \
 	      $(DIR)/lonely-pbranch3.ae \
               $(DIR)/pwait-in-while.ae \
-              $(DIR)/pwait-in-for.ae
+              $(DIR)/pwait-in-for.ae \
+              $(DIR)/pbranch-completion.ae
 
 # This should not compile
 #	      $(DIR)/pbranch-with-return.ae

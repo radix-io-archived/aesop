@@ -15,6 +15,7 @@ static __blocking void run_par1(void)
                 if(ret1 != 0)
                 {
                     printf("Error in branch 1.\n");
+                    aesop_cancel_branches();
                     pbreak;
                 }
 
@@ -22,6 +23,7 @@ static __blocking void run_par1(void)
                 if(ret1 != 0)
                 {
                     printf("Error in branch 1.\n");
+                    aesop_cancel_branches();
                     pbreak;
                 }
 	    }
@@ -32,6 +34,7 @@ static __blocking void run_par1(void)
                 if(ret2 != 0)
                 {
                     printf("Error in branch 2.\n");
+                    aesop_cancel_branches();
                     pbreak;
                 }
 
@@ -39,6 +42,7 @@ static __blocking void run_par1(void)
                 if(ret2 != 0)
                 {
                     printf("Error in branch 2.\n");
+                    aesop_cancel_branches();
                     pbreak;
                 }
 	    }
@@ -49,6 +53,7 @@ static __blocking void run_par1(void)
                 if(ret3 != 0)
                 {
                     printf("Error in branch 3.\n");
+                    aesop_cancel_branches();
                     pbreak;
                 }
 
@@ -56,6 +61,7 @@ static __blocking void run_par1(void)
                 if(ret3 != 0)
                 {
                     printf("Error in branch 3.\n");
+                    aesop_cancel_branches();
                     pbreak;
                 }
 	    }

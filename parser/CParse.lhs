@@ -382,12 +382,22 @@ Get the local declarations for a function definition
 > getStmtsFromBlockItems :: [CBlockItem] -> [CStat]
 > getStmtsFromBlockItems bitems = [ fromJust b | b <- map getBlockStmt bitems, isJust b ]
 
+> getBlockDecl :: CBlockItem -> Maybe CDecl
+> getBlockDecl (CBlockDecl decl) = Just decl
+> getBlockDecl _ = Nothing
+
+> getDeclsFromBlockItems :: [CBlockItem] -> [CDecl]
+> getDeclsFromBlockItems bitems = [ fromJust d | d <- map getBlockDecl bitems, isJust d ]
+
 > getFunStmts :: CFunDef -> [CStat]
 > getFunStmts (CFunDef _ _ _ (CCompound _ bitems _) _) = getStmtsFromBlockItems bitems
 
 > getStmtList :: CStat -> [CStat]
 > getStmtList (CCompound _ bitems _) = getStmtsFromBlockItems bitems
 > getStmtList c = [c]
+
+> getDeclList :: CStat -> [CDecl]
+> getDeclList (CCompound _ bitems _) = getDeclsFromBlockItems bitems
 
 > getForExprs :: CStat -> (Maybe CExpr, Maybe CExpr, Maybe CExpr)
 > getForExprs (CFor (Left init) expr1 expr2 _ _) = (init, expr1, expr2)
@@ -434,3 +444,11 @@ Get the local declarations for a function definition
 > isPBreak :: CStat -> Maybe CStat
 > isPBreak b@(CPBreak _) = Just b
 > isPBreak _ = Nothing
+
+> isPWaitStmt :: CStat -> Bool
+> isPWaitStmt (CPWait _ _) = True
+> isPWaitStmt _ = False
+
+> isPBranchStmt :: CStat -> Bool
+> isPBranchStmt (CPBranch _ _) = True
+> isPBranchStmt _ = False

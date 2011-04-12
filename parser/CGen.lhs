@@ -183,19 +183,24 @@ Functions to generate AST objects from C template code
 > swapNodeInfoInStmts :: NodeInfo -> [CStat] -> [CStat]
 > swapNodeInfoInStmts ni stmts = map (everywhere (mkT $ swapNodeInfo ni)) stmts
 
-> mkStmtFromCPPMacro :: MacroParser -> NodeInfo -> String -> [String] -> [CStat]
-> mkStmtFromCPPMacro p ni macro params = swapNodeInfoInStmts ni stmts
+> mkStmtsFromCPPMacro :: MacroParser -> NodeInfo -> String -> [String] -> [CStat]
+> mkStmtsFromCPPMacro p ni macro params = swapNodeInfoInStmts ni stmts
 >       where preproc = unsafePerformIO $ doStmtPP p ni macro params
 >             parsedResult = fmap fst $ (execParser translUnitP (mkInputStream preproc) (posOfNode ni) (typedefs p) newNameSupply)
 >	      stmts = case parsedResult of
 >		        -- parse succeeded, so we return the statement
 >                       (Right (CTranslUnit [] _)) -> []
 >		        (Right (CTranslUnit edecls _)) -> case (last edecls) of
->                                                             (CFDefExt (CFunDef _ _ _ stmt _)) -> [stmt]
+>                                                             (CFDefExt (CFunDef _ _ _ (CCompound _ bstmts _) _)) -> getStmtsFromBlockItems bstmts
 >                                                             _ -> []
 >			(Left pe) -> trace ("Error generating function definitions from macro '" ++
 >                                           macro ++ "': " ++ preproc ++ (show pe))
 >                                          (assert False [])
+
+> mkExprFromCPPMacro :: MacroParser -> NodeInfo -> String -> [String] -> Maybe CExpr
+> mkExprFromCPPMacro p ni macro params = e
+>       where [s] = mkStmtsFromCPPMacro p ni macro params
+>             (CExpr e _) = s
 
 > declDummyName :: String
 > declDummyName = "__dummy_decl"
@@ -273,7 +278,7 @@ Functions to generate AST objects from C template code
 
 > mkCompoundWithDecls :: Maybe String -> [CDecl] -> [CStat] -> NodeInfo -> CStat
 > mkCompoundWithDecls (Just label) decls stmts ni = 
->	CLabel (newIdent label ni) (CCompound [] ((map CBlockDecl decls) ++ (map CBlockStmt stmts)) ni) [] ni
+>	CCompound [newIdent label ni] ((map CBlockDecl decls) ++ (map CBlockStmt stmts)) ni
 > mkCompoundWithDecls Nothing decls stmts ni =
 >	CCompound [] ((map CBlockDecl decls) ++ (map CBlockStmt stmts)) ni
 
@@ -559,6 +564,20 @@ Given a lhs expression and rhs expression, construct the statement:  lhs = rhs;
 > mkFunCall ret call params = 
 >	let ni = nodeInfo ret
 >	in (CExpr (Just (CAssign CAssignOp ret (CCall call params ni) ni)) ni)
+
+> addParamsToFunCall :: CStat -> [CExpr] -> CStat
+> addParamsToFunCall
+>     (CExpr (Just (CAssign
+>                     CAssignOp
+>                     ret 
+>                     (CCall call params ni1) ni2)) ni3) addParams =
+>         (CExpr (Just (CAssign
+>                         CAssignOp
+>                         ret
+>                         (CCall call (params ++ addParams) ni1) ni2)) ni3)
+> addParamsToFunCall
+>     (CExpr (Just (CCall call params ni1)) ni2) addParams =
+>         (CExpr (Just (CCall call (params ++ addParams) ni1)) ni2)
 
 > mkVar :: String -> NodeInfo -> CExpr
 > mkVar s ni = (CVar (newIdent s ni) ni)

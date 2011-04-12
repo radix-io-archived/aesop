@@ -3,7 +3,7 @@
 #define __OPCACHE_H__
 
 #include "src/aesop/op.h"
-#include "src/common/triton-error.h"
+#include "src/aesop/ae-error.h"
 
 typedef struct ae_opcache *ae_opcache_t;
 
@@ -22,9 +22,9 @@ typedef struct ae_opcache *ae_opcache_t;
     ae_opcache_put(__opcache, __op); \
     } while(0)
 
-triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache);
+ae_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache);
    
-triton_ret_t ae_opcache_double_size(ae_opcache_t cache);
+ae_ret_t ae_opcache_double_size(ae_opcache_t cache);
 
 void ae_opcache_destroy(ae_opcache_t cache);
 

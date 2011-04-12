@@ -30,6 +30,7 @@ static ae_ops_t list2;
 static ae_ops_t list3;
 static ae_ops_t list_fail10;
 static ae_ops_t slist;
+static ae_ops_t srlist;
 static ae_ops_t clist;
 static ae_ops_t flist;
 static ae_ops_t rlist;
@@ -40,8 +41,17 @@ static ae_opcache_t sleep_opcache;
 ae_define_post(int, ictest1, int *a)
 {
     ++(*a);
-    __ae_callback(__ae_user_ptr, 0);
-    return TRITON_SUCCESS;
+    *__ae_retval = 0;
+    return AE_IMMEDIATE_COMPLETION;
+}
+
+ae_define_post(int, ictest_random)
+{
+    int r = random() % 1000;
+    printf("ictest_random sleep: %d\n", r);
+    usleep(r);
+    *__ae_retval = 0;
+    return AE_IMMEDIATE_COMPLETION;
 }
 
 static void *tctest1_threadfun(void *ptr)
@@ -52,13 +62,16 @@ static void *tctest1_threadfun(void *ptr)
     bop = ae_op_entry(op, struct btest_op, op);
     *(bop->value) += 1;
     ae_opcache_complete_op(test_opcache, &bop->op, int, 0);
+    pthread_exit(ptr);
 
     return NULL;
 }
 
 ae_define_post(int, tctest1, int *a)
 {
+    int ret;
     pthread_t tid;
+    pthread_attr_t attr;
     struct ae_op *op;
     struct btest_op *bop;
     op = ae_opcache_get(test_opcache);
@@ -67,9 +80,55 @@ ae_define_post(int, tctest1, int *a)
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
     *__ae_op_id = bop->id;
-    pthread_create(&tid, NULL, tctest1_threadfun, op);
+    ret = pthread_attr_init(&attr);
+    assert(ret == 0);
+    ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    assert(ret == 0);
+    ret = pthread_create(&tid, &attr, tctest1_threadfun, op);
+    assert(ret == 0);
+    pthread_attr_destroy(&attr);
     usleep(1000);
 
+    return TRITON_SUCCESS;
+}
+
+static void *tcrandom_threadfun(void *ptr)
+{
+    int r;
+    struct ae_op *op;
+    struct btest_op *bop;
+    op = (struct ae_op *)ptr;
+    bop = ae_op_entry(op, struct btest_op, op);
+    r = random() % 1000;
+    printf("tctest_random sleep: %d\n", r);
+    usleep(r);
+    ae_opcache_complete_op(test_opcache, &bop->op, int, 0);
+    pthread_exit(ptr);
+
+    return NULL;
+}
+
+ae_define_post(int, tctest_random)
+{
+    int ret;
+    pthread_t tid;
+    pthread_attr_t attr;
+    struct ae_op *op;
+    struct btest_op *bop;
+    op = ae_opcache_get(test_opcache);
+    ae_op_fill(op);
+    bop = ae_op_entry(op, struct btest_op, op);
+    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    *__ae_op_id = bop->id;
+    printf("tctest_random\n");
+    ret = pthread_attr_init(&attr);
+    assert(ret == 0);
+    ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    assert(ret == 0);
+    ret = pthread_create(&tid, &attr, tcrandom_threadfun, op);
+    assert(ret == 0);
+    pthread_attr_destroy(&attr);
+    usleep(random() % 1000);
     return TRITON_SUCCESS;
 }
 
@@ -158,6 +217,23 @@ ae_define_post(int, btest_sleep, int secs)
     return TRITON_SUCCESS;
 }
 
+ae_define_post(int, btest_sleep_random)
+{
+    struct ae_op *op;
+    struct bsleep_op *bop;
+    printf("BTEST SLEEP RANDOM\n");
+    op = ae_opcache_get(sleep_opcache);
+    ae_op_fill(op);
+    bop = ae_op_entry(op, struct bsleep_op, op);
+    bop->sleep = random() % 1000;
+    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    *__ae_op_id = bop->id;
+    ae_ops_enqueue(op, &srlist);
+    ae_resource_request_poll(op->ctx, btest_resource_id);
+
+    return TRITON_SUCCESS;
+}
+
 ae_define_post(int, btest_forever)
 {
     struct ae_op *op;
@@ -199,6 +275,25 @@ static struct bsleep_op * poll_sleep_list(int *more)
    if(t)
    {
        if(ae_ops_empty(&slist))
+       {
+           *more = 0;
+       }
+       else
+       {
+           *more = 1;
+       }
+       return ae_op_entry(t, struct bsleep_op, op);
+   }
+   return NULL;
+}
+
+static struct bsleep_op * poll_rsleep_list(int *more)
+{
+   struct ae_op *t;
+   t = ae_ops_dequeue(&srlist);
+   if(t)
+   {
+       if(ae_ops_empty(&srlist))
        {
            *more = 0;
        }
@@ -302,6 +397,14 @@ static triton_ret_t btest_poll(ae_context_t context)
    }
    request = request | more;
 
+   s = poll_rsleep_list(&more);
+   if(s)
+   {
+	usleep(s->sleep);
+        ae_opcache_complete_op(sleep_opcache, &s->op, int, 0);
+   }
+   request = request | more;
+
    if(request)
    {
        ae_resource_request_poll(context, btest_resource_id);
@@ -348,6 +451,7 @@ static triton_ret_t btest_init(void)
     ae_ops_init(&list3);
     ae_ops_init(&list_fail10);
     ae_ops_init(&slist);
+    ae_ops_init(&srlist);
     ae_ops_init(&clist);
     ae_ops_init(&flist);
     ae_ops_init(&rlist);

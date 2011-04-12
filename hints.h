@@ -1,14 +1,13 @@
 #ifndef __AE_HINTS_H__
 #define __AE_HINTS_H__
 
-#include "src/common/triton-base.h"
-#include "src/common/triton-types.h"
-#include "src/common/triton-list.h"
-#include "src/common/triton-thread.h"
+#include "src/aesop/ae-base.h"
+#include "src/aesop/ae-list.h"
+#include "src/aesop/ae-thread.h"
 
 struct ae_hints
 {
-    triton_list_t entries;
+    ae_list_t entries;
     int transfer_count;
     struct ae_hints *parent;
     triton_mutex_t lock;
@@ -23,11 +22,11 @@ typedef struct ae_hints ae_hints_t;
 
 #ifdef AESOP_PARSER
 #define aesop_hints_get(__key, __length, __value) \
-    ae_hints_get(ctl->gen.hints, __key, __length, __value)
+    ae_hints_get(__ae_ctl->gen.hints, __key, __length, __value)
 #define aesop_hints_put(__key, __length, __value, __overwrite) \
-    ae_hints_put(ctl->gen.hints, __key, __length, __value, __overwrite)
+    ae_hints_put(__ae_ctl->gen.hints, __key, __length, __value, __overwrite)
 #define aesop_hints_modify(__key, __length, __value) \
-    ae_hints_modify(ctl->gen.hints, __key, __length, __value)
+    ae_hints_modify(__ae_ctl->gen.hints, __key, __length, __value)
 #else
 
 /* dummy functions to allow for compiling */

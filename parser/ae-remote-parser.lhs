@@ -230,7 +230,7 @@ CTypeOfType CDecl NodeInfo
 > mkStmtFromRemote macro params ni = do
 >       r <- get
 >       let mp = assert (isJust $ remoteParser r) (fromJust $ remoteParser r)
->       return $ mkStmtFromCPPMacro mp ni macro params
+>       return $ mkStmtsFromCPPMacro mp ni macro params
 
 > mkFunDefFromRemote :: String -> [CStat] -> String -> [String] -> NodeInfo -> RemoteT [CExtDecl]
 > mkFunDefFromRemote name block macro params ni = do
@@ -886,6 +886,7 @@ CTypeOfType CDecl NodeInfo
 >       decls <- mkDeclsFromRemote "AER_MK_REG_DECLS" [sname] ni
 >       rs <- getRemoteNames 
 >       stmts <- liftM concat $ sequence $ map (mkRegBlock ni) rs 
+>       startStmts <- mkStmtFromRemote "AER_MK_REG_START" [sname] ni
 >       endStmts <- mkStmtFromRemote "AER_MK_REG_END" [sname] ni
 >       return $ mkFunDef ((CTypeDef (newIdent "triton_ret_t" ni) ni), [])
 >                         []
@@ -893,7 +894,7 @@ CTypeOfType CDecl NodeInfo
 >                         [mkAnonCDecl (CVoidType ni) [] ni]
 >                         (mkCompoundWithDecls Nothing 
 >                                              decls
->                                              (stmts ++ endStmts)
+>                                              (startStmts ++ stmts ++ endStmts)
 >                                              ni)
 
 > mkOpIdDecl :: NodeInfo -> String -> CExtDecl

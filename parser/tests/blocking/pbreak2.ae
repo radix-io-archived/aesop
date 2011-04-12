@@ -17,6 +17,7 @@ static __blocking void run_pbreak2(void)
 		printf("before pbreak: a == %d!\n", a);
 		if(shared > 2)
 		{
+                    aesop_cancel_branches();
 		    pbreak;
 		}
 		ret = btest2(&a);
