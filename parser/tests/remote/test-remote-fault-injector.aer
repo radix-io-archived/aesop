@@ -16,8 +16,8 @@
 #include "src/net/fault-injector/fault-method.h"
 #include "src/remote/service.hae"
 #include "src/common/triton-init.h"
-#include "src/remote/client_server_shutdown_module.h"
-#include "src/remote/client_server_shutdown_stubs.hae"
+#include "src/remote/core_module.h"
+#include "src/remote/core_stubs.hae"
 
 /* normally you don't have to declare this, but we do here because
  * it gets declared in <module>_module.h (myclientserver_module.h)
@@ -128,7 +128,7 @@ __blocking void do_remote_test(aer_remote_ctx_t rctx)
     int size;
     char addr_str[100];
     triton_addr_t addr;
-    uint32_t out;
+    triton_ignore_t in, out;
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -161,7 +161,7 @@ __blocking void do_remote_test(aer_remote_ctx_t rctx)
             ret = triton_addr_lookup(addr_str, &addr);
             triton_error_assert(ret);
 
-            ret = remote_triton_server_shutdown(rctx, addr, 0, &out);
+            ret = remote_triton_core_server_shutdown(rctx, addr, in, &out);
                             triton_error_assert(ret);
             triton_error_assert(ret);
         }
@@ -199,7 +199,7 @@ __blocking int aesop_main(int argc, char **argv)
  
     ret = aer_remote_register_test_remote_fault();
     triton_error_assert(ret);
-    ret = aer_remote_register_client_server_shutdown();
+    ret = aer_remote_register_core();
     triton_error_assert(ret);
 
     do_remote_test(AER_DEFAULT_CTX);
