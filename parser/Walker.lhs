@@ -106,10 +106,6 @@ filename, blocking call registry, and blocking function pointer registry
 >       debug :: Bool,
 >	filename :: String,
 >       compiler :: String,
->	prefixes :: [String],
->       errorWriter :: (Walker -> String -> ReturnType -> String -> NodeInfo -> [CStat]),
->       pbranchDone :: (Walker -> BlockingContext -> NodeInfo -> [CStat]),
->	transExit :: (BlockingContext -> CStat -> CStat -> WalkerT CStat),
 >	fpTypeReg :: FPTypeRegistry,
 >	fpTypeLocalReg :: FPTypeRegistry,
 >	varReg :: VarRegistry,
@@ -119,15 +115,16 @@ filename, blocking call registry, and blocking function pointer registry
 > newWalkerState :: Bool ->
 >                   String ->
 >                   FilePath ->
+>                   FilePath ->
 >                   [String] ->
 >                   [Ident] ->
 >                   IO Walker
 
-> newWalkerState debug fname macroHeader gccopts tdIdents = do
+> newWalkerState debug fname compiler macroHeader gccopts tdIdents = do
 >	varReg <- newVarRegistry
 >       bp <- mkParser compiler macroHeader gccopts
 >       let nbp = addTypeIdents tdIdents bp
->	return $ Walker debug fname [] [] varReg (Just nbp)
+>	return $ Walker debug fname compiler [] [] varReg (Just nbp)
 
 > setBlockingParser :: MacroParser -> WalkerT ()
 > setBlockingParser b = do
