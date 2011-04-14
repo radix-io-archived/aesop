@@ -4,47 +4,21 @@ DIR := src/aesop/parser/tests/remote
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mock
 
 # specifies which aer files get included in the module
-REMOTE_TESTMODSRC_$(DIR)/test_remote_mock := $(DIR)/test-remote-mock.aer
-
-# include aer file as test binary
-REMOTE_TESTSRC += $(DIR)/test-remote-mock.aer
-
-MODLIBS_$(DIR)/test-remote-mock = -lpthread
+REMOTE_MODSRC_$(DIR)/test_remote_mock := $(DIR)/test-remote-mock.aer
 
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mock_buf
-REMOTE_TESTMODSRC_$(DIR)/test_remote_mock_buf := $(DIR)/test-remote-mock-embedded-buffers.aer
-REMOTE_TESTSRC += $(DIR)/test-remote-mock-embedded-buffers.aer
-MODLIBS_$(DIR)/test-remote-mock-embedded-buffers = -lpthread
+REMOTE_MODSRC_$(DIR)/test_remote_mock_buf := $(DIR)/test-remote-mock-embedded-buffers.aer
 
 ifneq (,$(BUILD_MPI))
 
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mpi
-REMOTE_TESTMODSRC_$(DIR)/test_remote_mpi := $(DIR)/test-remote-mpi.aer
-REMOTE_TESTSRC += $(DIR)/test-remote-mpi.aer
-
-MODCFLAGS_$(DIR)/test-remote-mpi = $(MPICFLAGS)
-MODLDFLAGS_$(DIR)/test-remote-mpi = $(MPILDFLAGS)
-MODLIBS_$(DIR)/test-remote-mpi = $(MPILIBS)
-MODCC_$(DIR)/test-remote-mpi = $(MPICC)
+REMOTE_MODSRC_$(DIR)/test_remote_mpi := $(DIR)/test-remote-mpi.aer
 
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_fault
-REMOTE_TESTMODSRC_$(DIR)/test_remote_fault := $(DIR)/test-remote-fault-injector.aer
-REMOTE_TESTSRC += $(DIR)/test-remote-fault-injector.aer
-
-MODCFLAGS_$(DIR)/test-remote-fault-injector = $(MPICFLAGS)
-MODLDFLAGS_$(DIR)/test-remote-fault-injector = $(MPILDFLAGS)
-MODLIBS_$(DIR)/test-remote-fault-injector = $(MPILIBS)
-MODCC_$(DIR)/test-remote-fault-injector = $(MPICC)
+REMOTE_MODSRC_$(DIR)/test_remote_fault := $(DIR)/test-remote-fault-injector.aer
 
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_service_stop
-REMOTE_TESTMODSRC_$(DIR)/test_remote_service_stop := $(DIR)/test-remote-service-stop.aer
-REMOTE_TESTSRC += $(DIR)/test-remote-service-stop.aer
-
-MODCFLAGS_$(DIR)/test-remote-service-stop = $(MPICFLAGS)
-MODLDFLAGS_$(DIR)/test-remote-service-stop = $(MPILDFLAGS)
-MODLIBS_$(DIR)/test-remote-service-stop = $(MPILIBS)
-MODCC_$(DIR)/test-remote-service-stop = $(MPICC)
-
+REMOTE_MODSRC_$(DIR)/test_remote_service_stop := $(DIR)/test-remote-service-stop.aer
 
 endif # BUILD_MPI
 

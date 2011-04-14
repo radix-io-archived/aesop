@@ -58,8 +58,7 @@ is set to true.
 >       typeReg :: RemoteTypeRegistry,
 >       decls :: [CExtDecl],
 >       funs :: [(String, (CTypeSpec, [CDerivedDeclr]), [CDecl])],
->       includes :: [FilePath],
->       defines :: [(String, String)],
+>       compiler :: String,
 >       remoteParser :: Maybe MacroParser
 > }
 
@@ -179,11 +178,11 @@ is set to true.
 >       r <- get
 >       put $ r { decls = d : (decls r) }
 
-> newRemoteState :: String -> [FilePath] -> [(String, String)] -> FilePath -> [String] -> IO Remote
-> newRemoteState fname includes defs macroHeader gccopts = do
+> newRemoteState :: String -> String -> FilePath -> [String] -> IO Remote
+> newRemoteState fname compiler macroHeader gccopts = do
 >       r <- Data.HashTable.new (==) Data.HashTable.hashString
->       bp <- mkParser includes defs macroHeader gccopts
->       return $ Remote fname r [] [] includes defs (Just bp)
+>       bp <- mkParser compiler macroHeader gccopts
+>       return $ Remote fname r [] [] compiler (Just bp)
 
 > getRemoteTypeName :: CTypeSpec -> Maybe String
 > getRemoteTypeName (CSUType (CStruct CStructTag (Just n) _ _ _) _) = Just $ "struct_" ++ (identToString n)
@@ -191,12 +190,6 @@ is set to true.
 > getRemoteTypeName (CEnumType (CEnum (Just n) _ _ _) _) = Just $ "enum_" ++ (identToString n)
 > getRemoteTypeName (CTypeDef n _) = Just $ identToString n
 > getRemoteTypeName _ = Nothing
-
-> getIncludes :: RemoteT [FilePath]
-> getIncludes = liftM includes $ get
-
-> getDefines :: RemoteT [(String, String)]
-> getDefines = liftM defines $ get
 
 > mkRemoteDecl :: CDecl -> [CDerivedDeclr] -> String -> Maybe CDecl
 > mkRemoteDecl d@(CDecl specs inits ni) ders v =
@@ -686,20 +679,12 @@ CTypeOfType CDecl NodeInfo
 >       newdecls <- liftM concat $ sequence $ map registerRemoteDecl decls
 >       return $ CTranslUnit newdecls ni
 
-> data ParserOpts = Pretty | Help | Include String | Report String | Outfile String | Header | ServiceName String | RegistryDir String | Define (String, String) | GCCOpt String
+> data ParserOpts = Pretty | Help | Report String | Outfile String | Infile String | ServiceName String | RegistryDir String | Compiler String
 
-> newDefine :: String -> ParserOpts
-> newDefine s = Define $ parseDef ([], []) s
-
-> parseDef :: (String, String) -> String -> (String, String)
-> parseDef (k,v) [] = (k,[])
-> parseDef (k,v) ('=':ds) = (k,ds)
-> parseDef (k,v) (s:ds) = parseDef (k++[s], []) ds
-
-> getDefs :: [ParserOpts] -> [(String, String)]
-> getDefs ((Define s):ps) = s:(getDefs ps)
-> getDefs (_:ps) = getDefs ps
-> getDefs [] = []
+> getCompiler :: [ParserOpts] -> String
+> getCompiler ((Compiler s):ps) = s
+> getCompiler (_:ps) = getCompiler ps
+> getCompiler [] = "gcc"
 
 > getReportFilename :: [ParserOpts] -> Maybe String
 > getReportFilename ((Report s):ps) = Just s
@@ -711,6 +696,11 @@ CTypeOfType CDecl NodeInfo
 > getOutfile (_:ps) = getOutfile ps
 > getOutfile [] = Nothing
 
+> getInfiles :: [ParserOpts] -> [String]
+> getInfiles ((Infile s):ps) = s:(getInfiles ps)
+> getInfiles (_:ps) = getInfiles ps
+> getInfiles [] = []
+
 > getServiceName :: [ParserOpts] -> Maybe String
 > getServiceName ((ServiceName s):ps) = Just s
 > getServiceName (_:ps) = getServiceName ps
@@ -721,38 +711,24 @@ CTypeOfType CDecl NodeInfo
 > getRegistryDir (_:ps) = getRegistryDir ps
 > getRegistryDir [] = Nothing
 
-> getIncludeOpts :: [ParserOpts] -> [FilePath]
-> getIncludeOpts ((Include f):ps) = f:(getIncludeOpts ps)
-> getIncludeOpts (_:ps) = getIncludeOpts ps
-> getIncludeOpts [] = []
-                             
-> getGCCOpts :: [ParserOpts] -> [String]
-> getGCCOpts ((GCCOpt o):ps) = o:(getGCCOpts ps)
-> getGCCOpts (_:ps) = getGCCOpts ps
-> getGCCOpts [] = []
-
 > parserOpts :: [OptDescr ParserOpts]
 > parserOpts =
 >    [ Option ['p'] ["pretty"] (NoArg Pretty)
 >		"output in pretty form without source line macros"
->    , Option ['I'] ["include"] (ReqArg (\s -> Include s) "<include path>")
->		"include path for preprocessor"
 >    , Option ['h','?'] ["help"] (NoArg Help)
 >		"help text"
+>    , Option ['c'] ["compiler"] (ReqArg (\s -> Compiler s) "<compiler path>")
+>		"filename to use when reporting errors"
 >    , Option ['r'] ["report"] (ReqArg (\s -> Report s) "<report filename>")
 >		"filename to use when reporting errors"
 >    , Option ['o'] ["outfile"] (ReqArg (\s -> Outfile s) "<output file>")
 >		"filename to write translated C code"
->    , Option ['j'] ["header"] (NoArg Header)
->		"parse header file instead of source"
+>    , Option ['i'] ["infile"] (ReqArg (\s -> Infile s) "<input file>")
+>		"input file"
 >    , Option ['n'] ["name"] (ReqArg (\s -> ServiceName s) "<service name>")
 >               "service name to use for remote functions"
 >    , Option ['d'] ["regdir"] (ReqArg (\s -> RegistryDir s) "<registry dir>")
 >               "registry directory path to use for generated service files"
->    , Option ['D'] ["define"] (ReqArg (\s -> newDefine s) "<cpp define>")
->               "define a CPP macro or variable"
->    , Option ['g'] ["gccopt"] (ReqArg (\s -> GCCOpt s) "<gcc option>")
->               "pass this gcc option when gcc is invoked"
 >    ]
 
 > optPretty :: ParserOpts -> Bool
@@ -762,13 +738,6 @@ CTypeOfType CDecl NodeInfo
 > optHelp :: ParserOpts -> Bool
 > optHelp (Help) = True
 > optHelp _ = False
-
-> optHeader :: ParserOpts -> Bool
-> optHeader (Header) = True
-> optHeader _ = False
-
-> parseRemoteHeader :: FilePath -> Maybe FilePath -> FilePath -> IO ()
-> parseRemoteHeader headerfile report outfuile = return ()
 
 > mkStubBlock :: String -> String -> String -> Bool -> String -> String -> NodeInfo -> RemoteT [CStat]
 > mkStubBlock fname inTypeName inName isInPtr outTypeName outName ni = do
@@ -1046,8 +1015,8 @@ CTypeOfType CDecl NodeInfo
 >       \#endif \
 >       \\n\n"
 
-> parseRemote :: Bool -> [String] -> Maybe FilePath -> Maybe FilePath -> FilePath -> RemoteT ()
-> parseRemote p includes outfile report f = do
+> parseRemote :: Bool -> Maybe FilePath -> Maybe FilePath -> FilePath -> RemoteT ()
+> parseRemote p outfile report f = do
 >	let r = if isJust report then fromJust report else f
 >           outf = fromJust outfile
 >       setFileName r
@@ -1063,30 +1032,28 @@ CTypeOfType CDecl NodeInfo
 > main :: IO ()
 > main = do
 >       args <- getArgs
->       let (opts, files, errs) = getOpt RequireOrder parserOpts args
+>       let (opts, gccopts, errs) = getOpt RequireOrder parserOpts args
 >           pretty = any optPretty opts
 >           help = any optHelp opts
->           includes = getIncludeOpts opts
+>           inputs = getInfiles opts
 >           outfile = getOutfile opts
->           pheader = any optHeader opts
 >           report = getReportFilename opts
 >           sname = getServiceName opts
 >           regdir = getRegistryDir opts
->           defs = getDefs opts
->           gccopts = getGCCOpts opts
+>           compiler = getCompiler opts
 >           header = "Usage: ae-remote-parser [OPTIONS...] files..."
 >       
 >       when (not $ null errs) $ ioError $ userError ((concat errs) ++
 >                                                     (usageInfo header parserOpts))
 >
 >       when help $ do { putStrLn $ usageInfo header parserOpts ; exitWith (ExitFailure 1) }
+>       when (null inputs) $ ioError $ userError "No input file specified."
 >       when (isNothing outfile && isNothing sname) $ ioError $ userError "No output file specified."
+>       when (isJust outfile && length inputs > 1) $ ioError $ userError "Output file specified with more than one input file."
 
->       when pheader $ do { mapM_ (\f -> parseRemoteHeader f report (fromJust outfile)) files ; exitWith (ExitSuccess) }
 >       -- empty string here because the parseRemote function sets the filename for each file
->       r <- newRemoteState "" includes defs "src/aesop/ae-remote-parser.h" gccopts
->       let remotes = map (\f -> parseRemote pretty includes outfile report f) files :: [RemoteT ()]
->       r <- foldM (flip execStateT) r remotes
+>       r <- newRemoteState "" compiler "src/aesop/ae-remote-parser.h" gccopts
+>       r <- foldM (\rr i -> execStateT (parseRemote pretty outfile report i) rr) r inputs
 >       when (isJust sname) $ do { runStateT (writeRegistryFiles (fromJust sname) regdir) r; return () }
 >       assert (isJust $ remoteParser r) return ()
 >       removeFile $ macheader $ fromJust $ remoteParser r
