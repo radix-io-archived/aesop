@@ -57,6 +57,8 @@ typedef ae_list_t ae_ops_t;
 
 #define ae_ops_init(ops) ae_list_init(ops)
 
+#define ae_ops_destroy(ops) (void) ops
+
 #define ae_ops_enqueue(_op, _queue) ae_queue_enqueue(&(_op)->link, _queue)
 
 static inline ae_op_t *ae_ops_dequeue(ae_ops_t *queue)
