@@ -432,6 +432,27 @@ static triton_ret_t btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
    return TRITON_SUCCESS;
 }     
 
+static triton_ret_t btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
+{
+   struct ae_op *t, *tmp;
+   struct btest_op *b;
+
+   ae_ops_for_each(t, tmp, &flist)
+   {
+	b = ae_op_entry(t, struct btest_op, op);
+	if(ae_op_id_equal(b->id, op_id))
+	{
+	    ae_ops_del(t);
+	    printf("forever op cancelled\n");
+            ae_opcache_complete_op(test_opcache, &b->op, int, 0);
+            ae_resource_request_poll(ctx, btest_resource_id);
+	}
+   }
+
+   return TRITON_SUCCESS;
+}     
+
+
 struct ae_resource btest_resource =
 {
     .resource_name = "btest",
@@ -471,6 +492,12 @@ __attribute__((constructor)) void btest_init_register(void);
 __attribute__((constructor)) void btest_init_register(void)
 {
     triton_init_register("aesop.blocking.test", btest_init, btest_finalize, NULL, "aesop.control");
+}
+
+void btest_enable_immediate_cancel(void)
+{
+    /* switch function pointers */
+    btest_resource.cancel = btest_cancel_immed;
 }
 
 /*

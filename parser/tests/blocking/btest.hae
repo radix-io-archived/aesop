@@ -49,6 +49,11 @@ __blocking int btest_random(void);
  */
 __blocking int btest_sleep_random(void);
 
+/* this function modifies the cancel behavior in the btest resource so that
+ * it attempts to trigger the callback directly.
+ */
+void btest_enable_immediate_cancel(void);
+
 
 /* This function tests immediate completion.  It increments the parameter passed in
  * directly in the post function and calls the callback from the post function, returning

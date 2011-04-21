@@ -26,6 +26,7 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/whilebreak3.ae \
 	      $(DIR)/nested.ae \
 	      $(DIR)/pbreak.ae \
+	      $(DIR)/pbreak-immed-cancel.ae \
 	      $(DIR)/pbreak2.ae \
 	      $(DIR)/pbreak3.ae \
 	      $(DIR)/pbreak4.ae \
