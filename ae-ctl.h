@@ -61,7 +61,6 @@ struct ae_ctl
     struct ae_ctl *parent;
     void *spec_ctl;
     ae_op_id_t current_op_id;
-    int cancelled;
     ae_mutex_t mutex;
     ae_list_t children;
     struct ae_list_link link;
@@ -103,7 +102,6 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     ctl->hints = hints;
 
     ctl->context = context;
-    ctl->cancelled = 0;
     ae_mutex_init(&ctl->mutex, NULL);
     ae_list_init(&ctl->children);
     ctl->refcount = 1;

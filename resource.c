@@ -314,26 +314,39 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 	error = triton_mutex_lock(&ctl->mutex);
         assert(!error);
 
-	if(ctl->cancelled)
-	{
-	    /* already cancelled! */
-	    error = triton_mutex_unlock(&ctl->mutex);
-            assert(!error);
-	    return TRITON_ERR_INVAL;
-	}
-
-	ctl->cancelled = 1;
 	if(ctl->in_pwait)
 	{
-            ret = ae_cancel_children(context, ctl);
+            ae_op_id_t *children_ids;
+            int count, ind;
+      
+            children_ids = ae_cancel_children(context, ctl, &count);
+            error = triton_mutex_unlock(&ctl->mutex);
+            assert(!error);
+
+            for(ind = 0; children_ids && ind < count; ++ind)
+            {
+                ret = ae_cancel_op(context, children_ids[ind]);
+                if(ret != TRITON_SUCCESS)
+                {
+                    /* cancel failed */
+                    if(children_ids) free(children_ids);
+                    return ret;
+                }
+            }
+            if(children_ids) free(children_ids);
+            return TRITON_SUCCESS;
 	}
 	else
 	{
-	    ret = ae_cancel_op(context, ctl->current_op_id);
+            ae_op_id_t tmpid;
+            triton_uint128_set(ctl->current_op_id, tmpid);
+            triton_uint128_setzero(ctl->current_op_id);
+            error = triton_mutex_unlock(&ctl->mutex);
+            assert(!error);
+
+	    ret = ae_cancel_op(context, tmpid);
+            return ret;
 	}
-	error = triton_mutex_unlock(&ctl->mutex);
-        assert(!error);
-	return ret;
     }
     else
     {
@@ -378,6 +391,12 @@ uint64_t ae_id_lookup(ae_op_id_t id, int *resource_id)
     return id.l;
 }
 
+struct op_id_entry
+{
+    ae_op_id_t op_id;
+    triton_list_link_t link;
+};
+
 /**
  * ae_cancel_children tries to cancel all the children of this context.  This
  * function returns TRITON_SUCCESS if all operations was successfully cancelled,
@@ -386,11 +405,13 @@ uint64_t ae_id_lookup(ae_op_id_t id, int *resource_id)
  * cancelled.  Right now, if one of the operations fails to be cancelled, we return
  * failure immediately instead of trying to cancel the others.
  */
-triton_ret_t ae_cancel_children(ae_context_t context, struct ae_ctl *ctl)
+ae_op_id_t * ae_cancel_children(ae_context_t context, struct ae_ctl *ctl, int *count)
 {
     triton_ret_t ret;
     struct ae_ctl *child_ctl;
     struct triton_list_link *entry, *safe;
+    ae_op_id_t *op_ids;
+    int ind, c;
 
     triton_debug(aesop_debug_cancel_mask, "ae_cancel_children: %p\n", ctl);
 
@@ -399,21 +420,32 @@ triton_ret_t ae_cancel_children(ae_context_t context, struct ae_ctl *ctl)
         /* don't do anything here because there are no children
          * to cancel
          */
-	return TRITON_SUCCESS;
+        *count = 0;
+	return NULL;
     }
 
+    /* need to allocate space here for op ids, since the entire control
+     * structure could go away while we're cancelling
+     */
+    c = triton_list_count(&ctl->children);
+    op_ids = malloc(sizeof(*op_ids) * c);
+    if(!op_ids)
+    {
+        *count = 0;
+        return NULL;
+    }
+
+    ind = 0;
     triton_list_for_each(entry, safe, &ctl->children)
     {
 	child_ctl = triton_list_get_entry(entry, struct ae_ctl, link);
-	ret = ae_cancel_op(context, child_ctl->current_op_id);
-	if(ret != TRITON_SUCCESS)
-	{
-	    /* cancel failed */
-	    return ret;
-	}
+        triton_uint128_set(child_ctl->current_op_id, op_ids[ind]);
+        triton_uint128_setzero(child_ctl->current_op_id);
+        ++ind;
     }
 
-    return TRITON_SUCCESS;
+    *count = c;
+    return op_ids;
 }
 
 #include <execinfo.h>
@@ -756,6 +788,9 @@ triton_ret_t ae_context_destroy(ae_context_t context)
 triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
 {
     triton_ret_t ret;
+    ae_op_id_t *children_ids;
+    int ind, count, error;
+    ae_context_t context;
 
     triton_debug(aesop_debug_cancel_mask, "ae_cancel_branches: %p\n", ctl);
 
@@ -764,19 +799,42 @@ triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
         assert(ctl);
     }
-    ret = ae_cancel_children(ctl->context, ctl);
-    return ret;
+
+    error = triton_mutex_lock(&ctl->mutex);
+    assert(!error);
+
+    context = ctl->context;
+    children_ids = ae_cancel_children(context, ctl, &count);
+
+    error = triton_mutex_unlock(&ctl->mutex);
+    assert(!error);
+
+    for(ind = 0; children_ids && ind < count; ++ind)
+    {
+        ret = ae_cancel_op(context, children_ids[ind]);
+        if(ret != TRITON_SUCCESS)
+        {
+            if(children_ids) free(children_ids);
+            return ret;
+        }
+    }
+    if(children_ids) free(children_ids);
+    return TRITON_SUCCESS;
 }
 
 int ae_count_branches(struct ae_ctl *ctl)
 {
-    int r;
+    int r, error;
     if(!ctl)
     {
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
         assert(ctl);
     }
+    error = triton_mutex_lock(&ctl->mutex);
+    assert(!error);
     r = triton_list_count(&ctl->children);
+    error = triton_mutex_unlock(&ctl->mutex);
+    assert(!error);
     return r;
 }
 

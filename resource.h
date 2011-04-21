@@ -90,7 +90,7 @@ ae_ret_t ae_poll(ae_context_t context, int ms);
 ae_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
 
 /* internal function -- used by generated code */
-ae_ret_t ae_cancel_children(ae_context_t ctx, struct ae_ctl *ctl);
+ae_op_id_t * ae_cancel_children(ae_context_t ctx, struct ae_ctl *ctl, int *count);
 
 void ae_backtrace(void);
 
