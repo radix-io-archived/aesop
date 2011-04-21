@@ -434,6 +434,7 @@ ae_op_id_t * ae_cancel_children(ae_context_t context, struct ae_ctl *ctl, int *c
         *count = 0;
         return NULL;
     }
+    *count = c;
 
     ind = 0;
     triton_list_for_each(entry, safe, &ctl->children)
