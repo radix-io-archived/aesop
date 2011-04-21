@@ -1,0 +1,59 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+
+static __blocking void run_pbreak(void)
+{
+	int a = 0, b = 0, c = 0;
+	int ret1, ret2, ret3, ret4;
+
+        /* set immediate cancel mode */
+        btest_enable_immediate_cancel();
+
+	pwait
+	{
+	    pbranch
+	    {
+		ret1 = btest1(&a);
+		assert(ret1 == 0);
+		assert(a == 1);
+	    }
+
+	    pbranch
+	    {
+		ret2 = btest2(&b);
+		assert(ret2 == 0);
+		assert(b == 2);
+		ret2 = btest_forever();
+		assert(ret2 != 0);
+	    }
+	
+	    pbranch
+	    {
+		ret3 = btest3(&c);
+		assert(ret3 == 0);
+		assert(c == 3);
+		ret3 = btest1(&c);
+		assert(ret3 == 0);
+		assert(c == 4);
+	    }
+
+	    pbranch
+	    {
+		ret4 = btest_sleep(4);
+		assert(ret4 == 0);
+                aesop_cancel_branches();
+		pbreak;
+	    }
+	}
+
+	printf("pwait done\n");
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    run_pbreak();
+    return 0;
+}
+btest_main_set(aesop_main, "btest");
+
