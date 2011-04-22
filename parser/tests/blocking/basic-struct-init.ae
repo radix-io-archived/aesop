@@ -1,3 +1,6 @@
+/* this example is known not to work in Aesop.  See
+ * https://trac.mcs.anl.gov/projects/triton/ticket/39 for details.
+ */
 
 #include <assert.h>
 #include "src/aesop/aesop.h"

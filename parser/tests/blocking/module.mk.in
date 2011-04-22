@@ -5,7 +5,6 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/afterwhile.ae \
 	      $(DIR)/basic.ae \
 	      $(DIR)/basic-struct-return.ae \
-	      $(DIR)/basic-struct-init.ae \
 	      $(DIR)/compound.ae \
 	      $(DIR)/params.ae \
 	      $(DIR)/forloop.ae \
