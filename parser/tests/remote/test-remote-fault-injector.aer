@@ -16,8 +16,7 @@
 #include "src/net/fault-injector/fault-method.h"
 #include "src/remote/service.hae"
 #include "src/common/triton-init.h"
-#include "src/remote/core_module.h"
-#include "src/remote/core_stubs.hae"
+#include "src/remote/core-functions.haer"
 
 /* normally you don't have to declare this, but we do here because
  * it gets declared in <module>_module.h (myclientserver_module.h)
