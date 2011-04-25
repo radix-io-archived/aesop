@@ -20,11 +20,11 @@ REMOTE_MODSRC_$(DIR)/test_remote_fault := $(DIR)/test-remote-fault-injector.aer
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_service_stop
 REMOTE_MODSRC_$(DIR)/test_remote_service_stop := $(DIR)/test-remote-service-stop.aer
 
-REMOTE_TESTSRC += $(DIR)/test-remote-mock \
-                  $(DIR)/test-remote-mock-embedded-buffers \
-                  $(DIR)/test-remote-mpi \
-                  $(DIR)/test-remote-fault-injector \
-                  $(DIR)/test-remote-service-stop
+REMOTE_TESTSRC += $(DIR)/test-remote-mock.aer \
+                  $(DIR)/test-remote-mock-embedded-buffers.aer \
+                  $(DIR)/test-remote-mpi.aer \
+                  $(DIR)/test-remote-fault-injector.aer \
+                  $(DIR)/test-remote-service-stop.aer
 
 endif # BUILD_MPI
 
