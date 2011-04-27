@@ -2,23 +2,75 @@ DIR := src/aesop/parser/tests/remote
 
 # define the test_remote module
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mock
+MODNAME := test_remote_mock
+FULLMODNAME := $(DIR)/$(MODNAME)
 
 # specifies which aer files get included in the module
 REMOTE_MODSRC_$(DIR)/test_remote_mock := $(DIR)/test-remote-mock.aer
 
+$(FULLMODNAME)_stubs.h $(FULLMODNAME)_module.h $(FULLMODNAME)_module.o $(DIR)/test-remote-mock.o: $(DIR)/test-remote-mock.aer
+	$(Q) "  AERCC           $(FULLMODNAME)"
+	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME)) \
+	-d $(call RMOD_REGDIR,$(FULLMODNAME)) \
+	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME))) \
+	-c $(call MCC_AE,$(FULLMODNAME)) $(VA) $(DA) $(AEPRETTY) \
+	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME))
+
+
+
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mock_buf
 REMOTE_MODSRC_$(DIR)/test_remote_mock_buf := $(DIR)/test-remote-mock-embedded-buffers.aer
+MODNAME := test_remote_mock_buf
+FULLMODNAME := $(DIR)/$(MODNAME)
+
+$(FULLMODNAME)_stubs.h $(FULLMODNAME)_module.h $(FULLMODNAME)_module.o $(DIR)/test-remote-mock-buf.o: $(DIR)/test-remote-mock-buf.aer
+	$(Q) "  AERCC           $(FULLMODNAME)"
+	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME)) \
+	-d $(call RMOD_REGDIR,$(FULLMODNAME)) \
+	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME))) \
+	-c $(call MCC_AE,$(FULLMODNAME)) $(VA) $(DA) $(AEPRETTY) \
+	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME))
 
 ifneq (,$(BUILD_MPI))
 
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mpi
 REMOTE_MODSRC_$(DIR)/test_remote_mpi := $(DIR)/test-remote-mpi.aer
+MODNAME := test_remote_mpi
+FULLMODNAME := $(DIR)/$(MODNAME)
+
+$(FULLMODNAME)_stubs.h $(FULLMODNAME)_module.h $(FULLMODNAME)_module.o $(DIR)/test-remote-mock-mpi.o: $(DIR)/test-remote-mpi.aer
+	$(Q) "  AERCC           $(FULLMODNAME)"
+	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME)) \
+	-d $(call RMOD_REGDIR,$(FULLMODNAME)) \
+	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME))) \
+	-c $(call MCC_AE,$(FULLMODNAME)) $(VA) $(DA) $(AEPRETTY) \
+	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME))
 
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_fault
 REMOTE_MODSRC_$(DIR)/test_remote_fault := $(DIR)/test-remote-fault-injector.aer
+MODNAME := test_remote_fault
+FULLMODNAME := $(DIR)/$(MODNAME)
+
+$(FULLMODNAME)_stubs.h $(FULLMODNAME)_module.h $(FULLMODNAME)_module.o $(DIR)/test-remote-mock-fault.o: $(DIR)/test-remote-fault.aer
+	$(Q) "  AERCC           $(FULLMODNAME)"
+	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME)) \
+	-d $(call RMOD_REGDIR,$(FULLMODNAME)) \
+	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME))) \
+	-c $(call MCC_AE,$(FULLMODNAME)) $(VA) $(DA) $(AEPRETTY) \
+	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME))
 
 REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_service_stop
 REMOTE_MODSRC_$(DIR)/test_remote_service_stop := $(DIR)/test-remote-service-stop.aer
+MODNAME := test_remote_service_stop
+FULLMODNAME := $(DIR)/$(MODNAME)
+
+$(FULLMODNAME)_stubs.h $(FULLMODNAME)_module.h $(FULLMODNAME)_module.o $(DIR)/test-remote-service-stop.o: $(DIR)/test-remote-service-stop.aer
+	$(Q) "  AERCC           $(FULLMODNAME)"
+	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME)) \
+	-d $(call RMOD_REGDIR,$(FULLMODNAME)) \
+	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME))) \
+	-c $(call MCC_AE,$(FULLMODNAME)) $(VA) $(DA) $(AEPRETTY) \
+	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME))
 
 REMOTE_TESTSRC += $(DIR)/test-remote-mock.aer \
                   $(DIR)/test-remote-mock-embedded-buffers.aer \
