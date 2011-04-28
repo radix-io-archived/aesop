@@ -8,7 +8,7 @@ FULLMODNAME1 := $(DIR_TESTREMOTE)/$(MODNAME1)
 # specifies which aer files get included in the module
 REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mock := $(DIR_TESTREMOTE)/test-remote-mock.aer
 
-$(FULLMODNAME1)_stubs.h $(FULLMODNAME1)_module.h $(FULLMODNAME1)_module.o $(DIR_TESTREMOTE)/test-remote-mock.o: $(DIR_TESTREMOTE)/test-remote-mock.aer
+$(FULLMODNAME1)_stubs.hae $(FULLMODNAME1)_module.h $(FULLMODNAME1)_module.o $(DIR_TESTREMOTE)/test-remote-mock.o: $(DIR_TESTREMOTE)/test-remote-mock.aer
 	$(Q) "  AERCC           $(FULLMODNAME1)"
 	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME1)) \
 	-d $(call RMOD_REGDIR,$(FULLMODNAME1)) \
@@ -25,7 +25,7 @@ REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mock_buf := $(DIR_TESTREMOTE)/test-r
 MODNAME2 := test_remote_mock_buf
 FULLMODNAME2 := $(DIR_TESTREMOTE)/$(MODNAME2)
 
-$(FULLMODNAME2)_stubs.h $(FULLMODNAME2)_module.h $(FULLMODNAME2)_module.o $(DIR_TESTREMOTE)/test-remote-mock-buf.o: $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer
+$(FULLMODNAME2)_stubs.hae $(FULLMODNAME2)_module.h $(FULLMODNAME2)_module.o $(DIR_TESTREMOTE)/test-remote-mock-buf.o: $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer
 	$(Q) "  AERCC           $(FULLMODNAME2)"
 	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME2)) \
 	-d $(call RMOD_REGDIR,$(FULLMODNAME2)) \
@@ -44,7 +44,7 @@ REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mpi := $(DIR_TESTREMOTE)/test-remote
 MODNAME3 := test_remote_mpi
 FULLMODNAME3 := $(DIR_TESTREMOTE)/$(MODNAME3)
 
-$(FULLMODNAME3)_stubs.h $(FULLMODNAME3)_module.h $(FULLMODNAME3)_module.o $(DIR_TESTREMOTE)/test-remote-mock-mpi.o: $(DIR_TESTREMOTE)/test-remote-mpi.aer
+$(FULLMODNAME3)_stubs.hae $(FULLMODNAME3)_module.h $(FULLMODNAME3)_module.o $(DIR_TESTREMOTE)/test-remote-mock-mpi.o: $(DIR_TESTREMOTE)/test-remote-mpi.aer
 	$(Q) "  AERCC           $(FULLMODNAME3)"
 	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME3)) \
 	-d $(call RMOD_REGDIR,$(FULLMODNAME3)) \
@@ -61,7 +61,7 @@ REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_fault := $(DIR_TESTREMOTE)/test-remo
 MODNAME4 := test_remote_fault
 FULLMODNAME4 := $(DIR_TESTREMOTE)/$(MODNAME4)
 
-$(FULLMODNAME4)_stubs.h $(FULLMODNAME4)_module.h $(FULLMODNAME4)_module.o $(DIR_TESTREMOTE)/test-remote-mock-fault.o: $(DIR_TESTREMOTE)/test-remote-fault.aer
+$(FULLMODNAME4)_stubs.hae $(FULLMODNAME4)_module.h $(FULLMODNAME4)_module.o $(DIR_TESTREMOTE)/test-remote-mock-fault.o: $(DIR_TESTREMOTE)/test-remote-fault.aer
 	$(Q) "  AERCC           $(FULLMODNAME4)"
 	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME4)) \
 	-d $(call RMOD_REGDIR,$(FULLMODNAME4)) \
@@ -78,7 +78,7 @@ REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_service_stop := $(DIR_TESTREMOTE)/te
 MODNAME5 := test_remote_service_stop
 FULLMODNAME5 := $(DIR_TESTREMOTE)/$(MODNAME5)
 
-$(FULLMODNAME5)_stubs.h $(FULLMODNAME5)_module.h $(FULLMODNAME5)_module.o $(DIR_TESTREMOTE)/test-remote-service-stop.o: $(DIR_TESTREMOTE)/test-remote-service-stop.aer
+$(FULLMODNAME5)_stubs.hae $(FULLMODNAME5)_module.h $(FULLMODNAME5)_module.o $(DIR_TESTREMOTE)/test-remote-service-stop.o: $(DIR_TESTREMOTE)/test-remote-service-stop.aer
 	$(Q) "  AERCC           $(FULLMODNAME5)"
 	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME5)) \
 	-d $(call RMOD_REGDIR,$(FULLMODNAME5)) \
