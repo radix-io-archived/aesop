@@ -8,13 +8,7 @@ FULLMODNAME1 := $(DIR_TESTREMOTE)/$(MODNAME1)
 # specifies which aer files get included in the module
 REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mock := $(DIR_TESTREMOTE)/test-remote-mock.aer
 
-$(FULLMODNAME1)_stubs.hae $(FULLMODNAME1)_module.h $(FULLMODNAME1)_module.o $(DIR_TESTREMOTE)/test-remote-mock.o: $(DIR_TESTREMOTE)/test-remote-mock.aer
-	$(Q) "  AERCC           $(FULLMODNAME1)"
-	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME1)) \
-	-d $(call RMOD_REGDIR,$(FULLMODNAME1)) \
-	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME1))) \
-	-c $(call MCC_AE,$(FULLMODNAME1)) $(VA) $(DA) $(AEPRETTY) \
-	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME1))
+$(FULLMODNAME1)_stubs.hae $(FULLMODNAME1)_module.h $(FULLMODNAME1)_module.o $(DIR_TESTREMOTE)/test-remote-mock.o: $(FULLMODNAME1).dummy
 
 $(FULLMODNAME1).d: $(DIR_TESTREMOTE)/test-remote-mock.aer
 	$(Q) "  DEP           $@"
@@ -25,13 +19,7 @@ REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mock_buf := $(DIR_TESTREMOTE)/test-r
 MODNAME2 := test_remote_mock_buf
 FULLMODNAME2 := $(DIR_TESTREMOTE)/$(MODNAME2)
 
-$(FULLMODNAME2)_stubs.hae $(FULLMODNAME2)_module.h $(FULLMODNAME2)_module.o $(DIR_TESTREMOTE)/test-remote-mock-buf.o: $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer
-	$(Q) "  AERCC           $(FULLMODNAME2)"
-	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME2)) \
-	-d $(call RMOD_REGDIR,$(FULLMODNAME2)) \
-	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME2))) \
-	-c $(call MCC_AE,$(FULLMODNAME2)) $(VA) $(DA) $(AEPRETTY) \
-	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME2))
+$(FULLMODNAME2)_stubs.hae $(FULLMODNAME2)_module.h $(FULLMODNAME2)_module.o $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.o: $(FULLMODNAME2).dummy
 
 $(FULLMODNAME2).d: $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer
 	$(Q) "  DEP           $@"
@@ -44,7 +32,7 @@ REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mpi := $(DIR_TESTREMOTE)/test-remote
 MODNAME3 := test_remote_mpi
 FULLMODNAME3 := $(DIR_TESTREMOTE)/$(MODNAME3)
 
-$(FULLMODNAME3)_stubs.hae $(FULLMODNAME3)_module.h $(FULLMODNAME3)_module.o $(DIR_TESTREMOTE)/test-remote-mock-mpi.o: $(DIR_TESTREMOTE)/test-remote-mpi.aer
+$(FULLMODNAME3)_stubs.hae $(FULLMODNAME3)_module.h $(FULLMODNAME3)_module.o $(DIR_TESTREMOTE)/test-remote-mpi.o: $(FULLMODNAME3).dummy
 	$(Q) "  AERCC           $(FULLMODNAME3)"
 	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME3)) \
 	-d $(call RMOD_REGDIR,$(FULLMODNAME3)) \
@@ -61,13 +49,7 @@ REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_fault := $(DIR_TESTREMOTE)/test-remo
 MODNAME4 := test_remote_fault
 FULLMODNAME4 := $(DIR_TESTREMOTE)/$(MODNAME4)
 
-$(FULLMODNAME4)_stubs.hae $(FULLMODNAME4)_module.h $(FULLMODNAME4)_module.o $(DIR_TESTREMOTE)/test-remote-mock-fault.o: $(DIR_TESTREMOTE)/test-remote-fault.aer
-	$(Q) "  AERCC           $(FULLMODNAME4)"
-	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME4)) \
-	-d $(call RMOD_REGDIR,$(FULLMODNAME4)) \
-	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME4))) \
-	-c $(call MCC_AE,$(FULLMODNAME4)) $(VA) $(DA) $(AEPRETTY) \
-	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME4))
+$(FULLMODNAME4)_stubs.hae $(FULLMODNAME4)_module.h $(FULLMODNAME4)_module.o $(DIR_TESTREMOTE)/test-remote-fault-injector.o: $(FULLMODNAME4).dummy
 
 $(FULLMODNAME4).d: $(DIR_TESTREMOTE)/test-remote-fault.aer
 	$(Q) "  DEP           $@"
@@ -78,13 +60,7 @@ REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_service_stop := $(DIR_TESTREMOTE)/te
 MODNAME5 := test_remote_service_stop
 FULLMODNAME5 := $(DIR_TESTREMOTE)/$(MODNAME5)
 
-$(FULLMODNAME5)_stubs.hae $(FULLMODNAME5)_module.h $(FULLMODNAME5)_module.o $(DIR_TESTREMOTE)/test-remote-service-stop.o: $(DIR_TESTREMOTE)/test-remote-service-stop.aer
-	$(Q) "  AERCC           $(FULLMODNAME5)"
-	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME5)) \
-	-d $(call RMOD_REGDIR,$(FULLMODNAME5)) \
-	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME5))) \
-	-c $(call MCC_AE,$(FULLMODNAME5)) $(VA) $(DA) $(AEPRETTY) \
-	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME5))
+$(FULLMODNAME5)_stubs.hae $(FULLMODNAME5)_module.h $(FULLMODNAME5)_module.o $(DIR_TESTREMOTE)/test-remote-service-stop.o: $(FULLMODNAME5).dummy
 
 $(FULLMODNAME5).d: $(DIR_TESTREMOTE)/test-remote-service-stop.aer
 	$(Q) "  DEP           $@"
