@@ -1,6 +1,7 @@
 #include "src/aesop/aesop.h"
 #include "src/aesop/parser/tests/blocking/btest.hae"
 #include <assert.h>
+#include "src/aesop/aesop-support.hae"
 
 static __blocking void run_pbreak(void)
 {
@@ -39,7 +40,7 @@ static __blocking void run_pbreak(void)
 	    {
 		ret4 = btest_sleep(4);
 		assert(ret4 == 0);
-                aesop_cancel_branches();
+                aesop_cancel_branches_wait();
 		pbreak;
 	    }
 	}
@@ -52,5 +53,5 @@ __blocking int aesop_main(int argc, char **argv)
     run_pbreak();
     return 0;
 }
-btest_main_set(aesop_main, "btest");
+btest_main_set(aesop_main, "btest", "timer");
 

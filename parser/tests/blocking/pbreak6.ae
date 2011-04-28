@@ -1,5 +1,6 @@
 #include "src/aesop/aesop.h"
 #include "src/aesop/parser/tests/blocking/btest.hae"
+#include "src/aesop/aesop-support.hae"
 
 static __blocking void run_pbreak6(void)
 {
@@ -33,7 +34,7 @@ static __blocking void run_pbreak6(void)
 		if(b > 1)
 		{
 		    printf("hit pbreak!\n");
-                    aesop_cancel_branches();
+                    aesop_cancel_branches_wait();
 		    pbreak;
 		}
 		ret1 = btest3(&b);

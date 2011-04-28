@@ -2,6 +2,7 @@
 #include "src/aesop/aesop.h"
 #include "src/aesop/parser/tests/blocking/btest.hae"
 #include <assert.h>
+#include "src/aesop/aesop-support.hae"
 
 static __blocking void run_par1(void)
 {
@@ -16,7 +17,7 @@ static __blocking void run_par1(void)
                 if(ret1 != 0)
                 {
                     printf("pbranch cancelled.\n");
-                    aesop_cancel_branches();
+                    aesop_cancel_branches_wait();
                     pbreak;
                 }
 
@@ -34,7 +35,7 @@ static __blocking void run_par1(void)
                 if(ret2 != 0)
                 {
                     printf("Error in branch 2.\n");
-                    aesop_cancel_branches();
+                    aesop_cancel_branches_wait();
                     pbreak;
                     assert(0);
                 }
@@ -43,7 +44,7 @@ static __blocking void run_par1(void)
                 if(ret2 != 0)
                 {
                     printf("Error in branch 2.\n");
-                    aesop_cancel_branches();
+                    aesop_cancel_branches_wait();
                     pbreak;
                 }
 
@@ -58,11 +59,7 @@ static __blocking void run_par1(void)
 	
 	    pbranch
 	    {
-                while(aesop_count_branches() > 1)
-                {
-                    aesop_cancel_branches();
-                    btest_sleep(1);
-                }
+                aesop_cancel_branches_wait();
                 pbreak;
                 assert(0);
 

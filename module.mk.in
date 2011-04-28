@@ -1,5 +1,7 @@
 DIR := src/aesop
 
+AESOP_HDR += $(DIR)/aesop-support.hae
+
 LIBSRC += $(DIR)/opcache.c \
 	  $(DIR)/aesop.c \
 	  $(DIR)/resource.c \

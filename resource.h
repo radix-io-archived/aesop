@@ -103,9 +103,6 @@ void ae_get_stack(struct ae_ctl *ctl, ae_string_t *stack, int *inout_count);
 #ifdef AESOP_PARSER
 #define aesop_cancel_branches() ae_cancel_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
 #define aesop_count_branches() ae_count_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
-#define aesop_cancel_branches_wait() while(aesop_count_branches() > 1) { \
-                                        aesop_cancel_branches();         \
-                                     triton_timer(2); }
 #else
 static inline ae_ret_t aesop_cancel_branches(void) { return AE_NOSYS; }
 static inline int aesop_count_branches(void) { return -1; }

@@ -491,7 +491,7 @@ static void btest_finalize(void)
 __attribute__((constructor)) void btest_init_register(void);
 __attribute__((constructor)) void btest_init_register(void)
 {
-    triton_init_register("aesop.blocking.test", btest_init, btest_finalize, NULL, "aesop.control");
+    triton_init_register("aesop.blocking.test", btest_init, btest_finalize, NULL, "aesop.control", "triton.resource.timer");
 }
 
 void btest_enable_immediate_cancel(void)
