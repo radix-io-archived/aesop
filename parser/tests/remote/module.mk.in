@@ -1,30 +1,76 @@
-DIR := src/aesop/parser/tests/remote
+DIR_TESTREMOTE := src/aesop/parser/tests/remote
 
 # define the test_remote module
-REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mock
+REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_mock
+MODNAME1 := test_remote_mock
+FULLMODNAME1 := $(DIR_TESTREMOTE)/$(MODNAME1)
 
 # specifies which aer files get included in the module
-REMOTE_MODSRC_$(DIR)/test_remote_mock := $(DIR)/test-remote-mock.aer
+REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mock := $(DIR_TESTREMOTE)/test-remote-mock.aer
 
-REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mock_buf
-REMOTE_MODSRC_$(DIR)/test_remote_mock_buf := $(DIR)/test-remote-mock-embedded-buffers.aer
+$(FULLMODNAME1)_stubs.hae $(FULLMODNAME1)_module.h $(FULLMODNAME1)_module.o $(DIR_TESTREMOTE)/test-remote-mock.o: $(FULLMODNAME1).dummy
+
+$(FULLMODNAME1).d: $(DIR_TESTREMOTE)/test-remote-mock.aer
+	$(Q) "  DEP           $@"
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME1)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME1) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME1) $< > $@
+
+REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_mock_buf
+REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mock_buf := $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer
+MODNAME2 := test_remote_mock_buf
+FULLMODNAME2 := $(DIR_TESTREMOTE)/$(MODNAME2)
+
+$(FULLMODNAME2)_stubs.hae $(FULLMODNAME2)_module.h $(FULLMODNAME2)_module.o $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.o: $(FULLMODNAME2).dummy
+
+$(FULLMODNAME2).d: $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer
+	$(Q) "  DEP           $@"
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME2)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME2) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME2) $< > $@
 
 ifneq (,$(BUILD_MPI))
 
-REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_mpi
-REMOTE_MODSRC_$(DIR)/test_remote_mpi := $(DIR)/test-remote-mpi.aer
+REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_mpi
+REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mpi := $(DIR_TESTREMOTE)/test-remote-mpi.aer
+MODNAME3 := test_remote_mpi
+FULLMODNAME3 := $(DIR_TESTREMOTE)/$(MODNAME3)
 
-REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_fault
-REMOTE_MODSRC_$(DIR)/test_remote_fault := $(DIR)/test-remote-fault-injector.aer
+$(FULLMODNAME3)_stubs.hae $(FULLMODNAME3)_module.h $(FULLMODNAME3)_module.o $(DIR_TESTREMOTE)/test-remote-mpi.o: $(FULLMODNAME3).dummy
+	$(Q) "  AERCC           $(FULLMODNAME3)"
+	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME3)) \
+	-d $(call RMOD_REGDIR,$(FULLMODNAME3)) \
+	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME3))) \
+	-c $(call MCC_AE,$(FULLMODNAME3)) $(VA) $(DA) $(AEPRETTY) \
+	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME3))
 
-REMOTE_TESTLIB_MODULES += $(DIR)/test_remote_service_stop
-REMOTE_MODSRC_$(DIR)/test_remote_service_stop := $(DIR)/test-remote-service-stop.aer
+$(FULLMODNAME3).d: $(DIR_TESTREMOTE)/test-remote-mpi.aer
+	$(Q) "  DEP           $@"
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME3)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME3) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME3) $< > $@
 
-REMOTE_TESTSRC += $(DIR)/test-remote-mock.aer \
-                  $(DIR)/test-remote-mock-embedded-buffers.aer \
-                  $(DIR)/test-remote-mpi.aer \
-                  $(DIR)/test-remote-fault-injector.aer \
-                  $(DIR)/test-remote-service-stop.aer
+REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_fault
+REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_fault := $(DIR_TESTREMOTE)/test-remote-fault-injector.aer
+MODNAME4 := test_remote_fault
+FULLMODNAME4 := $(DIR_TESTREMOTE)/$(MODNAME4)
+
+$(FULLMODNAME4)_stubs.hae $(FULLMODNAME4)_module.h $(FULLMODNAME4)_module.o $(DIR_TESTREMOTE)/test-remote-fault-injector.o: $(FULLMODNAME4).dummy
+
+$(FULLMODNAME4).d: $(DIR_TESTREMOTE)/test-remote-fault.aer
+	$(Q) "  DEP           $@"
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME4)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME4) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME4) $< > $@
+
+REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_service_stop
+REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_service_stop := $(DIR_TESTREMOTE)/test-remote-service-stop.aer
+MODNAME5 := test_remote_service_stop
+FULLMODNAME5 := $(DIR_TESTREMOTE)/$(MODNAME5)
+
+$(FULLMODNAME5)_stubs.hae $(FULLMODNAME5)_module.h $(FULLMODNAME5)_module.o $(DIR_TESTREMOTE)/test-remote-service-stop.o: $(FULLMODNAME5).dummy
+
+$(FULLMODNAME5).d: $(DIR_TESTREMOTE)/test-remote-service-stop.aer
+	$(Q) "  DEP           $@"
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME5)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME5) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME5) $< > $@
+
+REMOTE_TESTSRC += $(DIR_TESTREMOTE)/test-remote-mock.aer \
+                  $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer \
+                  $(DIR_TESTREMOTE)/test-remote-mpi.aer \
+                  $(DIR_TESTREMOTE)/test-remote-fault-injector.aer \
+                  $(DIR_TESTREMOTE)/test-remote-service-stop.aer
 
 endif # BUILD_MPI
 
