@@ -27,6 +27,8 @@ typedef struct ae_hints ae_hints_t;
     ae_hints_put(__ae_ctl->gen.hints, __key, __length, __value, __overwrite)
 #define aesop_hints_modify(__key, __length, __value) \
     ae_hints_modify(__ae_ctl->gen.hints, __key, __length, __value)
+#define aesop_hints_del(__key) \
+    ae_hints_del(__ae_ctl->gen.hints, __key);
 #else
 
 /* dummy functions to allow for compiling */
@@ -39,6 +41,10 @@ static inline triton_ret_t aesop_hints_put(const char *key, int length, void *va
     return TRITON_ERR_NOSYS;
 }
 static inline triton_ret_t aesop_hints_modify(ae_hints_t *hints, const char *key, int length, void *value)
+{
+    return TRITON_ERR_NOSYS;
+}
+static inline triton_ret_t aesop_hints_del(ae_hints_t *hints, const char *key)
 {
     return TRITON_ERR_NOSYS;
 }
