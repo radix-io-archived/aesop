@@ -17,7 +17,15 @@ static __blocking void run_par1(void)
                 if(ret1 != 0)
                 {
                     printf("pbranch cancelled.\n");
-                    aesop_cancel_branches_wait();
+                    /* NOTE: In this case we know that another branch is
+                     * already calling aesop_cancel_branches_wait().  If we 
+                     * were to call aesop_cancel_branches_wait() here also,
+                     * then the program would deadlock because two
+                     * pbranches would both be waiting for the other to exit
+                     * before continuing.  Since we know that the other
+                     * branch is taking care of the cancel we can just break
+                     * out here.
+                     */
                     pbreak;
                 }
 
@@ -79,7 +87,7 @@ __blocking int aesop_main(int argc, char **argv)
     run_par1();
     return 0;
 }
-btest_main_set(aesop_main, "btest");
+btest_main_set(aesop_main, "btest", "timer");
 
 /*
  * Local variables:
