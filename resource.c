@@ -231,7 +231,21 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
         write_pipe = ae_resource_entries[ridx].poll_data.pipe_fds[1];
     }
 
-    assert(write_pipe > -1);
+    if(write_pipe < 0)
+    {
+        triton_err(triton_log_default, "Error: context %p is not configured to handle resource with id %d", context, resource_id);
+        for(i=0; i<ae_resource_count; i++)
+        {
+            if(ae_resource_entries[i].id == resource_id)
+            {
+                triton_err(triton_log_default, "Consider adding the \"%s\" resource your aesop context.", ae_resource_entries[i].resource->resource_name);
+                assert(0);
+            }
+        }
+        triton_err(triton_log_default, "Error: resource_id %d is unknown to aesop.  Are you using a resource that was not initialized?\n", resource_id);
+        assert(0);
+    }
+
     write(write_pipe, &onebyte, 1);
     return;
 }
@@ -271,7 +285,22 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
         target_loop = eloop;
     }
 
-    assert(async);
+    /* TODO: put this in epoll version too */
+    if(!async)
+    {
+        triton_err(triton_log_default, "Error: context %p is not configured to handle resource with id %d", context, resource_id);
+        for(i=0; i<ae_resource_count; i++)
+        {
+            if(ae_resource_entries[i].id == resource_id)
+            {
+                triton_err(triton_log_default, "Consider adding the \"%s\" resource your aesop context.", ae_resource_entries[i].resource->resource_name);
+                assert(0);
+            }
+        }
+        triton_err(triton_log_default, "Error: resource_id %d is unknown to aesop.  Are you using a resource that was not initialized?\n", resource_id);
+        assert(0);
+    }
+
     assert(target_loop);
     ev_async_send(target_loop, async);
 
