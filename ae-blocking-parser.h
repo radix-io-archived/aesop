@@ -100,8 +100,8 @@ static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr, __cb_ret
                                                                                                       \
         AE_MK_END_OF_BLOCKING(__bfun, "");                                                            \
         ae_debug_pbranch("ctl_done: cb: fn_complete: %p\n", __ae_ctl);                                \
-        ae_ctl_done(&__ae_ctl->gen);                                                                  \
         __ae_local_cb(__ae_local_up, __ae_ret);                                                       \
+        ae_ctl_done(&__ae_ctl->gen);                                                                  \
     }                                                                                                 \
                                                                                                       \
     return;                                                                                           \
@@ -123,8 +123,8 @@ static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr, __cb_ret
                                                                                                       \
         AE_MK_END_OF_BLOCKING(__bfun, "");                                                            \
         ae_debug_pbranch("ctl_done: cb: fn_complete: %p\n", __ae_ctl);                                \
-        ae_ctl_done(&__ae_ctl->gen);                                                                  \
         __ae_local_cb(__ae_local_up);                                                                 \
+        ae_ctl_done(&__ae_ctl->gen);                                                                  \
     }                                                                                                 \
                                                                                                       \
     return;                                                                                           \
@@ -145,8 +145,8 @@ static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr)      \
                                                                              \
         AE_MK_END_OF_BLOCKING(__bfun, "");                                   \
         ae_debug_pbranch("ctl_done: cb: fn_complete: %p\n", __ae_ctl);       \
-        ae_ctl_done(&__ae_ctl->gen);                                         \
         __ae_local_cb(__ae_local_up, __ae_ret);                              \
+        ae_ctl_done(&__ae_ctl->gen);                                         \
     }                                                                        \
                                                                              \
     return;                                                                  \
@@ -166,8 +166,8 @@ static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr) \
                                                                         \
         AE_MK_END_OF_BLOCKING(__bfun, "");                              \
         ae_debug_pbranch("ctl_done: cb: fn_complete: %p\n", __ae_ctl);  \
-        ae_ctl_done(&__ae_ctl->gen);                                    \
         __ae_local_cb(__ae_local_up);                                   \
+        ae_ctl_done(&__ae_ctl->gen);                                    \
     }                                                                   \
                                                                         \
     return;                                                             \
@@ -574,8 +574,8 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
         {                                                             \
             __ret_type __ae_local_retval = __ae_ctl->return_value;    \
             ae_debug_pbranch("ctl_done: bfun ic: %p\n", __ae_ctl);    \
-            ae_ctl_done(&__ae_ctl->gen);                              \
             __ae_local_cb(__ae_local_up, __ae_local_retval);          \
+            ae_ctl_done(&__ae_ctl->gen);                              \
         }                                                             \
     }                                                                 \
     return __ae_myret;
