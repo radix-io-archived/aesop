@@ -1,0 +1,62 @@
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+#include "src/common/resources/timer/timer.hae"
+
+static __blocking void lonely_pbranch(void)
+{
+	int a = 0;
+	int ret1;
+        triton_ret_t tret;
+
+        pbranch
+        {
+           int localvar;
+
+           localvar = rand();
+
+           ret1 = btest1(&a);
+           if(ret1 != 0)
+           {
+              printf("Error in branch 1.\n");
+           }
+
+           ret1 = btest2(&a);
+           if(ret1 != 0)
+           {
+              printf("Error in branch 1.\n");
+           }
+
+           tret = triton_timer(2000);
+           if(tret != TRITON_SUCCESS)
+           {
+              printf("Error in branch 1 while sleeping\n");
+           }
+           printf("pbranch done!\n");
+        }
+
+        ret1 = btest1(&a);
+        if(ret1 != 0)
+        {
+            printf("Error in final btest1\n");
+        }
+
+        printf("lonely_pbranch done! returning...\n");
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    lonely_pbranch();
+    return 0;
+}
+btest_main_set(aesop_main, "btest");
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
+
