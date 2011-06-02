@@ -27,22 +27,22 @@ $(FULLMODNAME2).d: $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer
 
 ifneq (,$(BUILD_MPI))
 
-REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_mpi
-REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mpi := $(DIR_TESTREMOTE)/test-remote-mpi.aer
-MODNAME3 := test_remote_mpi
-FULLMODNAME3 := $(DIR_TESTREMOTE)/$(MODNAME3)
+#REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_mpi
+#REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mpi := $(DIR_TESTREMOTE)/test-remote-mpi.aer
+#MODNAME3 := test_remote_mpi
+#FULLMODNAME3 := $(DIR_TESTREMOTE)/$(MODNAME3)
 
-$(FULLMODNAME3)_stubs.hae $(FULLMODNAME3)_module.h $(FULLMODNAME3)_module.o $(DIR_TESTREMOTE)/test-remote-mpi.o: $(FULLMODNAME3).dummy
-	$(Q) "  AERCC           $(FULLMODNAME3)"
-	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME3)) \
-	-d $(call RMOD_REGDIR,$(FULLMODNAME3)) \
-	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME3))) \
-	-c $(call MCC_AE,$(FULLMODNAME3)) $(VA) $(DA) $(AEPRETTY) \
-	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME3))
+#$(FULLMODNAME3)_stubs.hae $(FULLMODNAME3)_module.h $(FULLMODNAME3)_module.o $(DIR_TESTREMOTE)/test-remote-mpi.o: $(FULLMODNAME3).dummy
+#	$(Q) "  AERCC           $(FULLMODNAME3)"
+#	$(E)$(builddir)/maint/aercc -m $(call RMOD_SERVICE,$(FULLMODNAME3)) \
+#	-d $(call RMOD_REGDIR,$(FULLMODNAME3)) \
+#	$(patsubst %,$(srcdir)/%,$(call RMOD_FILES,$(FULLMODNAME3))) \
+#	-c $(call MCC_AE,$(FULLMODNAME3)) $(VA) $(DA) $(AEPRETTY) \
+#	-- $(CFLAGS) $(LIBCFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$(FULLMODNAME3))
 
-$(FULLMODNAME3).d: $(DIR_TESTREMOTE)/test-remote-mpi.aer
-	$(Q) "  DEP           $@"
-	$(E)CC=$(call MCC_AE,$(FULLMODNAME3)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME3) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME3) $< > $@
+#$(FULLMODNAME3).d: $(DIR_TESTREMOTE)/test-remote-mpi.aer
+#	$(Q) "  DEP           $@"
+#	$(E)CC=$(call MCC_AE,$(FULLMODNAME3)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME3) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME3) $< > $@
 
 REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_fault
 REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_fault := $(DIR_TESTREMOTE)/test-remote-fault-injector.aer
