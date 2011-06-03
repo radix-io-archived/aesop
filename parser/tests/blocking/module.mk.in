@@ -50,6 +50,7 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/lonely-pbranch2.ae \
 	      $(DIR)/lonely-pbranch3.ae \
 	      $(DIR)/lonely-pbranch4.ae \
+	      $(DIR)/lonely-pbranch-variable-scope.ae \
               $(DIR)/pwait-in-while.ae \
               $(DIR)/pwait-in-for.ae \
               $(DIR)/pbranch-completion.ae
