@@ -460,6 +460,7 @@ __ae_pbranch_##__pbranch_pos_str##_done:                                        
                           #__fname "_ctl:pbranch_" #__pbranch_pos_str,                \
                          __pbranch_ctl,                                               \
                          __ae_ctl);                                                   \
+        ae_ctl_done(&__ae_ctl->gen);                                             \
         goto __ae_blocking_function_done;                                             \
     }                                                                                 \
 }                                                                                     \
