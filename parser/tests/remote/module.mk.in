@@ -51,7 +51,7 @@ FULLMODNAME4 := $(DIR_TESTREMOTE)/$(MODNAME4)
 
 $(FULLMODNAME4)_stubs.hae $(FULLMODNAME4)_module.h $(FULLMODNAME4)_module.o $(DIR_TESTREMOTE)/test-remote-fault-injector.o: $(FULLMODNAME4).dummy
 
-$(FULLMODNAME4).d: $(DIR_TESTREMOTE)/test-remote-fault.aer
+$(FULLMODNAME4).d: $(DIR_TESTREMOTE)/test-remote-fault-injector.aer
 	$(Q) "  DEP           $@"
 	$(E)CC=$(call MCC_AE,$(FULLMODNAME4)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME4) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME4) $< > $@
 
