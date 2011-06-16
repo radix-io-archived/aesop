@@ -104,7 +104,7 @@ int main(int argc, char **argv)  \
     triton_error_assert(ret); \
     while(!__main_done) \
     { \
-        ret = ae_poll(__main_ctx, 0); \
+        ret = ae_poll(__main_ctx, 100); \
         triton_error_assert(ret); \
     } \
     ae_hints_destroy(&__main_hints); \

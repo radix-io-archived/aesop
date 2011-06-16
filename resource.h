@@ -133,6 +133,11 @@ ae_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, ae_ret_t);
 static inline ae_ret_t aesop_error_wrap_stack(ae_ret_t ret) { return ret; }
 #endif
 
+/* Set this to zero to cause the main_set macros to busy spin on ae_poll(),
+ * although this probably is not a good idea.
+ */
+#define AESOP_MAIN_SET_POLL_TIMEOUT 100
+
 /* A macro to implement the boilerplate main function that posts an initial
  * blocking function.  The blocking function should have the same signature as main().
  * The variable parameters are the const char * names of the resources to initialize
@@ -179,7 +184,7 @@ int main(int argc, char **argv)                                \
     {                                                          \
         while(!__main_done)                                    \
         {                                                      \
-            ret = ae_poll(__main_ctx, 0);                      \
+            ret = ae_poll(__main_ctx, AESOP_MAIN_SET_POLL_TIMEOUT); \
             if(ret == AE_TIMEDOUT) continue;                   \
             aesop_error_assert(ret);                           \
         }                                                      \
@@ -248,7 +253,7 @@ int main(int argc, char **argv)                                   \
     {                                                             \
         while(!__main_done)                                       \
         {                                                         \
-            ret = ae_poll(__main_ctx, 0);                         \
+            ret = ae_poll(__main_ctx, AESOP_MAIN_SET_POLL_TIMEOUT); \
             if(ret == AE_TIMEDOUT) continue;                      \
             aesop_error_assert(ret);                              \
         }                                                         \
