@@ -48,6 +48,7 @@ static int efd = -1;
 #ifdef __AESOP_LIBEV
 static struct ev_loop *eloop = NULL;
 #endif
+static pthread_t ev_loop_thread;
 
 #define AE_RESOURCE_IDX2ID(reindex) (reindex+16)
 #define AE_RESOURCE_ID2IDX(rid) (rid-16)
@@ -148,6 +149,7 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
     int reindex = ae_resource_count;
     int ret;
 
+    ev_loop_thread = pthread_self();
     if(eloop == NULL)
     {
         eloop = EV_DEFAULT;
@@ -252,12 +254,8 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
 #endif /* __AESOP_EPOLL */
 
 #ifdef __AESOP_LIBEV
-/**
- * ae_resource_request_poll() is used by a resource to inform aesop that the
- * resource needs to be polled.
- */
-/* TODO: think about race conditions.  Need any locking here? */
-void ae_resource_request_poll(ae_context_t context, int resource_id)
+
+void find_async_watcher(ae_context_t context, int resource_id, ev_async** async_out, struct ev_loop** loop_out)
 {
     ev_async* async = NULL;
     int i;
@@ -285,7 +283,6 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
         target_loop = eloop;
     }
 
-    /* TODO: put this in epoll version too */
     if(!async)
     {
         triton_err(triton_log_default, "Error: context %p is not configured to handle resource with id %d", context, resource_id);
@@ -302,6 +299,54 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
     }
 
     assert(target_loop);
+
+    *async_out = async;
+    *loop_out = target_loop;
+
+    return;
+}
+
+/** 
+ * ae_resource_wake_pollers() is used by a resource to wake up the event
+ * loop (for example, after completing an operation and triggering its
+ * callback) in cases where the resource doesn't necessarily need to be
+ * polled.
+ */
+void ae_resource_wake_pollers(ae_context_t context, int resource_id)
+{
+    ev_async* async = NULL;
+    struct ev_loop *target_loop = NULL;
+
+    if(pthread_equal(ev_loop_thread, pthread_self()))
+    {
+        /* this was called from the event loop thread, so we know that it is
+         * already awake 
+         */
+        return;
+    }
+
+    find_async_watcher(context, resource_id, &async, &target_loop);
+
+    /* TODO: note that this will actually cause the event loop to poll the
+     * resource.  Technically we could use a separate watcher to wake up the
+     * event loop without triggering a poll
+     */
+    ev_async_send(target_loop, async);
+
+    return;
+}
+
+/**
+ * ae_resource_request_poll() is used by a resource to inform aesop that the
+ * resource needs to be polled.
+ */
+void ae_resource_request_poll(ae_context_t context, int resource_id)
+{
+    ev_async* async = NULL;
+    struct ev_loop *target_loop = NULL;
+
+    find_async_watcher(context, resource_id, &async, &target_loop);
+
     ev_async_send(target_loop, async);
 
     return;

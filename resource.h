@@ -59,6 +59,7 @@ struct ae_resource
 ae_ret_t ae_resource_register(struct ae_resource *resource, int *newid);
 void ae_resource_unregister(int resource_id);
 void ae_resource_request_poll(ae_context_t context, int resource_id);
+void ae_resource_wake_pollers(ae_context_t context, int resource_id);
 #ifdef __AESOP_LIBEV
 /* this function is used by resources that want access to the event loop
  * used by aesop for this context
