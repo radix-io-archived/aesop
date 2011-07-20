@@ -47,6 +47,7 @@ static int efd = -1;
 #endif
 #ifdef __AESOP_LIBEV
 static struct ev_loop *eloop = NULL;
+ev_async eloop_breaker;
 #endif
 static pthread_t ev_loop_thread;
 
@@ -64,6 +65,7 @@ struct ae_context
 #endif
 #ifdef __AESOP_LIBEV
     struct ev_loop *eloop;
+    ev_async eloop_breaker;
 #endif
 };
 
@@ -125,6 +127,15 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
 #endif /* __AESOP_EPOLL */
 
 #ifdef __AESOP_LIBEV
+static void ev_break_cb(EV_P_ ev_async *w, int revents)
+{
+    /* Break the loop.  Note that ev_run() will still process all events
+     * that are pending at the time we call this, which is a good thing.
+     */
+    ev_break(EV_A_ EVBREAK_ONE);
+    return;
+}
+
 static void ev_async_cb(EV_P_ ev_async *w, int revents)
 {
     triton_ret_t tret;
@@ -152,7 +163,13 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
     ev_loop_thread = pthread_self();
     if(eloop == NULL)
     {
+        /* This is the first resource to be registered.  Initialize the
+         * event loop and start a watcher that can be used to break it's
+         * execution
+         */
         eloop = EV_DEFAULT;
+        ev_async_init(&eloop_breaker, ev_break_cb);
+        ev_async_start(eloop, &eloop_breaker);
     }
 
     if(ae_resource_count == AE_MAX_RESOURCES)
@@ -255,7 +272,7 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
 
 #ifdef __AESOP_LIBEV
 
-void find_async_watcher(ae_context_t context, int resource_id, ev_async** async_out, struct ev_loop** loop_out)
+static void find_async_watcher(ae_context_t context, int resource_id, ev_async** async_out, struct ev_loop** loop_out)
 {
     ev_async* async = NULL;
     int i;
@@ -306,15 +323,15 @@ void find_async_watcher(ae_context_t context, int resource_id, ev_async** async_
     return;
 }
 
-/** 
- * ae_resource_wake_pollers() is used by a resource to wake up the event
- * loop (for example, after completing an operation and triggering its
- * callback) in cases where the resource doesn't necessarily need to be
- * polled.
+/**
+ * ae_poll_break() can be used to interrupt a currently executing ae_poll
+ * call.  This would typically be used in the linkage between c and aesop
+ * functions to allow the c program to continue execution after the final
+ * aesop callback has completed.
  */
-void ae_resource_wake_pollers(ae_context_t context, int resource_id)
+void ae_poll_break(ae_context_t context)
 {
-    ev_async* async = NULL;
+    ev_async* breaker = NULL;
     struct ev_loop *target_loop = NULL;
 
     if(pthread_equal(ev_loop_thread, pthread_self()))
@@ -325,15 +342,18 @@ void ae_resource_wake_pollers(ae_context_t context, int resource_id)
         return;
     }
 
-    find_async_watcher(context, resource_id, &async, &target_loop);
+    if(context)
+    {
+        breaker = &context->eloop_breaker;
+        target_loop = context->eloop;
+    }
+    else
+    {
+        breaker = &eloop_breaker;
+        target_loop = eloop;
+    }
 
-    /* TODO: note that this will actually cause the event loop to poll the
-     * resource.  Technically we could use a separate watcher to wake up the
-     * event loop without triggering a poll
-     */
-    ev_async_send(target_loop, async);
-
-    return;
+    ev_async_send(target_loop, breaker);
 }
 
 /**
@@ -731,6 +751,8 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
         free(c->poll_data);
         return(TRITON_ERR_NOMEM);
     }
+    ev_async_init(&c->eloop_breaker, ev_break_cb);
+    ev_async_start(c->eloop, &c->eloop_breaker);
 #endif
 #ifdef __AESOP_EPOLL
     c->efd = epoll_create(32);

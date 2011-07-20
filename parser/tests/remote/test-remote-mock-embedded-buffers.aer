@@ -171,7 +171,9 @@ __blocking void do_remote_test(int count)
 static int done = 0;
 static void cb(void *up)
 {
+    ae_context_t ctx = (ae_context_t)up;
     done=1;
+    ae_poll_break(ctx);
 }
 
 int main(int argc, char *argv[])
@@ -207,7 +209,7 @@ int main(int argc, char *argv[])
 
     ae_hints_init(&hints);
 
-    ret = ae_post_blocking(do_remote_test, cb, NULL, &hints, mock_resource_ctx, &op_id, atoi(argv[1]));
+    ret = ae_post_blocking(do_remote_test, cb, mock_resource_ctx, &hints, mock_resource_ctx, &op_id, atoi(argv[1]));
     while(!done)
     {
         ae_poll(mock_resource_ctx, 0);

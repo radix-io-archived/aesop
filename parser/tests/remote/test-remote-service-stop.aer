@@ -53,7 +53,9 @@ __blocking void do_remote_test(void)
 static int done = 0;
 static void cb(void *up)
 {
+    ae_context_t ctx = (ae_context_t)up;
     done=1;
+    ae_poll_break(ctx);
 }
 
 triton_ret_t aer_remote_register_test_remote_service_stop(void);
@@ -87,7 +89,7 @@ int main(int argc, char *argv[])
     ae_hints_init(&hints);
 
     ae_context_create(&mpi_resource_ctx, "mpi", "sched", "timer");
-    ret = ae_post_blocking(do_remote_test, cb, NULL, &hints, mpi_resource_ctx, &op_id);
+    ret = ae_post_blocking(do_remote_test, cb, mpi_resource_ctx, &hints, mpi_resource_ctx, &op_id);
     while(!done)
     {
         ae_poll(mpi_resource_ctx, 0);

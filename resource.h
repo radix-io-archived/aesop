@@ -58,8 +58,10 @@ struct ae_resource
 /* Called by resources to register themselves to the resource framework */
 ae_ret_t ae_resource_register(struct ae_resource *resource, int *newid);
 void ae_resource_unregister(int resource_id);
+/* Called by resources to request polling from the event loop */
 void ae_resource_request_poll(ae_context_t context, int resource_id);
-void ae_resource_wake_pollers(ae_context_t context, int resource_id);
+/* Called by c programs to break ae_poll() calls once callbacks are complete */
+void ae_poll_break(ae_context_t context);
 #ifdef __AESOP_LIBEV
 /* this function is used by resources that want access to the event loop
  * used by aesop for this context
@@ -154,8 +156,10 @@ static int __main_done=0;                                      \
 static int __main_ret;                                         \
 static void __main_cb(void *user_ptr, int t)                   \
 {                                                              \
+      ae_context_t ctx = (ae_context_t)user_ptr;               \
       __main_done = 1;                                         \
       __main_ret = t;                                          \
+      ae_poll_break(ctx);                                      \
 }                                                              \
 int main(int argc, char **argv)                                \
 {                                                              \
@@ -174,7 +178,7 @@ int main(int argc, char **argv)                                \
     ret = ae_post_blocking(                                    \
         __main_blocking_function__,                            \
         __main_cb,                                             \
-        NULL,                                                  \
+        __main_ctx,                                            \
         &__main_hints,                                         \
         __main_ctx,                                            \
         &__main_opid,                                          \
@@ -217,8 +221,10 @@ static int __main_done=0;                                         \
 static int __main_ret;                                            \
 static void __main_cb(void *user_ptr, int t)                      \
 {                                                                 \
+      ae_context_t ctx = (ae_context_t)user_ptr;                  \
       __main_done = 1;                                            \
       __main_ret = t;                                             \
+      ae_poll_break(ctx);                                         \
 }                                                                 \
 int main(int argc, char **argv)                                   \
 {                                                                 \
@@ -243,7 +249,7 @@ int main(int argc, char **argv)                                   \
     ret = ae_post_blocking(                                       \
         __main_blocking_function__,                               \
         __main_cb,                                                \
-        NULL,                                                     \
+        __main_ctx,                                               \
         &__main_hints,                                            \
         __main_ctx,                                               \
         &__main_opid,                                             \
