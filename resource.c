@@ -44,6 +44,7 @@ static int ae_resource_count = 0;
 static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES];
 #ifdef __AESOP_EPOLL
 static int efd = -1;
+int pipe_breaker[2];
 #endif
 #ifdef __AESOP_LIBEV
 static struct ev_loop *eloop = NULL;
@@ -62,6 +63,7 @@ struct ae_context
     struct ae_poll_data* poll_data;
 #ifdef __AESOP_EPOLL
     int efd;
+    int pipe_breaker[2];
 #endif
 #ifdef __AESOP_LIBEV
     struct ev_loop *eloop;
@@ -81,11 +83,34 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
 
     if(efd < 0)
     {
-        /* epoll fd has not been created yet */
+        /* This is the first resource to be registered.  Initialize the
+         * epoll fd and create a pipe that can be used to break the epoll
+         * wait.
+         */
         efd = epoll_create(32);
         if(efd < 0)
         {
             triton_err(triton_log_default, "Error: could not create epoll fd for resource polling.\n");
+            return(TRITON_ERR_EPOLL);
+        }
+        ret = pipe(pipe_breaker);
+        if(ret < 0)
+        {
+            triton_err(triton_log_default, "Error: could not create pipe for resource polling.\n");
+            close(efd);
+            return(TRITON_ERR_EPOLL);
+        }
+        fcntl(pipe_breaker[0], F_SETFL, O_NONBLOCK);
+        fcntl(pipe_breaker[1], F_SETFL, O_NONBLOCK);
+        event.data.ptr = NULL;
+        event.events = EPOLLIN;
+        ret = epoll_ctl(efd, EPOLL_CTL_ADD, pipe_breaker[0], &event);
+        if(ret < 0)
+        {
+            triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
+            close(efd);
+            close(pipe_breaker[0]);
+            close(pipe_breaker[1]);
             return(TRITON_ERR_EPOLL);
         }
     }
@@ -219,6 +244,38 @@ void ae_resource_unregister(int id)
 }
 
 #ifdef __AESOP_EPOLL
+
+/**
+ * ae_poll_break() can be used to interrupt a currently executing ae_poll
+ * call.  This would typically be used in the linkage between c and aesop
+ * functions to allow the c program to continue execution after the final
+ * aesop callback has completed.
+ */
+void ae_poll_break(ae_context_t context)
+{
+    int write_pipe = -1;
+    char onebyte;
+
+    if(pthread_equal(ev_loop_thread, pthread_self()))
+    {
+        /* this was called from the event loop thread, so we know that it is
+         * already awake 
+         */
+        return;
+    }
+
+    if(context)
+    {
+        write_pipe = context->pipe_breaker[1];
+    }
+    else
+    {
+        write_pipe = pipe_breaker[1];
+    }
+
+    write(write_pipe, &onebyte, 1);
+}
+
 /**
  * ae_resource_request_poll() is used by a resource to inform aesop that the
  * resource needs to be polled.
@@ -633,17 +690,21 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
         /* empty the pipe (short reads are ok) */
         do
         {
-            ret = read(poll_data->pipe_fds[0], pipebuf, AE_PIPE_READ_SIZE);
+            ret = read(events[i].data.fd, pipebuf, AE_PIPE_READ_SIZE);
         } while(ret >= 1 && ret < AE_PIPE_READ_SIZE);
-        /* we better not get data on this pipe if the resource doesn't
-         * provide a poll function
-         */
-        assert(poll_data->poll_context);
-        tret = poll_data->poll_context(context);
-        if(tret != TRITON_SUCCESS)
+
+        if(poll_data)
         {
-            free(events);
-            return(tret);
+            tret = poll_data->poll_context(context);
+            if(tret != TRITON_SUCCESS)
+            {
+                free(events);
+                return(tret);
+            }
+        }
+        else
+        {
+            /* we were just signalled to wake up; no work to do */
         }
     }
 
@@ -759,6 +820,30 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
     if(c->efd < 0)
     {
         triton_err(triton_log_default, "Error: could not create epoll fd for resource polling.\n");
+        free(c->resource_ids);
+        free(c->poll_data);
+        return(TRITON_ERR_EPOLL);
+    }
+    ep_ret = pipe(c->pipe_breaker);
+    if(ep_ret < 0)
+    {
+        triton_err(triton_log_default, "Error: could not create pipe for resource polling.\n");
+        close(c->efd);
+        free(c->resource_ids);
+        free(c->poll_data);
+        return(TRITON_ERR_EPOLL);
+    }
+    fcntl(c->pipe_breaker[0], F_SETFL, O_NONBLOCK);
+    fcntl(c->pipe_breaker[1], F_SETFL, O_NONBLOCK);
+    event.data.ptr = NULL;
+    event.events = EPOLLIN;
+    ep_ret = epoll_ctl(c->efd, EPOLL_CTL_ADD, c->pipe_breaker[0], &event);
+    if(ep_ret < 0)
+    {
+        triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
+        close(c->efd);
+        close(c->pipe_breaker[0]);
+        close(c->pipe_breaker[1]);
         free(c->resource_ids);
         free(c->poll_data);
         return(TRITON_ERR_EPOLL);
