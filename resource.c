@@ -44,7 +44,7 @@ static int ae_resource_count = 0;
 static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES];
 #ifdef __AESOP_EPOLL
 static int efd = -1;
-int pipe_breaker[2];
+struct ae_poll_data break_target;
 #endif
 #ifdef __AESOP_LIBEV
 static struct ev_loop *eloop = NULL;
@@ -62,8 +62,8 @@ struct ae_context
     int* resource_ids;
     struct ae_poll_data* poll_data;
 #ifdef __AESOP_EPOLL
+    struct ae_poll_data break_target;
     int efd;
-    int pipe_breaker[2];
 #endif
 #ifdef __AESOP_LIBEV
     struct ev_loop *eloop;
@@ -93,24 +93,26 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
             triton_err(triton_log_default, "Error: could not create epoll fd for resource polling.\n");
             return(TRITON_ERR_EPOLL);
         }
-        ret = pipe(pipe_breaker);
+        ret = pipe(break_target.pipe_fds);
         if(ret < 0)
         {
             triton_err(triton_log_default, "Error: could not create pipe for resource polling.\n");
             close(efd);
             return(TRITON_ERR_EPOLL);
         }
-        fcntl(pipe_breaker[0], F_SETFL, O_NONBLOCK);
-        fcntl(pipe_breaker[1], F_SETFL, O_NONBLOCK);
-        event.data.ptr = NULL;
+        fcntl(break_target.pipe_fds[0], F_SETFL, O_NONBLOCK);
+        fcntl(break_target.pipe_fds[1], F_SETFL, O_NONBLOCK);
+        break_target.context = NULL;
+        break_target.poll_context = NULL;
+        event.data.ptr = &break_target;
         event.events = EPOLLIN;
-        ret = epoll_ctl(efd, EPOLL_CTL_ADD, pipe_breaker[0], &event);
+        ret = epoll_ctl(efd, EPOLL_CTL_ADD, break_target.pipe_fds[0], &event);
         if(ret < 0)
         {
             triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
             close(efd);
-            close(pipe_breaker[0]);
-            close(pipe_breaker[1]);
+            close(break_target.pipe_fds[0]);
+            close(break_target.pipe_fds[1]);
             return(TRITON_ERR_EPOLL);
         }
     }
@@ -266,11 +268,11 @@ void ae_poll_break(ae_context_t context)
 
     if(context)
     {
-        write_pipe = context->pipe_breaker[1];
+        write_pipe = context->break_target.pipe_fds[1];
     }
     else
     {
-        write_pipe = pipe_breaker[1];
+        write_pipe = break_target.pipe_fds[1];
     }
 
     write(write_pipe, &onebyte, 1);
@@ -636,7 +638,7 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
     {
         /* use context specific epoll fd */
         to_poll = context->efd;
-        event_count = context->resource_count;
+        event_count = context->resource_count + 1;
     }
     else
     {
@@ -647,7 +649,7 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
             return(TRITON_SUCCESS);
         }
         to_poll = efd;
-        event_count = ae_resource_count;
+        event_count = ae_resource_count + 1;
     }
 
     events = malloc(sizeof(*events) * event_count);
@@ -658,6 +660,7 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
 
     /* wait for a resource to indicate that it has something to do */
     event_count = epoll_wait(to_poll, events, event_count, millisecs);
+
 
     /* if interrupted, just exit and let the caller try again */
     if(event_count < 0 && errno == EINTR)
@@ -687,13 +690,14 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
         char pipebuf[AE_PIPE_READ_SIZE];
 
         poll_data = (struct ae_poll_data*)events[i].data.ptr;
+        assert(poll_data);
         /* empty the pipe (short reads are ok) */
         do
         {
             ret = read(events[i].data.fd, pipebuf, AE_PIPE_READ_SIZE);
         } while(ret >= 1 && ret < AE_PIPE_READ_SIZE);
 
-        if(poll_data)
+        if(poll_data->poll_context)
         {
             tret = poll_data->poll_context(context);
             if(tret != TRITON_SUCCESS)
@@ -824,7 +828,7 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
         free(c->poll_data);
         return(TRITON_ERR_EPOLL);
     }
-    ep_ret = pipe(c->pipe_breaker);
+    ep_ret = pipe(c->break_target.pipe_fds);
     if(ep_ret < 0)
     {
         triton_err(triton_log_default, "Error: could not create pipe for resource polling.\n");
@@ -833,17 +837,19 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
         free(c->poll_data);
         return(TRITON_ERR_EPOLL);
     }
-    fcntl(c->pipe_breaker[0], F_SETFL, O_NONBLOCK);
-    fcntl(c->pipe_breaker[1], F_SETFL, O_NONBLOCK);
-    event.data.ptr = NULL;
+    fcntl(c->break_target.pipe_fds[0], F_SETFL, O_NONBLOCK);
+    fcntl(c->break_target.pipe_fds[1], F_SETFL, O_NONBLOCK);
+    c->break_target.context = c;
+    c->break_target.poll_context = NULL;
+    event.data.ptr = &c->break_target;
     event.events = EPOLLIN;
-    ep_ret = epoll_ctl(c->efd, EPOLL_CTL_ADD, c->pipe_breaker[0], &event);
+    ep_ret = epoll_ctl(c->efd, EPOLL_CTL_ADD, c->break_target.pipe_fds[0], &event);
     if(ep_ret < 0)
     {
         triton_err(triton_log_default, "Error: could not epoll fd for resource polling.\n");
         close(c->efd);
-        close(c->pipe_breaker[0]);
-        close(c->pipe_breaker[1]);
+        close(c->break_target.pipe_fds[0]);
+        close(c->break_target.pipe_fds[1]);
         free(c->resource_ids);
         free(c->poll_data);
         return(TRITON_ERR_EPOLL);
