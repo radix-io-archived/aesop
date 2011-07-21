@@ -228,7 +228,7 @@ static void __main_cb(void *user_ptr, int t)                      \
 }                                                                 \
 int main(int argc, char **argv)                                   \
 {                                                                 \
-    ae_context_t __main_ctx;                                      \
+    ae_context_t __main_ctx = NULL;                               \
     ae_hints_t __main_hints;                                      \
     ae_op_id_t __main_opid;                                       \
     ae_ret_t ret;                                                 \
