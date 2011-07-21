@@ -692,10 +692,13 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
         poll_data = (struct ae_poll_data*)events[i].data.ptr;
         assert(poll_data);
         /* empty the pipe (short reads are ok) */
-        do
+        if(poll_data->pipe_fds[1] != 0) /* skip non-pipes */
         {
-            ret = read(events[i].data.fd, pipebuf, AE_PIPE_READ_SIZE);
-        } while(ret >= 1 && ret < AE_PIPE_READ_SIZE);
+            do
+            {
+                ret = read(events[i].data.fd, pipebuf, AE_PIPE_READ_SIZE);
+            } while(ret >= 1 && ret < AE_PIPE_READ_SIZE);
+        }
 
         if(poll_data->poll_context)
         {
