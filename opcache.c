@@ -1,3 +1,5 @@
+/* Don't try to do manual memory management */
+#define TRITON_OPCACHE_MALLOC
 
 #include <errno.h>
 #include "src/aesop/aesop.h"
@@ -9,12 +11,14 @@
 
 struct ae_opcache
 {
+#ifndef TRITON_OPCACHE_MALLOC
     void *array[TRITON_OPCACHE_ARRAY_COUNT];
     int array_count;
     int size;
     int count;
     triton_mutex_t mutex;
     ae_ops_t free_list;
+#endif
     int typesize;
     int member_offset;
 };
@@ -27,6 +31,8 @@ triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_
     {
         return TRITON_ERR_NOMEM;
     }
+
+#ifndef TRITON_OPCACHE_MALLOC
     c->size = init_size;
     c->array_count = 1;
     c->array[0] = malloc(typesize * init_size);
@@ -35,15 +41,18 @@ triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_
         free(c);
         return TRITON_ERR_NOMEM;
     }
+    c->count = 0;
+    ae_ops_init(&(c->free_list));
+    triton_mutex_init(&c->mutex, NULL);
+#endif
+
     c->typesize = typesize;
     c->member_offset = member_offset;
-    c->count = 0;
-    triton_mutex_init(&c->mutex, NULL);
-    ae_ops_init(&(c->free_list));
     *cache = c;
     return TRITON_SUCCESS;
 }
     
+#ifndef TRITON_OPCACHE_MALLOC
 static triton_ret_t ae_opcache_double(ae_opcache_t cache)
 {
     int i;
@@ -70,9 +79,11 @@ triton_ret_t ae_opcache_double_size(ae_opcache_t cache)
     triton_mutex_unlock(&cache->mutex);
     return ret;
 }
+#endif
 
 void ae_opcache_destroy(ae_opcache_t cache)
 {
+#ifndef TRITON_OPCACHE_MALLOC
     int i;
     triton_mutex_lock(&cache->mutex);
     for(i = 0; i < cache->array_count; ++i)
@@ -80,16 +91,18 @@ void ae_opcache_destroy(ae_opcache_t cache)
         free(cache->array[i]);
     }
     triton_mutex_unlock(&cache->mutex);
+#endif
     free(cache);
     return;
 }
 
-int ae_opcache_size(ae_opcache_t cache)
+#if 0
+static int ae_opcache_size(ae_opcache_t cache)
 {
     return cache->size;
 }
 
-int ae_opcache_count(ae_opcache_t cache)
+static int ae_opcache_count(ae_opcache_t cache)
 {
     int count;
 
@@ -99,11 +112,19 @@ int ae_opcache_count(ae_opcache_t cache)
 
     return count;
 }
+#endif
 
 struct ae_op *ae_opcache_get(ae_opcache_t cache)
 {
-    int aind, count;
     struct ae_op *op;
+#ifdef TRITON_OPCACHE_MALLOC
+    op = (struct ae_op *) ( (char*) malloc (cache->typesize) +
+          cache->member_offset);
+    ae_op_clear(op);
+    assert (sizeof (op->cache_id) >= sizeof (op));
+    op->cache_id = (uintptr_t) op;
+#else
+    int aind, count;
 
     triton_mutex_lock(&cache->mutex);
     if(ae_ops_empty(&cache->free_list))
@@ -133,20 +154,28 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
     }
     triton_mutex_unlock(&cache->mutex);
     assert(op);
+#endif
     return op;
 }
 
 void ae_opcache_put(ae_opcache_t cache, struct ae_op *op)
 {
+#ifdef TRITON_OPCACHE_MALLOC
+   free ((char*) op - cache->member_offset);
+#else
     triton_mutex_lock(&cache->mutex);
     ae_ops_enqueue(op, &cache->free_list);
     triton_mutex_unlock(&cache->mutex);
+#endif
 
     return;
 }
 
 struct ae_op * ae_opcache_lookup(ae_opcache_t cache, cache_id_t id)
 {
+#ifdef TRITON_OPCACHE_MALLOC
+   return (struct ae_op *) id;
+#else
     int aind, count;
 
     /* the code below assumes we have 32 bits available */
@@ -159,6 +188,7 @@ struct ae_op * ae_opcache_lookup(ae_opcache_t cache, cache_id_t id)
     return (struct ae_op *)(((char *)cache->array[aind]) + 
                             (count * cache->typesize) +
                             cache->member_offset);
+#endif
 }
 
 /*

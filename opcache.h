@@ -1,4 +1,3 @@
-
 #ifndef __OPCACHE_H__
 #define __OPCACHE_H__
 
@@ -22,15 +21,45 @@ typedef struct ae_opcache *ae_opcache_t;
     ae_opcache_put(__opcache, __op); \
     } while(0)
 
-ae_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache);
-   
-ae_ret_t ae_opcache_double_size(ae_opcache_t cache);
 
+/**
+ * Create an opcache.
+ * init_size is a hint and may be ignored.
+ */
+ae_ret_t ae_opcache_init(int typesize, int member_offset, int init_size,
+      ae_opcache_t *cache);
+   
+/**
+ * Destroy the given opcache.
+ * Note that all entries obtained from this cache are released and
+ * invalidated.
+ */
 void ae_opcache_destroy(ae_opcache_t cache);
 
+/**
+ * Obtain an ae_op entry. The entry will have a valid 
+ * op->cache_id
+ */
 struct ae_op *ae_opcache_get(ae_opcache_t cache);
 
+
+/**
+ * Return ae_op entry to the cache
+ */
 void ae_opcache_put(ae_opcache_t cache, struct ae_op *op);
+
+
+/**
+ * Given the cache id, return the ae_op * associated with it
+ */
+struct ae_op *ae_opcache_lookup(ae_opcache_t cache, cache_id_t id);
+
+
+/* (Dries) Disabled these functions: They're not used at this time,
+ * and expose information we cannot guarantee to always have.
+ */
+#if 0
+ae_ret_t ae_opcache_double_size(ae_opcache_t cache);
 
 /**
  * Size of the opcache array.  This is the total size of the cache.  As
@@ -46,8 +75,8 @@ int ae_opcache_size(ae_opcache_t cache);
  * in the cache without needing to double the size.
  */
 int ae_opcache_count(ae_opcache_t cache);
+#endif
 
-struct ae_op *ae_opcache_lookup(ae_opcache_t cache, int id);
 
 #endif
 
