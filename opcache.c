@@ -5,7 +5,7 @@
 #include "src/common/triton-error.h"
 
 #define TRITON_OPCACHE_ARRAY_COUNT 32
-#define TRITON_OPCACHE_MAX_INDEX (0xFFFFFF)
+/* UNUSED #define TRITON_OPCACHE_MAX_INDEX (0xFFFFFF) */
 
 struct ae_opcache
 {
