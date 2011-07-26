@@ -5,6 +5,10 @@
 #include "src/aesop/aesop.h"
 #include "src/aesop/ae-list.h"
 
+#include <stdint.h>
+
+typedef uintptr_t cache_id_t;
+
 typedef struct ae_op
 {
     void *callback;
@@ -12,7 +16,7 @@ typedef struct ae_op
     void *user_ptr;
     ae_hints_t *hints;
     ae_context_t ctx;
-    int cache_id;
+    cache_id_t cache_id;
     ae_list_link_t link;
 } ae_op_t;
 
