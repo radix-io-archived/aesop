@@ -1,5 +1,5 @@
 /* Don't try to do manual memory management */
-#define TRITON_OPCACHE_MALLOC
+// #define TRITON_OPCACHE_MALLOC
 
 #include <errno.h>
 #include "src/aesop/aesop.h"
