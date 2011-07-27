@@ -457,7 +457,8 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 
     if(resource_id == 0)
     {
-	ctl = (struct ae_ctl *)(intptr_t)ae_id_lookup(op_id, NULL);
+        intptr_t tmp = ae_id_lookup (op_id, NULL);
+	ctl = (struct ae_ctl *) tmp;
         if(!ctl)
         {
             /* No blocking operation associated with this op_id.  Nothing to cancel. */
@@ -530,7 +531,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
     }
 }
 
-ae_op_id_t ae_id_gen(int resource_id, uint64_t ptr)
+ae_op_id_t ae_id_gen(int resource_id, intptr_t ptr)
 {
     ae_op_id_t newid;
     newid.u = resource_id;
@@ -538,10 +539,10 @@ ae_op_id_t ae_id_gen(int resource_id, uint64_t ptr)
     return newid;
 }
 
-uint64_t ae_id_lookup(ae_op_id_t id, int *resource_id)
+intptr_t ae_id_lookup(ae_op_id_t id, int *resource_id)
 {
     if(resource_id) *resource_id = id.u;
-    return id.l;
+    return (intptr_t) id.l;
 }
 
 struct op_id_entry

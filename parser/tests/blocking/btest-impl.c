@@ -78,7 +78,7 @@ ae_define_post(int, tctest1, int *a)
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ret = pthread_attr_init(&attr);
     assert(ret == 0);
@@ -118,7 +118,7 @@ ae_define_post(int, tctest_random)
     op = ae_opcache_get(test_opcache);
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     printf("tctest_random\n");
     ret = pthread_attr_init(&attr);
@@ -141,7 +141,7 @@ ae_define_post(triton_ret_t, btest_fail10, int *a)
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list_fail10);
     ae_resource_request_poll(op->ctx, btest_resource_id);
@@ -158,7 +158,7 @@ ae_define_post(int, btest1, int *a)
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list1);
     ae_resource_request_poll(op->ctx, btest_resource_id);
@@ -175,7 +175,7 @@ ae_define_post(int, btest2, int *a)
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list2);
     ae_resource_request_poll(op->ctx, btest_resource_id);
@@ -192,7 +192,7 @@ ae_define_post(int, btest3, int *a)
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = a;
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list3);
     ae_resource_request_poll(op->ctx, btest_resource_id);
@@ -209,7 +209,7 @@ ae_define_post(int, btest_sleep, int secs)
     ae_op_fill(op);
     bop = ae_op_entry(op, struct bsleep_op, op);
     bop->sleep = secs;
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &slist);
     ae_resource_request_poll(op->ctx, btest_resource_id);
@@ -226,7 +226,7 @@ ae_define_post(int, btest_sleep_random)
     ae_op_fill(op);
     bop = ae_op_entry(op, struct bsleep_op, op);
     bop->sleep = random() % 1000;
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &srlist);
     ae_resource_request_poll(op->ctx, btest_resource_id);
@@ -243,7 +243,7 @@ ae_define_post(int, btest_forever)
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = NULL;
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &flist);
     ae_resource_request_poll(op->ctx, btest_resource_id);
@@ -260,7 +260,7 @@ ae_define_post(int, btest_random)
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
     bop->value = NULL;
-    bop->id = ae_id_gen(btest_resource_id, (uint64_t)(op->cache_id));
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &rlist);
     ae_resource_request_poll(op->ctx, btest_resource_id);

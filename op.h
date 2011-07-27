@@ -7,8 +7,6 @@
 
 #include <stdint.h>
 
-typedef uintptr_t cache_id_t;
-
 typedef struct ae_op
 {
     void *callback;
@@ -16,7 +14,6 @@ typedef struct ae_op
     void *user_ptr;
     ae_hints_t *hints;
     ae_context_t ctx;
-    cache_id_t cache_id;
     ae_list_link_t link;
 } ae_op_t;
 
@@ -53,7 +50,6 @@ typedef struct ae_op
         (_op)->user_ptr = NULL;                 \
         (_op)->hints = NULL;                    \
         (_op)->ctx = NULL;                      \
-        (_op)->cache_id = 0;                    \
         ae_ops_link_clear(_op);                 \
     } while(0)
 
@@ -92,6 +88,16 @@ static inline ae_op_t *ae_ops_peek(ae_ops_t *queue)
 
 #define ae_ops_insert_after(_new, _after, _ops) triton_list_insert_after(&(_new)->link, &(_after)->link, _ops)
 #define ae_ops_insert_before(_new, _before, _ops) triton_list_insert_before(&(_new)->link, &(_before)->link, _ops)
+
+
+/*
+ * This function was added to simplify casting from an op_id to the op
+ * structure.
+ */
+static inline struct ae_op * intptr2op (intptr_t op)
+{
+   return (struct ae_op *) op;
+}
 
 #endif
 

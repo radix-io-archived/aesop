@@ -1,10 +1,10 @@
-/* Don't try to do manual memory management */
-// #define TRITON_OPCACHE_MALLOC
-
 #include <errno.h>
 #include "src/aesop/aesop.h"
 #include "src/aesop/opcache.h"
 #include "src/common/triton-error.h"
+
+/* Don't try to do manual memory management */
+#define TRITON_OPCACHE_MALLOC
 
 #define TRITON_OPCACHE_ARRAY_COUNT 32
 /* UNUSED #define TRITON_OPCACHE_MAX_INDEX (0xFFFFFF) */
@@ -71,6 +71,8 @@ static triton_ret_t ae_opcache_double(ae_opcache_t cache)
     return TRITON_SUCCESS;
 }
 
+triton_ret_t ae_opcache_double_size(ae_opcache_t cache);
+
 triton_ret_t ae_opcache_double_size(ae_opcache_t cache)
 {
     triton_ret_t ret;
@@ -121,8 +123,6 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
     op = (struct ae_op *) ( (char*) malloc (cache->typesize) +
           cache->member_offset);
     ae_op_clear(op);
-    assert (sizeof (op->cache_id) >= sizeof (op));
-    op->cache_id = (uintptr_t) op;
 #else
     int aind, count;
 
@@ -143,9 +143,6 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
                               cache->member_offset);
         ae_op_clear(op);
 
-        assert (sizeof(op->cache_id) >= 4);
-
-        op->cache_id = (aind << 25) | count;
         ++cache->count;
     }
     else
@@ -171,6 +168,7 @@ void ae_opcache_put(ae_opcache_t cache, struct ae_op *op)
     return;
 }
 
+/*
 struct ae_op * ae_opcache_lookup(ae_opcache_t cache, cache_id_t id)
 {
 #ifdef TRITON_OPCACHE_MALLOC
@@ -178,10 +176,10 @@ struct ae_op * ae_opcache_lookup(ae_opcache_t cache, cache_id_t id)
 #else
     int aind, count;
 
-    /* the code below assumes we have 32 bits available */
+    // the code below assumes we have 32 bits available
     assert (sizeof (cache_id_t) >= 4);
 
-    /* we get the array index from the top 6 bits */
+    // we get the array index from the top 6 bits
     aind = (id >> 25);
     count = id & 0xFFFFFF;
 
@@ -190,6 +188,7 @@ struct ae_op * ae_opcache_lookup(ae_opcache_t cache, cache_id_t id)
                             cache->member_offset);
 #endif
 }
+*/
 
 /*
  * Local variables:

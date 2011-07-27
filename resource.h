@@ -39,8 +39,8 @@
                          __ret_type *__ae_retval,                          \
                          ##__fargs)
 
-ae_op_id_t ae_id_gen(int resource_id, uint64_t ptr);
-uint64_t ae_id_lookup(ae_op_id_t id, int *resource_id);
+ae_op_id_t ae_id_gen(int resource_id, intptr_t ptr);
+intptr_t ae_id_lookup(ae_op_id_t id, int *resource_id);
 
 /* The resource structure is defined by a given resource, and registered
  * to the aesop management code during resource initialization.

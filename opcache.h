@@ -48,13 +48,6 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache);
  */
 void ae_opcache_put(ae_opcache_t cache, struct ae_op *op);
 
-
-/**
- * Given the cache id, return the ae_op * associated with it
- */
-struct ae_op *ae_opcache_lookup(ae_opcache_t cache, cache_id_t id);
-
-
 /* (Dries) Disabled these functions: They're not used at this time,
  * and expose information we cannot guarantee to always have.
  */
@@ -75,6 +68,12 @@ int ae_opcache_size(ae_opcache_t cache);
  * in the cache without needing to double the size.
  */
 int ae_opcache_count(ae_opcache_t cache);
+
+/**
+ * Given the cache id, return the ae_op * associated with it
+ */
+struct ae_op *ae_opcache_lookup(ae_opcache_t cache, cache_id_t id);
+
 #endif
 
 
