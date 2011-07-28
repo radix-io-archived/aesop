@@ -62,12 +62,10 @@ void ae_resource_unregister(int resource_id);
 void ae_resource_request_poll(ae_context_t context, int resource_id);
 /* Called by c programs to break ae_poll() calls once callbacks are complete */
 void ae_poll_break(ae_context_t context);
-#ifdef __AESOP_LIBEV
 /* this function is used by resources that want access to the event loop
  * used by aesop for this context
  */
 struct ev_loop * ae_resource_get_eloop(ae_context_t context);
-#endif
 
 /* Contexts are created to allow separation of polling for different logical
  * groups of operations.  Don't use this function.  Instead, use the associated
