@@ -21,6 +21,7 @@ typedef struct ae_opcache *ae_opcache_t;
     ae_opcache_put(__opcache, __op); \
     } while(0)
 
+void ae_opcache_complete_op_threaded(ae_opcache_t cache, struct ae_op* op);
 
 /**
  * Create an opcache.
@@ -29,6 +30,13 @@ typedef struct ae_opcache *ae_opcache_t;
 ae_ret_t ae_opcache_init(int typesize, int member_offset, int init_size,
       ae_opcache_t *cache);
    
+/**
+ * Activates a thread pool to run callbacks for the opcache
+ */
+triton_ret_t ae_opcache_set_threads(ae_opcache_t cache, 
+    void(*completion_fn)(ae_opcache_t opcache, struct ae_op* op), 
+    int num_threads);
+
 /**
  * Destroy the given opcache.
  * Note that all entries obtained from this cache are released and
