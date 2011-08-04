@@ -80,10 +80,10 @@ $(FULLMODNAME5).d: $(DIR_TESTREMOTE)/test-remote-buffer-response.aer
 
 REMOTE_TESTSRC += $(DIR_TESTREMOTE)/test-remote-mock.aer \
                   $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer \
-                  $(DIR_TESTREMOTE)/test-remote-mpi.aer \
                   $(DIR_TESTREMOTE)/test-remote-fault-injector.aer \
                   $(DIR_TESTREMOTE)/test-remote-service-stop.aer \
                   $(DIR_TESTREMOTE)/test-remote-buffer-response.aer
+                  #$(DIR_TESTREMOTE)/test-remote-mpi.aer 
 
 endif # BUILD_MPI
 
