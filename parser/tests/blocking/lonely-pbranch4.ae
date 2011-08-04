@@ -11,9 +11,12 @@ static __blocking void lonely_pbranch(void)
 
         pbranch
         {
+        /* FIXME: this does not compile! */
+#if 0
            int localvar;
 
            localvar = rand();
+#endif
 
            ret1 = btest1(&a);
            if(ret1 != 0)
