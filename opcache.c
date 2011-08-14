@@ -80,8 +80,8 @@ void ae_opcache_complete_op_threaded(ae_opcache_t cache, struct ae_op* op)
     if(cache->num_ops_in_use > 1) 
     {
         ae_ops_enqueue(op, &cache->thread_queue);
-        triton_mutex_unlock(&cache->mutex);
         triton_cond_signal(&cache->cond);
+        triton_mutex_unlock(&cache->mutex);
     } else 
     {
         triton_mutex_unlock(&cache->mutex);
