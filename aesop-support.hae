@@ -5,9 +5,16 @@
 #include "src/aesop/resource.h"
 #include "src/common/resources/timer/timer.hae"
 
-#define aesop_cancel_branches_wait() while(aesop_count_branches() > 1) { \
-                                        aesop_cancel_branches();         \
-                                        triton_timer(2); \
-                                     }
+#define aesop_cancel_branches_wait() \
+    { \
+        triton_ret_t __ae_cancel_branches_wait_ret; \
+        do { \
+            aesop_cancel_branches(); \
+            if (aesop_count_branches() < 2) { \
+                break; \
+            } \
+            __ae_cancel_branches_wait_ret = triton_timer(2); \
+        } while (__ae_cancel_branches_wait_ret == TRITON_SUCCESS); \
+    }
 
 #endif
