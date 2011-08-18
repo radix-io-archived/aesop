@@ -189,14 +189,6 @@ void ae_poll_break(ae_context_t context)
     ev_async* breaker = NULL;
     struct ev_loop *target_loop = NULL;
 
-    if(pthread_equal(ev_loop_thread, pthread_self()))
-    {
-        /* this was called from the event loop thread, so we know that it is
-         * already awake 
-         */
-        return;
-    }
-
     if(context)
     {
         breaker = &context->eloop_breaker;
@@ -206,6 +198,16 @@ void ae_poll_break(ae_context_t context)
     {
         breaker = &eloop_breaker;
         target_loop = eloop;
+    }
+
+    if(pthread_equal(ev_loop_thread, pthread_self()))
+    {
+        /* this was called from the event loop thread, so we know that it is
+         * already awake.  Just make sure that it exits if the
+         * ae_poll_break() as called from a libev callback.
+         */
+        ev_break(target_loop, EVBREAK_ONE);
+        return;
     }
 
     ev_async_send(target_loop, breaker);
