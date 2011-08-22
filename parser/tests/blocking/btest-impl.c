@@ -444,8 +444,7 @@ static triton_ret_t btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
 	{
 	    ae_ops_del(t);
 	    printf("forever op cancelled\n");
-            ae_opcache_complete_op(test_opcache, &b->op, int, 0);
-            ae_resource_request_poll(ctx, btest_resource_id);
+            ae_opcache_complete_op(test_opcache, &b->op, int, -1);
 	}
    }
 
