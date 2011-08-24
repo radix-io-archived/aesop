@@ -173,7 +173,8 @@ void ae_opcache_destroy(ae_opcache_t cache)
     {
         pthread_join(cache->tids[i], NULL);
     }
-    free(cache->tids);
+    if(nthreads > 0)
+        free(cache->tids);
     triton_mutex_destroy(&cache->mutex);
     triton_cond_destroy(&cache->cond);
     ae_ops_destroy(&cache->thread_queue);
