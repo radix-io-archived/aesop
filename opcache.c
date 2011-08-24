@@ -205,6 +205,10 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
 #ifdef TRITON_OPCACHE_MALLOC
     op = (struct ae_op *) ( (char*) malloc (cache->typesize) +
           cache->member_offset);
+
+    if (!op)
+       return op;
+
     ae_op_clear(op);
     if(cache->num_threads > 0)
     {
@@ -220,7 +224,11 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
     {
         if(cache->count == cache->size)
         {
-            ae_opcache_double(cache);
+            if (ae_opcache_double(cache) != TRITON_SUCCESS)
+            {
+               triton_mutex_unlock (&cache->mutex);
+               return 0;
+            }
         }
 
         aind = cache->array_count - 1;
