@@ -8,6 +8,8 @@
 #include "src/aesop/ae-error.h"
 #include "src/aesop/hints.h"
 
+#include <opa_primitives.h>
+
 enum ae_ctl_state
 {
     /* inputs for worker functions */
@@ -70,7 +72,7 @@ struct ae_ctl
     int in_pwait;
     ae_hints_t *hints;
     ae_context_t context;
-    int refcount;
+    OPA_int_t refcount;
 };
 
 /**
@@ -104,7 +106,7 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     ctl->context = context;
     ae_mutex_init(&ctl->mutex, NULL);
     ae_list_init(&ctl->children);
-    ctl->refcount = 1;
+    OPA_store_int (&ctl->refcount, 1);
     ae_op_id_clear(ctl->current_op_id);
     if(internal) ctl->parent = (struct ae_ctl *)user_ptr;
     else ctl->parent = NULL;
@@ -119,14 +121,17 @@ static inline void ae_ctl_destroy(void *tctl, struct ae_ctl *ctl)
 static inline int ae_ctl_refcount(struct ae_ctl *ctl)
 {
     int rc;
-    rc = ctl->refcount;
+    rc = OPA_load_int (&ctl->refcount);
     return rc;
 }
 
+/**
+ * Atomically increment the refcount and return the new value.
+ */
 static inline int ae_ctl_refinc(struct ae_ctl *ctl)
 {
     int rc;
-    rc = ++ctl->refcount;
+    rc = OPA_fetch_and_incr_int (&ctl->refcount) + 1;
     return rc;
 }
 
@@ -138,10 +143,13 @@ static inline void ae_ctl_addref(struct ae_ctl *ctl)
     ae_mutex_unlock(&ctl->mutex);
 }
 
+/**
+ * Atomically decrement refcount and return the new value
+ */
 static inline int ae_ctl_refdec(struct ae_ctl *ctl)
 {
     int rc;
-    rc = --ctl->refcount;
+    rc = OPA_fetch_and_decr_int (&ctl->refcount) - 1;
     return rc;
 }
 
@@ -149,10 +157,10 @@ static inline void ae_ctl_done(struct ae_ctl *ctl)
 {
     int refcount;
     void *fctl = ctl->spec_ctl;
-    ae_mutex_lock(&ctl->mutex);
+
+
     refcount = ae_ctl_refdec(ctl);
     assert(refcount >= 0);
-    ae_mutex_unlock(&ctl->mutex);
     if(refcount == 0)
     {
         free(fctl);
