@@ -137,10 +137,7 @@ static inline int ae_ctl_refinc(struct ae_ctl *ctl)
 
 static inline void ae_ctl_addref(struct ae_ctl *ctl)
 {
-    int ret;
-    ae_mutex_lock(&ctl->mutex);
-    ret = ae_ctl_refinc(ctl);
-    ae_mutex_unlock(&ctl->mutex);
+    OPA_incr_int (&ctl->refcount);
 }
 
 /**
@@ -181,9 +178,7 @@ static inline void ae_ctl_lone_pbranch_start(struct ae_ctl *ctl)
     ae_list_link_clear(&ctl->link);
     ae_lone_pbranches_add(ctl);
     ae_hints_dup(ctl->parent->hints, &ctl->hints);
-    ae_mutex_lock(&ctl->parent->mutex);
     ae_ctl_refinc(ctl->parent);
-    ae_mutex_unlock(&ctl->parent->mutex);
 }
 
 static inline void ae_ctl_lone_pbranch_done(struct ae_ctl *ctl, enum ae_ctl_state *state)
