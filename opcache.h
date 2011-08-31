@@ -28,7 +28,7 @@ void ae_opcache_complete_op_threaded(ae_opcache_t cache, struct ae_op* op);
  * init_size is a hint and may be ignored.
  */
 ae_ret_t ae_opcache_init(int typesize, int member_offset, int init_size,
-      ae_opcache_t *cache);
+      ae_opcache_t * cache);
    
 /**
  * Activates a thread pool to run callbacks for the opcache

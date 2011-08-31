@@ -1,7 +1,9 @@
-#include <errno.h>
 #include "src/aesop/aesop.h"
 #include "src/aesop/opcache.h"
 #include "src/common/triton-error.h"
+
+#include <errno.h>
+#include <opa_primitives.h>
 
 /* Don't try to do manual memory management */
 #define TRITON_OPCACHE_MALLOC
@@ -20,9 +22,9 @@ struct ae_opcache
 #endif
     triton_mutex_t mutex;
     triton_cond_t cond;
-    int num_ops_in_use;
+    OPA_int_t num_ops_in_use;
     void (*completion_fn)(struct ae_opcache* opcache, struct ae_op* op);
-    int num_threads;
+    OPA_int_t num_threads;
     pthread_t* tids;
     ae_ops_t thread_queue;
     int typesize;
@@ -36,7 +38,7 @@ static void* thread_pool_fn(void* foo)
     ae_opcache_t cache = (ae_opcache_t)foo;
     struct ae_op* op;
 
-    while(cache->num_threads > 0)
+    while(OPA_load_int(&cache->num_threads) > 0)
     {
         triton_mutex_lock(&cache->mutex);
         while((op = ae_ops_dequeue(&cache->thread_queue)) == NULL)
@@ -56,7 +58,7 @@ triton_ret_t ae_opcache_set_threads(ae_opcache_t cache,
     int i;
     int ret;
 
-    cache->num_threads = num_threads;
+    OPA_store_int (&cache->num_threads, num_threads);
     cache->tids = (pthread_t*)malloc(num_threads*sizeof(pthread_t));
     if(!cache->tids)
         return(TRITON_ERR_NOMEM);
@@ -76,15 +78,15 @@ triton_ret_t ae_opcache_set_threads(ae_opcache_t cache,
 
 void ae_opcache_complete_op_threaded(ae_opcache_t cache, struct ae_op* op)
 {
-    triton_mutex_lock(&cache->mutex); 
-    if(cache->num_ops_in_use > 1) 
+    if(OPA_load_int(&cache->num_ops_in_use) > 1)
     {
+        triton_mutex_lock(&cache->mutex);
         ae_ops_enqueue(op, &cache->thread_queue);
         triton_cond_signal(&cache->cond);
         triton_mutex_unlock(&cache->mutex);
     } else 
     {
-        triton_mutex_unlock(&cache->mutex);
+        //triton_mutex_unlock(&cache->mutex);
         cache->completion_fn(cache, op);
     } 
     return;
@@ -116,8 +118,8 @@ triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_
     triton_mutex_init(&c->mutex, NULL);
     triton_cond_init(&c->cond, NULL);
     ae_ops_init(&c->thread_queue);
-    c->num_ops_in_use = 0;
-    c->num_threads = 0;
+    OPA_store_int (&c->num_ops_in_use, 0);
+    OPA_store_int (&c->num_threads, 0);
     c->typesize = typesize;
     c->member_offset = member_offset;
     *cache = c;
@@ -167,8 +169,7 @@ void ae_opcache_destroy(ae_opcache_t cache)
     }
     triton_mutex_unlock(&cache->mutex);
 #endif
-    nthreads = cache->num_threads;
-    cache->num_threads = 0;
+    nthreads = OPA_swap_int (&cache->num_threads, 0);
     for(i=0; i<nthreads; i++)
     {
         pthread_join(cache->tids[i], NULL);
@@ -211,11 +212,9 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
        return op;
 
     ae_op_clear(op);
-    if(cache->num_threads > 0)
+    if(OPA_load_int (&cache->num_threads) > 0)
     {
-        triton_mutex_lock(&cache->mutex);    
-        cache->num_ops_in_use++;
-        triton_mutex_unlock(&cache->mutex);    
+        OPA_incr_int (&cache->num_ops_in_use);
     }
 #else
     int aind, count;
@@ -247,8 +246,9 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
     {
         op = ae_ops_dequeue(&cache->free_list);
     }
-    cache->num_op_in_use++;
+    OPA_incr_int (&cache->num_op_in_use);
     triton_mutex_unlock(&cache->mutex);
+    /* should always succeed since we're not allocating mem */
     assert(op);
 #endif
     return op;
@@ -258,16 +258,14 @@ void ae_opcache_put(ae_opcache_t cache, struct ae_op *op)
 {
 #ifdef TRITON_OPCACHE_MALLOC
     free ((char*) op - cache->member_offset);
-    if(cache->num_threads > 0)
+    if(OPA_load_int (&cache->num_threads) > 0)
     {
-        triton_mutex_lock(&cache->mutex);
-        cache->num_ops_in_use--;
-        triton_mutex_unlock(&cache->mutex);
+        OPA_decr_int(&cache->num_ops_in_use);
     }
 #else
     triton_mutex_lock(&cache->mutex);
     ae_ops_enqueue(op, &cache->free_list);
-    cache->num_ops_in_use--;
+    OPA_decr_int(&cache->num_ops_in_use);
     triton_mutex_unlock(&cache->mutex);
 #endif
 
