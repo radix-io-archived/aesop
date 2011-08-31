@@ -60,6 +60,7 @@ static int hints_type_hash(const void *t, int table_size)
 static void ae_hint_info_destroy(void * hi)
 {
     struct ae_hint_info *info = (struct ae_hint_info *)hi;
+
     free(info->key);
     free(info);
 }
@@ -231,6 +232,9 @@ static void delete_hint(struct ae_hint_entry *h)
 
 triton_ret_t ae_hints_del(ae_hints_t *hints, const char *key)
 {
+    if (!hints)
+       return TRITON_ERR_NOENT;
+
     struct ae_hint_info *info;
     struct ae_hint_entry *entry, *tmpentry;
     triton_ret_t ret;
@@ -261,11 +265,14 @@ triton_ret_t ae_hints_del(ae_hints_t *hints, const char *key)
     return TRITON_ERR_NOENT;
 }
 
-triton_ret_t ae_hints_modify(ae_hints_t *hints,
+triton_ret_t ae_hints_modify(ae_hints_t * hints,
                           const char *key,
                           int length,
                           void *value)
 {
+    if (!hints)
+       return TRITON_ERR_NOENT;
+
     struct ae_hint_info *info;
     struct ae_hint_entry *entry, *tmpentry;
     triton_ret_t ret;
@@ -299,16 +306,42 @@ triton_ret_t ae_hints_modify(ae_hints_t *hints,
     return TRITON_ERR_NOENT;
 }
 
+static ae_hints_t * alloc_init_hint ()
+{
+   ae_hints_t * h = malloc(sizeof(*h));
+   triton_ret_t ret;
 
-triton_ret_t ae_hints_put(ae_hints_t *hints,
+   if(!h) return 0;
+
+   ret = ae_hints_init(h);
+   if(ret != TRITON_SUCCESS)
+   {
+      free(h);
+      return 0;
+   }
+   return h;
+}
+
+triton_ret_t ae_hints_put(ae_hints_t ** h,
                           const char *key,
                           int length,
                           void *value,
                           int overwrite)
 {
+    ae_hints_t * hints;
     struct ae_hint_info *info;
     struct ae_hint_entry *entry, *tmpentry;
     triton_ret_t ret;
+
+    /**
+     * If the hint structure wasn't allocated yet, do so now.
+     */
+    if (!*h)
+    {
+       *h = alloc_init_hint ();
+    }
+
+    hints = *h;
 
     info = ae_hints_get_info_by_key(key);
     if(!info)
@@ -415,45 +448,71 @@ void ae_hints_destroy(ae_hints_t *hints)
     if(r == 0 && hints->needs_free) free(hints);
 }
 
-triton_ret_t ae_hints_dup(ae_hints_t *oldh, ae_hints_t **newh)
+triton_ret_t ae_hints_dup(ae_hints_t *oldh, ae_hints_t ** newh)
 {
+    if (!oldh)
+    {
+       *newh = oldh;
+       return TRITON_SUCCESS;
+    }
+
     struct ae_hints *h;
     triton_ret_t ret;
 
-    h = malloc(sizeof(*h));
-    if(!h) return TRITON_ERR_NOMEM;
+    if (!oldh)
+    {
+       *newh = oldh;
+       return TRITON_SUCCESS;
+    }
 
-    ret = ae_hints_init(h);
+    /* ae_hints_copy will allocate h if needed */
+    h = 0;
+    ret = ae_hints_copy(oldh, &h);
     if(ret != TRITON_SUCCESS)
     {
         free(h);
         return ret;
     }
-    ret = ae_hints_copy(oldh, h);
-    if(ret != TRITON_SUCCESS)
-    {
-        free(h);
-        return ret;
-    }
-    h->needs_free = 1;
+
+    if (h)
+       h->needs_free = 1;
+
     *newh = h;
     return TRITON_SUCCESS;
 }
 
-triton_ret_t ae_hints_copy(ae_hints_t *oldh, ae_hints_t *newh)
+triton_ret_t ae_hints_copy(ae_hints_t *oldh, ae_hints_t ** newh)
 {
-    ae_hints_init(newh);
+    if (!oldh)
+       return TRITON_SUCCESS;
+
+    if (!*newh)
+    {
+       *newh = alloc_init_hint ();
+    }
+
+    ae_hints_init(*newh);
 
     triton_mutex_lock(&oldh->lock);
     oldh->refcount++;
-    newh->parent = oldh;
+    assert (!(*newh)->parent); /* make sure we have correct refcounts */
+    (*newh)->parent = oldh;
     triton_mutex_unlock(&oldh->lock);
 
     return TRITON_SUCCESS;
 }
 
-triton_ret_t ae_hints_clone(ae_hints_t *oldh, ae_hints_t *newh)
+triton_ret_t ae_hints_clone(ae_hints_t *oldh, ae_hints_t ** pnh)
 {
+    if (!oldh)
+       return TRITON_SUCCESS;
+
+    if (!*pnh)
+    {
+       *pnh = alloc_init_hint ();
+    }
+
+    ae_hints_t * newh = *pnh;
     triton_ret_t ret;
     ae_hints_t *tmp;
     struct ae_hint_entry *nh, *entry, *tmpentry;
@@ -723,9 +782,9 @@ triton_ret_t aer_init_null_ae_hints_t(void *x)
     return TRITON_SUCCESS;
 }
 
-triton_ret_t aer_copy_ae_hints_t(void *x, void *y)
+triton_ret_t aer_copy_ae_hints_t(void *x, void **y)
 {
-    return ae_hints_copy((ae_hints_t *)x, (ae_hints_t *)y);
+    return ae_hints_copy((ae_hints_t *)x, (ae_hints_t **)y);
 }
 
 void aer_destroy_ae_hints_t(void *x)

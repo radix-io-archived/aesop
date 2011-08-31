@@ -177,6 +177,7 @@ static inline void ae_ctl_lone_pbranch_start(struct ae_ctl *ctl)
 {
     ae_list_link_clear(&ctl->link);
     ae_lone_pbranches_add(ctl);
+    /* parent context disappears, we need to copy the hint */
     ae_hints_dup(ctl->parent->hints, &ctl->hints);
     ae_ctl_refinc(ctl->parent);
 }
