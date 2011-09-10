@@ -11,6 +11,12 @@
 #define TRITON_OPCACHE_ARRAY_COUNT 32
 /* UNUSED #define TRITON_OPCACHE_MAX_INDEX (0xFFFFFF) */
 
+/* number of items that must be in the queue per thread before we wake up
+ * another thread 
+ * TODO: should be configurable
+ */
+#define THREAD_WORK_THRESHOLD 4
+
 struct ae_opcache
 {
 #ifndef TRITON_OPCACHE_MALLOC
@@ -25,6 +31,7 @@ struct ae_opcache
     OPA_int_t num_ops_in_use;
     void (*completion_fn)(struct ae_opcache* opcache, struct ae_op* op);
     OPA_int_t num_threads;
+    int num_threads_active;
     pthread_t* tids;
     ae_ops_t thread_queue;
     int typesize;
@@ -43,7 +50,19 @@ static void* thread_pool_fn(void* foo)
         triton_mutex_lock(&cache->mutex);
         while((op = ae_ops_dequeue(&cache->thread_queue)) == NULL)
         {
+            cache->num_threads_active--;
             pthread_cond_wait(&cache->cond, &cache->mutex);
+            cache->num_threads_active++;
+        }
+
+        if(ae_ops_count(&cache->thread_queue)/cache->num_threads_active >
+            THREAD_WORK_THRESHOLD &&
+            cache->num_threads_active < OPA_load_int(&cache->num_threads))
+        {
+            /* there is enough work available that we could make use of
+             * another thread
+             */
+            triton_cond_signal(&cache->cond);
         }
         triton_mutex_unlock(&cache->mutex);
         cache->completion_fn(cache, op);
@@ -59,6 +78,7 @@ triton_ret_t ae_opcache_set_threads(ae_opcache_t cache,
     int ret;
 
     OPA_store_int (&cache->num_threads, num_threads);
+    cache->num_threads_active = num_threads;
     cache->tids = (pthread_t*)malloc(num_threads*sizeof(pthread_t));
     if(!cache->tids)
         return(TRITON_ERR_NOMEM);
@@ -82,7 +102,12 @@ void ae_opcache_complete_op_threaded(ae_opcache_t cache, struct ae_op* op)
     {
         triton_mutex_lock(&cache->mutex);
         ae_ops_enqueue(op, &cache->thread_queue);
-        triton_cond_signal(&cache->cond);
+        assert(cache->num_threads_active > -1);
+        if(cache->num_threads_active == 0)
+        {
+            /* we need to wake up at least one servicing thread */
+            triton_cond_signal(&cache->cond);
+        }
         triton_mutex_unlock(&cache->mutex);
     } else 
     {
@@ -120,6 +145,7 @@ triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_
     ae_ops_init(&c->thread_queue);
     OPA_store_int (&c->num_ops_in_use, 0);
     OPA_store_int (&c->num_threads, 0);
+    c->num_threads_active = 0;
     c->typesize = typesize;
     c->member_offset = member_offset;
     *cache = c;
@@ -174,6 +200,7 @@ void ae_opcache_destroy(ae_opcache_t cache)
     {
         pthread_join(cache->tids[i], NULL);
     }
+    cache->num_threads_active = 0;
     if(nthreads > 0)
         free(cache->tids);
     triton_mutex_destroy(&cache->mutex);
