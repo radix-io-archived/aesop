@@ -12,7 +12,7 @@ $(FULLMODNAME1)_stubs.hae $(FULLMODNAME1)_module.h $(FULLMODNAME1)_module.o $(DI
 
 $(FULLMODNAME1).d: $(DIR_TESTREMOTE)/test-remote-mock.aer
 	$(Q) "  DEP           $@"
-	$(E)CC=$(call MCC_AE,$(FULLMODNAME1)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME1) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME1) $< > $@
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME1)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(srcdir) $(MODNAME1) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME1) $< > $@
 
 REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_mock_buf
 REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_mock_buf := $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer
@@ -23,7 +23,7 @@ $(FULLMODNAME2)_stubs.hae $(FULLMODNAME2)_module.h $(FULLMODNAME2)_module.o $(DI
 
 $(FULLMODNAME2).d: $(DIR_TESTREMOTE)/test-remote-mock-embedded-buffers.aer
 	$(Q) "  DEP           $@"
-	$(E)CC=$(call MCC_AE,$(FULLMODNAME2)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME2) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME2) $< > $@
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME2)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(srcdir) $(MODNAME2) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME2) $< > $@
 
 ifneq (,$(BUILD_MPI))
 
@@ -42,7 +42,7 @@ ifneq (,$(BUILD_MPI))
 
 #$(FULLMODNAME3).d: $(DIR_TESTREMOTE)/test-remote-mpi.aer
 #	$(Q) "  DEP           $@"
-#	$(E)CC=$(call MCC_AE,$(FULLMODNAME3)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME3) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME3) $< > $@
+#	$(E)CC=$(call MCC_AE,$(FULLMODNAME3)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(srcdir) $(MODNAME3) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME3) $< > $@
 
 REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_fault
 REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_fault := $(DIR_TESTREMOTE)/test-remote-fault-injector.aer
@@ -53,7 +53,7 @@ $(FULLMODNAME4)_stubs.hae $(FULLMODNAME4)_module.h $(FULLMODNAME4)_module.o $(DI
 
 $(FULLMODNAME4).d: $(DIR_TESTREMOTE)/test-remote-fault-injector.aer
 	$(Q) "  DEP           $@"
-	$(E)CC=$(call MCC_AE,$(FULLMODNAME4)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME4) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME4) $< > $@
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME4)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(srcdir) $(MODNAME4) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME4) $< > $@
 
 REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_service_stop
 REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_service_stop := $(DIR_TESTREMOTE)/test-remote-service-stop.aer
@@ -64,7 +64,7 @@ $(FULLMODNAME5)_stubs.hae $(FULLMODNAME5)_module.h $(FULLMODNAME5)_module.o $(DI
 
 $(FULLMODNAME5).d: $(DIR_TESTREMOTE)/test-remote-service-stop.aer
 	$(Q) "  DEP           $@"
-	$(E)CC=$(call MCC_AE,$(FULLMODNAME5)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME5) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME5) $< > $@
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME5)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(srcdir) $(MODNAME5) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME5) $< > $@
 
 REMOTE_TESTLIB_MODULES += $(DIR_TESTREMOTE)/test_remote_buffer_response
 REMOTE_MODSRC_$(DIR_TESTREMOTE)/test_remote_buffer_response := $(DIR_TESTREMOTE)/test-remote-buffer-response.aer
@@ -75,7 +75,7 @@ $(FULLMODNAME5)_stubs.hae $(FULLMODNAME5)_module.h $(FULLMODNAME5)_module.o $(DI
 
 $(FULLMODNAME5).d: $(DIR_TESTREMOTE)/test-remote-buffer-response.aer
 	$(Q) "  DEP           $@"
-	$(E)CC=$(call MCC_AE,$(FULLMODNAME5)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(MODNAME5) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME5) $< > $@
+	$(E)CC=$(call MCC_AE,$(FULLMODNAME5)) $(srcdir)/maint/depend-aer.sh $(DIR_TESTREMOTE) $(srcdir) $(MODNAME5) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$FULLMODNAME5) $< > $@
 
 
 REMOTE_TESTSRC += $(DIR_TESTREMOTE)/test-remote-mock.aer \
