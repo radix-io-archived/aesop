@@ -553,6 +553,7 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
             "AE_SUCCESS"                                              \
             "in function: %s, trace exiting\n",                       \
             #__fname);                                                \
+        triton_uint128_setzero(*__ae_op_id); \
         return __ae_myret;                                            \
     }                                                                 \
                                                                       \
@@ -566,6 +567,7 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
         void (* __ae_local_cb)(void *, __ret_type);                   \
         AE_MK_DONE_DECLS();                                           \
         AE_MK_END_OF_BLOCKING(__fname, " (IC)");                      \
+        triton_uint128_setzero(*__ae_op_id); \
         if(__ae_retvalue)                                             \
         {                                                             \
             *__ae_retvalue = __ae_ctl->return_value;                  \
