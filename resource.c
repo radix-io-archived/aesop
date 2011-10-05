@@ -45,6 +45,10 @@ struct ae_context
 static int ae_context_count = 0;
 static struct ae_context ae_context_entries[AE_MAX_CONTEXTS];
 
+static ae_op_id_t * ae_children_get(ae_context_t context, struct ae_ctl *ctl, int *count);
+static void ae_children_put(ae_op_id_t* children, int count);
+static inline void ae_op_id_addref(ae_op_id_t id);
+
 static void ev_break_cb(EV_P_ ev_async *w, int revents)
 {
     /* Break the loop.  Note that ev_run() will still process all events
@@ -270,7 +274,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
             ae_op_id_t *children_ids;
             int count, ind;
       
-            children_ids = ae_cancel_children(context, ctl, &count);
+            children_ids = ae_children_get(context, ctl, &count);
             error = triton_mutex_unlock(&ctl->mutex);
             assert(!error);
 
@@ -280,11 +284,11 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
                 if(ret != TRITON_SUCCESS)
                 {
                     /* cancel failed */
-                    if(children_ids) free(children_ids);
+                    ae_children_put(children_ids, count);
                     return ret;
                 }
             }
-            if(children_ids) free(children_ids);
+            ae_children_put(children_ids, count);
             return TRITON_SUCCESS;
 	}
 	else
@@ -348,15 +352,15 @@ struct op_id_entry
     triton_list_link_t link;
 };
 
-/**
- * ae_cancel_children tries to cancel all the children of this context.  This
- * function returns TRITON_SUCCESS if all operations was successfully cancelled,
- * the callbacks for the operations are responsible for returning TRITON_ERR_CANCELLED
- * in the callback or somehow notifying through the callback that the operation was
- * cancelled.  Right now, if one of the operations fails to be cancelled, we return
- * failure immediately instead of trying to cancel the others.
+/** 
+ * ae_children_get() retrieves a list of all children in this context and
+ * increments their reference counts.  The caller is responsible for calling
+ * ae_children_put() once it has finished operating on the children.
+ *
+ * NOTE: this function assumes that the caller is holding the parent ctrl
+ * mutex while calling this function.
  */
-ae_op_id_t * ae_cancel_children(ae_context_t context, struct ae_ctl *ctl, int *count)
+static ae_op_id_t * ae_children_get(ae_context_t context, struct ae_ctl *ctl, int *count)
 {
     triton_ret_t ret;
     struct ae_ctl *child_ctl;
@@ -364,7 +368,7 @@ ae_op_id_t * ae_cancel_children(ae_context_t context, struct ae_ctl *ctl, int *c
     ae_op_id_t *op_ids;
     int ind, c;
 
-    triton_debug(aesop_debug_cancel_mask, "ae_cancel_children: %p\n", ctl);
+    triton_debug(aesop_debug_cancel_mask, "ae_children_get: %p\n", ctl);
 
     if(triton_list_empty(&ctl->children))
     {
@@ -393,11 +397,49 @@ ae_op_id_t * ae_cancel_children(ae_context_t context, struct ae_ctl *ctl, int *c
 	child_ctl = triton_list_get_entry(entry, struct ae_ctl, link);
         triton_uint128_set(child_ctl->current_op_id, op_ids[ind]);
         triton_uint128_setzero(child_ctl->current_op_id);
+        ae_op_id_addref(op_ids[ind]);
         ++ind;
     }
 
+    assert(ind == c);
     *count = c;
     return op_ids;
+}
+
+static inline void ae_op_id_addref(ae_op_id_t id)
+{
+    intptr_t tmp;
+    struct ae_ctl *ctl;
+
+    if(triton_uint128_iszero(id))
+        return;
+
+    tmp = ae_id_lookup (id, NULL);
+    ctl = (struct ae_ctl *) tmp;
+    ae_ctl_addref(ctl);
+}
+
+static void ae_children_put(ae_op_id_t* children, int count)
+{
+    int i;
+    intptr_t tmp;
+    struct ae_ctl *ctl;
+
+    for(i=0; i<count; i++)
+    {
+
+        tmp = ae_id_lookup (children[i], NULL);
+	ctl = (struct ae_ctl *) tmp;
+        if(ctl)
+        {
+            ae_ctl_done(ctl);
+        }
+    }
+
+    if(children)
+       free(children);
+
+    return;
 }
 
 #include <execinfo.h>
@@ -609,7 +651,7 @@ triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
     assert(!error);
 
     context = ctl->context;
-    children_ids = ae_cancel_children(context, ctl, &count);
+    children_ids = ae_children_get(context, ctl, &count);
 
     error = triton_mutex_unlock(&ctl->mutex);
     assert(!error);
@@ -619,11 +661,11 @@ triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
         ret = ae_cancel_op(context, children_ids[ind]);
         if(ret != TRITON_SUCCESS)
         {
-            if(children_ids) free(children_ids);
+            ae_children_put(children_ids, count);
             return ret;
         }
     }
-    if(children_ids) free(children_ids);
+    ae_children_put(children_ids, count);
     return TRITON_SUCCESS;
 }
 
