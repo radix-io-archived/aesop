@@ -53,7 +53,10 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/lonely-pbranch-variable-scope.ae \
               $(DIR)/pwait-in-while.ae \
               $(DIR)/pwait-in-for.ae \
-              $(DIR)/pbranch-completion.ae
+              $(DIR)/pbranch-completion.ae \
+	      $(DIR)/cancel-pbranch1.ae \
+	      $(DIR)/cancel-pbranch2.ae \
+	      $(DIR)/cancel-pbranch3.ae
 
 # This should not compile
 #	      $(DIR)/pbranch-with-return.ae

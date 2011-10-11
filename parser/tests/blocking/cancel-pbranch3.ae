@@ -1,0 +1,45 @@
+#include <unistd.h>
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+#include "src/aesop/aesop-support.hae"
+
+static __blocking void run_test(void)
+{
+        int ret1;
+        int ret2;
+        int a = 0;
+
+	pwait
+	{
+	    pbranch
+	    {
+                printf("pbranch1: calling triton_timer().\n");
+                triton_timer(5);
+                printf("pbranch1: finished triton_timer().\n");
+
+                sleep(5);
+	    }
+
+	    pbranch
+	    {
+                /* cancel the other pbranch */
+                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
+                aesop_cancel_branches_wait();
+                printf("pbranch2: done.\n");
+	    }
+	}
+
+	printf("pwait done\n");
+
+
+
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    run_test();
+    return 0;
+}
+btest_main_set(aesop_main, "btest", "timer");
+

@@ -1,0 +1,162 @@
+#include <unistd.h>
+#include "src/aesop/aesop.h"
+#include "src/aesop/parser/tests/blocking/btest.hae"
+#include <assert.h>
+#include "src/aesop/aesop-support.hae"
+
+static __blocking void foo_fn(void)
+{
+    int ret1;
+    int a = 0;
+
+    ret1 = tctest1(&a);
+
+    sleep(5);
+    return;
+}
+
+static __blocking void foo_fn2(void)
+{
+    int ret1;
+    int a = 0;
+
+    ret1 = tctest1(&a);
+
+    return;
+}
+
+static __blocking void run_test(void)
+{
+        int ret1;
+        int ret2;
+        int a = 0;
+
+	pwait
+	{
+	    pbranch
+	    {
+                printf("pbranch1: calling tctest1.\n");
+                ret1 = tctest1(&a);
+                printf("pbranch1: finished tctest1.\n");
+                /* tctest1 runs the callback in a thread.  Sleep here to let
+                 * the other pbranch try to cancel before we finish this
+                 * pbranch.
+                 */
+                printf("pbranch1: about to sleep for 5 seconds.\n");
+                sleep(5);
+                printf("pbranch1: done.\n");
+	    }
+
+	    pbranch
+	    {
+                /* wait 1 second to let the tctest1 call finish */
+                printf("pbranch2: setting timer for 1 second.\n");
+                triton_timer(1000);
+                printf("pbranch2: timer done.\n");
+                /* cancel the other pbranch */
+                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
+                aesop_cancel_branches_wait();
+                printf("pbranch2: done.\n");
+	    }
+	}
+
+	printf("pwait done\n");
+
+	pwait
+	{
+	    pbranch
+	    {
+                printf("pbranch1: calling foo_fn.\n");
+                foo_fn();
+                printf("pbranch1: finished foo_fn.\n");
+                printf("pbranch1: done.\n");
+	    }
+
+	    pbranch
+	    {
+                /* wait 1 second to let the tctest1 call finish */
+                printf("pbranch2: setting timer for 1 second.\n");
+                triton_timer(1000);
+                printf("pbranch2: timer done.\n");
+                /* cancel the other pbranch */
+                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
+                aesop_cancel_branches_wait();
+                printf("pbranch2: done.\n");
+	    }
+	}
+
+	printf("pwait done\n");
+
+	pwait
+	{
+	    pbranch
+	    {
+                printf("pbranch1: calling foo_fn2.\n");
+                foo_fn2();
+                printf("pbranch1: finished foo_fn2.\n");
+                printf("pbranch1: about to sleep for 5 seconds.\n");
+                sleep(5);
+                printf("pbranch1: done.\n");
+                printf("pbranch1: done.\n");
+	    }
+
+	    pbranch
+	    {
+                /* wait 1 second to let the tctest1 call finish */
+                printf("pbranch2: setting timer for 1 second.\n");
+                triton_timer(1000);
+                printf("pbranch2: timer done.\n");
+                /* cancel the other pbranch */
+                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
+                aesop_cancel_branches_wait();
+                printf("pbranch2: done.\n");
+	    }
+	}
+
+	printf("pwait done\n");
+
+	pwait
+	{
+	    pbranch
+	    {
+                printf("pbranch1: calling tctest1.\n");
+                ret1 = tctest1(&a);
+                printf("pbranch1: finished tctest1.\n");
+                /* tctest1 runs the callback in a thread.  Sleep here to let
+                 * the other pbranch try to cancel before we finish this
+                 * pbranch.
+                 */
+                printf("pbranch1: about to sleep for 5 seconds.\n");
+                sleep(5);
+                printf("pbranch1: done.\n");
+                printf("pbranch1: calling aesop_cancel_branches_wait().\n");
+                aesop_cancel_branches_wait();
+                printf("pbranch1: done.\n");
+	    }
+
+	    pbranch
+	    {
+                /* wait 1 second to let the tctest1 call finish */
+                printf("pbranch2: setting timer for 1 second.\n");
+                triton_timer(1000);
+                printf("pbranch2: timer done.\n");
+                /* cancel the other pbranch */
+                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
+                aesop_cancel_branches_wait();
+                printf("pbranch2: done.\n");
+	    }
+	}
+
+	printf("pwait done\n");
+
+
+
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    run_test();
+    return 0;
+}
+btest_main_set(aesop_main, "btest", "timer");
+
