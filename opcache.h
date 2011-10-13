@@ -23,6 +23,8 @@ typedef struct ae_opcache *ae_opcache_t;
 
 void ae_opcache_complete_op_threaded(ae_opcache_t cache, struct ae_op* op);
 
+void ae_opcache_complete_op_threaded_with_affinity(ae_opcache_t cache, struct ae_op* op, void* affinity_data, int affinity_data_size);
+
 /**
  * Create an opcache.
  * init_size is a hint and may be ignored.
@@ -34,6 +36,10 @@ ae_ret_t ae_opcache_init(int typesize, int member_offset, int init_size,
  * Activates a thread pool to run callbacks for the opcache
  */
 triton_ret_t ae_opcache_set_threads(ae_opcache_t cache, 
+    void(*completion_fn)(ae_opcache_t opcache, struct ae_op* op), 
+    int num_threads);
+
+triton_ret_t ae_opcache_set_threads_with_affinity(ae_opcache_t cache, 
     void(*completion_fn)(ae_opcache_t opcache, struct ae_op* op), 
     int num_threads);
 

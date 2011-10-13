@@ -1,6 +1,7 @@
 #include "src/aesop/aesop.h"
 #include "src/aesop/opcache.h"
 #include "src/common/triton-error.h"
+#include "src/common/jenkins-hash.h"
 
 #include <errno.h>
 #include <opa_primitives.h>
@@ -16,6 +17,15 @@
  * TODO: should be configurable
  */
 #define THREAD_WORK_THRESHOLD 4
+
+struct thread_data
+{
+    ae_ops_t thread_queue;
+    int active;
+    triton_mutex_t mutex;
+    triton_cond_t cond;
+    void* parent;
+};
 
 struct ae_opcache
 {
@@ -36,9 +46,33 @@ struct ae_opcache
     ae_ops_t thread_queue;
     int typesize;
     int member_offset;
+    struct thread_data* thread_data_array;
 };
 
 static void* thread_pool_fn(void* foo);
+static void* thread_pool_fn_with_affinity(void* foo);
+
+static void* thread_pool_fn_with_affinity(void* foo)
+{
+    struct thread_data* tdata = (struct thread_data*)foo;
+    ae_opcache_t cache = (ae_opcache_t)tdata->parent;
+    struct ae_op* op;
+
+    while(OPA_load_int(&cache->num_threads) > 0)
+    {
+        triton_mutex_lock(&tdata->mutex);
+        while((op = ae_ops_dequeue(&tdata->thread_queue)) == NULL)
+        {
+            tdata->active = 0;
+            pthread_cond_wait(&tdata->cond, &tdata->mutex);
+            tdata->active = 1;
+        }
+        triton_mutex_unlock(&tdata->mutex);
+        cache->completion_fn(cache, op);
+    }
+    return(NULL);
+}
+
 
 static void* thread_pool_fn(void* foo)
 {
@@ -70,6 +104,43 @@ static void* thread_pool_fn(void* foo)
     return(NULL);
 }
 
+triton_ret_t ae_opcache_set_threads_with_affinity(ae_opcache_t cache, 
+    void(*completion_fn)(ae_opcache_t opcache, struct ae_op* op), 
+    int num_threads)
+{
+    int i;
+    int ret;
+
+    OPA_store_int (&cache->num_threads, num_threads);
+    cache->num_threads_active = num_threads;
+    cache->tids = (pthread_t*)malloc(num_threads*sizeof(pthread_t));
+    if(!cache->tids)
+        return(TRITON_ERR_NOMEM);
+    cache->completion_fn = completion_fn;
+
+    cache->thread_data_array = (struct thread_data*)malloc(num_threads*sizeof(*cache->thread_data_array));
+    if(!cache->thread_data_array)
+        return(TRITON_ERR_NOMEM);
+
+    for(i=0; i<num_threads; i++)
+    {
+        triton_mutex_init(&cache->thread_data_array[i].mutex, NULL);
+        triton_cond_init(&cache->thread_data_array[i].cond, NULL);
+        ae_ops_init(&cache->thread_data_array[i].thread_queue);
+        cache->thread_data_array[i].parent = cache;
+        cache->thread_data_array[i].active = 1;
+        
+        ret = pthread_create(&cache->tids[i], NULL, thread_pool_fn_with_affinity, &cache->thread_data_array[i]);
+        if(ret != 0)
+        {
+            return(TRITON_ERR_UNKNOWN);
+        }
+    }
+    
+    return(TRITON_SUCCESS);
+}
+
+
 triton_ret_t ae_opcache_set_threads(ae_opcache_t cache, 
     void(*completion_fn)(ae_opcache_t opcache, struct ae_op* op), 
     int num_threads)
@@ -94,6 +165,35 @@ triton_ret_t ae_opcache_set_threads(ae_opcache_t cache,
     }
     
     return(TRITON_SUCCESS);
+}
+
+void ae_opcache_complete_op_threaded_with_affinity(ae_opcache_t cache, struct ae_op* op, void* affinity_data, int affinity_data_size)
+{
+    uint32_t pc = 0, pb = 0;
+    int thread_index = 0;
+    int num_threads = OPA_load_int(&cache->num_threads);
+
+    assert(affinity_data); /* we could pick thread randomly if not set... */
+
+    if(num_threads == 0)
+    {
+        cache->completion_fn(cache, op);
+        return;
+    }
+
+    /* hash the affinity data to get a consistent thread selection */
+    bj_hashlittle2(affinity_data, affinity_data_size, &pc, &pb);
+    thread_index = pc % num_threads;
+
+    triton_mutex_lock(&cache->thread_data_array[thread_index].mutex);
+    ae_ops_enqueue(op, &cache->thread_data_array[thread_index].thread_queue);
+    if(!cache->thread_data_array[thread_index].active)
+    {
+        triton_cond_signal(&cache->thread_data_array[thread_index].cond);
+    }
+    triton_mutex_unlock(&cache->thread_data_array[thread_index].mutex);
+
+    return;
 }
 
 void ae_opcache_complete_op_threaded(ae_opcache_t cache, struct ae_op* op)
