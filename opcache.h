@@ -12,6 +12,8 @@ typedef struct ae_opcache *ae_opcache_t;
 /* complete an operation by returning it to opcache and invoking callback */
 /* note that __error_code is copied on purpose for safety in case it is a
  * member of the __op structure.
+ *
+ * ae_opcache_complete_op is thread-safe with respect to the opcache.
  */
 #define ae_opcache_complete_op(__opcache, __op, __ret_type, __error_code) do { \
     void (*__callback)(void *, __ret_type) = (__op)->callback; \
@@ -52,13 +54,17 @@ void ae_opcache_destroy(ae_opcache_t cache);
 
 /**
  * Obtain an ae_op entry. The entry will have a valid 
- * op->cache_id
+ * op->cache_id.
+ *
+ * ae_opcache_get is thread-safe.
  */
 struct ae_op *ae_opcache_get(ae_opcache_t cache);
 
 
 /**
  * Return ae_op entry to the cache
+ *
+ * ae_opcache_put is thread-safe.
  */
 void ae_opcache_put(ae_opcache_t cache, struct ae_op *op);
 
