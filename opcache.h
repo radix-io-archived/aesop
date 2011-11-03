@@ -13,6 +13,8 @@ typedef struct ae_opcache *ae_opcache_t;
 /* note that __error_code is copied on purpose for safety in case it is a
  * member of the __op structure.
  *
+ * It releases the entry by calling opcache_put
+ *
  * ae_opcache_complete_op is thread-safe with respect to the opcache.
  */
 #define ae_opcache_complete_op(__opcache, __op, __ret_type, __error_code) do { \
