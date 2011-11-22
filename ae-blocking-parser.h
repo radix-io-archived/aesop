@@ -80,7 +80,6 @@
  
 #define AE_MK_DONE_DECLS()                       \
         void * __ae_local_up;                    \
-        int __ae_refcount;                       \
         __ae_local_cb = __ae_ctl->__ae_callback; \
         __ae_local_up = __ae_ctl->user_ptr;
  
