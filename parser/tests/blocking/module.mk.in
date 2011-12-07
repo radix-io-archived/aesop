@@ -57,7 +57,8 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/cancel-pbranch1.ae \
 	      $(DIR)/cancel-pbranch2.ae \
 	      $(DIR)/cancel-pbranch3.ae \
-	      $(DIR)/cancel-pbranch4.ae
+	      $(DIR)/cancel-pbranch4.ae \
+	      $(DIR)/cancel-pbranch-loop.ae 
 
 # This should not compile
 #	      $(DIR)/pbranch-with-return.ae
