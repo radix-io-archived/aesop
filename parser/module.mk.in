@@ -9,7 +9,6 @@ HSSRC += $(DIR)/CGen.lhs \
 	 $(DIR)/Serialize.hs \
 	 $(DIR)/Header.lhs
 
-HSBINSRC += $(DIR)/ae-blocking-parser.lhs $(DIR)/ae-remote-parser.lhs
+HSBINSRC += $(DIR)/ae-blocking-parser.lhs
 
 MODNAME_$(DIR)/ae-blocking-parser.lhs = BlockingParser
-MODNAME_$(DIR)/ae-remote-parser.lhs = RemoteParser

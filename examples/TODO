@@ -1,7 +1,0 @@
-
-
-timeout/retry
-flow pipelining
-invoking blocking functions based on runtime state (server handling unexpected requests)
-
-
