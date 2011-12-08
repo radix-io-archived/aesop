@@ -43,7 +43,7 @@ __blocking void do_blocking1(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
-    ae_hints_type_register("aesop.test.sleepy_time", 0, &aer_encoder_uint32_t);
+    ae_hints_type_register("aesop.test.sleepy_time", 0);
 
     do_blocking1();
 

@@ -118,22 +118,9 @@ void ae_hints_destroy(ae_hints_t *h);
  */
 void ae_hints_free(ae_hints_t *h);
 
-
-#include "src/common/triton-buffer.h"
-
-uint64_t aer_encode_size_ae_hints_t(const char *n, void *x);
-triton_ret_t aer_encode_ae_hints_t(triton_buffer_t *buf, const char *n, void *x);
-triton_ret_t aer_decode_ae_hints_t(triton_buffer_t *buf, char **n __unused__, void *x);
-triton_ret_t aer_init_null_ae_hints_t(void *x);
-triton_ret_t aer_copy_ae_hints_t(void *x, void **y);
-void aer_destroy_ae_hints_t(void *x);
-/* TODO: fix hints encoding/decoding */
-
-#include "src/remote/encoding.h"
-
-triton_ret_t ae_hints_type_register(const char *key, int flags, struct aer_encoder *encoding);
-
-extern struct aer_encoder aer_encoder_ae_hints_t;
+triton_ret_t ae_hints_type_register(
+    const char *key,
+    int flags);
 
 #endif /* __HINTS_H__ */
 
