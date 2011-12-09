@@ -20,6 +20,9 @@ static __blocking void run_basic(void)
         ret = aesop_set_config("btest.testconfig", "35");
         assert(ret == 0);
 
+        ret = aesop_set_debugging("ae_blocking", 1);
+        assert(ret == 0);
+
 	ret = btest1(&a);
 	assert(a == 1);
 	assert(ret == 0);

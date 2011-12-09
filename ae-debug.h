@@ -1,26 +1,22 @@
 #ifndef AE_DEBUG_H
 #define AE_DEBUG_H
 
-/* Use triton debug interface for aesop debugging.  To use aesop without
- * triton, replace the following #defines with your own.
+/* use fprintf for debugging by default.  Need an API hook to allow aesop
+ * user to override the target for debugging messages.
  */
-#include "src/common/triton-debug.h"
 
-extern triton_debug_mask_t ae_debug_blocking_funs;
+extern int aesop_dbg_pbranch;
+extern int aesop_dbg_cancel;
+extern int aesop_dbg_blocking;
 
 #define ae_debug_blocking(__format, ...) \
-    triton_debug(ae_debug_blocking_funs, __format , ## __VA_ARGS__)
-
-extern triton_debug_mask_t ae_debug_pbranch_state;
+    if(aesop_dbg_blocking) fprintf(stderr, __format, ## __VA_ARGS__)
 
 #define ae_debug_pbranch(__format, ...) \
-    triton_debug(ae_debug_pbranch_state, __format , ## __VA_ARGS__)
-
-extern triton_debug_mask_t ae_debug_cancel_mask;
+    if(aesop_dbg_pbranch) fprintf(stderr, __format, ## __VA_ARGS__)
 
 #define ae_debug_cancel(__format, ...) \
-    triton_debug(ae_debug_cancel_mask, __format , ## __VA_ARGS__)
-
+    if(aesop_dbg_cancel) fprintf(stderr, __format, ## __VA_ARGS__)
 
 #endif
 

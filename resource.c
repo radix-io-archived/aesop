@@ -20,6 +20,7 @@ struct ae_poll_data
 struct ae_resource_entry
 {
     int id;
+    int debug;
     struct ae_poll_data poll_data;
     struct ae_resource *resource;
 };
@@ -108,6 +109,7 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
 
     ae_resource_entries[reindex].id = AE_RESOURCE_IDX2ID(reindex);
     ae_resource_entries[reindex].resource = resource;
+    ae_resource_entries[reindex].debug = 0;
     ae_resource_count++;
     *newid = AE_RESOURCE_IDX2ID(reindex);
     return TRITON_SUCCESS;
@@ -781,6 +783,51 @@ int aesop_set_config(const char* key, const char* value)
                 return(ret);
             }
             config++;
+        }
+    }
+
+    return(AE_CONFIG_NOT_FOUND);
+}
+
+int aesop_dbg_blocking = 0;
+int aesop_dbg_cancel = 0;
+int aesop_dbg_pbranch = 0;
+
+int aesop_set_debugging(const char* resource, int value)
+{
+    int i;
+
+    if(value != 0 && value != 1)
+    {
+        /* on or off are the only possible options */
+        return(AE_CONFIG_INVALID);
+    }
+
+    /* special cases; these aren't resources.  These are just different
+     * aspects of the aesop internals
+     */
+    if(!strcmp(resource, "ae_blocking"))
+    {
+        aesop_dbg_blocking = value;
+        return(0);
+    }
+    else if (!strcmp(resource, "ae_cancel"))
+    {
+        aesop_dbg_cancel = value;
+        return(0);
+    }
+    else if (!strcmp(resource, "ae_pbranch"))
+    {
+        aesop_dbg_pbranch = value;
+    }
+
+    /* check for matching resources and set their debugging value */
+    for(i=0; i<ae_resource_count; i++)
+    {
+        if(!strcmp(ae_resource_entries[i].resource->resource_name, resource))
+        {
+            ae_resource_entries[i].debug = value;
+            return(0);
         }
     }
 
