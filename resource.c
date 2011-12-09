@@ -834,6 +834,14 @@ int aesop_set_debugging(const char* resource, int value)
     return(AE_CONFIG_NOT_FOUND);
 }
 
+int ae_check_debug_flag(int resource_id)
+{
+    int idx = AE_RESOURCE_ID2IDX(resource_id);
+
+    /* return value of debug flag for this resource */
+    return(ae_resource_entries[idx].debug);
+}
+
 /*
  * Local variables:
  *  c-indent-level: 4

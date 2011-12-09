@@ -39,6 +39,11 @@
                          __ret_type *__ae_retval,                          \
                          ##__fargs)
 
+int ae_check_debug_flag(int resource_id);
+
+#define ae_debug(__resource_id, __format, ...) \
+    if(ae_check_debug_flag(__resource_id)) fprintf(stderr, __format, ## __VA_ARGS__)
+
 ae_op_id_t ae_id_gen(int resource_id, intptr_t ptr);
 intptr_t ae_id_lookup(ae_op_id_t id, int *resource_id);
 

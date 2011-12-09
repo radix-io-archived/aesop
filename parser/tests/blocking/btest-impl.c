@@ -156,6 +156,8 @@ ae_define_post(int, btest1, int *a)
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST1: %d\n", *a);
+    ae_debug(btest_resource_id, "btest1 called.\n");
+
     op = ae_opcache_get(test_opcache);
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
@@ -173,6 +175,7 @@ ae_define_post(int, btest2, int *a)
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST2: %d\n", *a);
+    ae_debug(btest_resource_id, "btest2 called.\n");
     op = ae_opcache_get(test_opcache);
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);
@@ -190,6 +193,7 @@ ae_define_post(int, btest3, int *a)
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST3: %d\n", *a);
+    ae_debug(btest_resource_id, "btest3 called.\n");
     op = ae_opcache_get(test_opcache);
     ae_op_fill(op);
     bop = ae_op_entry(op, struct btest_op, op);

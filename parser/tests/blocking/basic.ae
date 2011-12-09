@@ -20,6 +20,12 @@ static __blocking void run_basic(void)
         ret = aesop_set_config("btest.testconfig", "35");
         assert(ret == 0);
 
+        ret = aesop_set_debugging("foo", 1);
+        assert(ret == AE_CONFIG_NOT_FOUND);
+
+        ret = aesop_set_debugging("btest", 99);
+        assert(ret == AE_CONFIG_INVALID);
+
         ret = aesop_set_debugging("ae_blocking", 1);
         assert(ret == 0);
 
@@ -30,6 +36,9 @@ static __blocking void run_basic(void)
 	ret = btest2(&a);
 	assert(a == 3);
 	assert(ret == 0);
+
+        ret = aesop_set_debugging("btest", 1);
+        assert(ret == 0);
 
 	ret = btest3(&a);
 	assert(a == 6);
