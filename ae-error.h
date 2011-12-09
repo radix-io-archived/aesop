@@ -16,4 +16,7 @@
 
 #define aesop_error_assert(__ret) triton_error_assert(__ret)
 
+#define AE_CONFIG_NOT_FOUND (-1)
+#define AE_CONFIG_INVALID (-2)
+
 #endif

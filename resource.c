@@ -7,6 +7,7 @@
 #include "src/aesop/resource.h"
 #include "src/common/triton-log.h"
 #include "src/common/triton-debug.h"
+#include "src/aesop/aesop.h"
 
 struct ae_poll_data
 {
@@ -762,6 +763,29 @@ struct ev_loop * ae_resource_get_eloop(ae_context_t context)
         return(eloop);
     else
         return(context->eloop);
+}
+
+int aesop_set_config(const char* key, const char* value)
+{
+    int i;
+    int ret;
+    struct ae_resource_config* config;
+
+    for(i=0; i<ae_resource_count; i++)
+    {
+        config = ae_resource_entries[i].resource->config_array; 
+        while(config != NULL && config->name != NULL)
+        {
+            if(strcmp(config->name, key) == 0)
+            {
+                ret = config->updater(key, value);
+                return(ret);
+            }
+            config++;
+        }
+    }
+
+    return(AE_CONFIG_NOT_FOUND);
 }
 
 /*

@@ -42,6 +42,15 @@
 ae_op_id_t ae_id_gen(int resource_id, intptr_t ptr);
 intptr_t ae_id_lookup(ae_op_id_t id, int *resource_id);
 
+/* this structure defines a configuration parameter for a resource */
+struct ae_resource_config
+{
+    const char* name;
+    const char* default_value;
+    const char* description;
+    int (*updater)(const char* key, const char* value);
+};
+
 /* The resource structure is defined by a given resource, and registered
  * to the aesop management code during resource initialization.
  */
@@ -53,6 +62,7 @@ struct ae_resource
     ae_ret_t (*cancel)(ae_context_t ctx, ae_op_id_t id);
     ae_ret_t (*register_context)(ae_context_t context);
     ae_ret_t (*unregister_context)(ae_context_t context);
+    struct ae_resource_config* config_array;  /* terminated by entry with NULL name */
 };
 
 /* Called by resources to register themselves to the resource framework */

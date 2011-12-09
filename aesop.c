@@ -47,3 +47,4 @@ void aesop_finalize(void)
 {
     initialized--;
 }
+
