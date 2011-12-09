@@ -9,6 +9,8 @@
 #include "src/aesop/parser/tests/blocking/btest.h"
 #include "src/common/triton-init.h"
 
+#define RESOURCE_NAME "btest"
+
 static int btest_resource_id;
 
 struct bsleep_op
@@ -454,7 +456,7 @@ static triton_ret_t btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
 
 struct ae_resource btest_resource =
 {
-    .resource_name = "btest",
+    .resource_name = RESOURCE_NAME,
     .poll_context = btest_poll,
     .cancel = btest_cancel
 };
