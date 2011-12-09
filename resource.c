@@ -8,6 +8,7 @@
 #include "src/common/triton-log.h"
 #include "src/common/triton-debug.h"
 #include "src/aesop/aesop.h"
+#include "src/aesop/ae-debug.h"
 
 struct ae_poll_data
 {
@@ -22,8 +23,6 @@ struct ae_resource_entry
     struct ae_poll_data poll_data;
     struct ae_resource *resource;
 };
-
-triton_debug_mask_t aesop_debug_cancel_mask;
 
 static int ae_resource_count = 0;
 static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES];
@@ -249,7 +248,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
     triton_ret_t ret;
     int error;
 
-    triton_debug(aesop_debug_cancel_mask, "ae_cancel_op: %llu:%llu\n", llu(op_id.u), llu(op_id.l));
+    ae_debug_cancel("ae_cancel_op: %llu:%llu\n", llu(op_id.u), llu(op_id.l));
 
     if(triton_uint128_iszero(op_id))
     {
@@ -370,7 +369,7 @@ static ae_op_id_t * ae_children_get(ae_context_t context, struct ae_ctl *ctl, in
     ae_op_id_t *op_ids;
     int ind, c;
 
-    triton_debug(aesop_debug_cancel_mask, "ae_children_get: %p\n", ctl);
+    ae_debug_cancel("ae_children_get: %p\n", ctl);
 
     if(triton_list_empty(&ctl->children))
     {
@@ -641,7 +640,7 @@ triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
     int ind, count, error;
     ae_context_t context;
 
-    triton_debug(aesop_debug_cancel_mask, "ae_cancel_branches: %p\n", ctl);
+    ae_debug_cancel("ae_cancel_branches: %p\n", ctl);
 
     if(!ctl)
     {

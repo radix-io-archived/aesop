@@ -16,5 +16,11 @@ extern triton_debug_mask_t ae_debug_pbranch_state;
 #define ae_debug_pbranch(__format, ...) \
     triton_debug(ae_debug_pbranch_state, __format , ## __VA_ARGS__)
 
+extern triton_debug_mask_t ae_debug_cancel_mask;
+
+#define ae_debug_cancel(__format, ...) \
+    triton_debug(ae_debug_cancel_mask, __format , ## __VA_ARGS__)
+
+
 #endif
 

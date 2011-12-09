@@ -4,7 +4,7 @@
 
 triton_debug_mask_t ae_debug_blocking_funs;
 triton_debug_mask_t ae_debug_pbranch_state;
-extern triton_debug_mask_t aesop_debug_cancel_mask;
+triton_debug_mask_t ae_debug_cancel_mask;
 
 static int initialized = 0;
 
@@ -27,7 +27,7 @@ triton_ret_t aesop_init(void)
             return ret;
         }
 
-        ret = triton_debug_add_mask("aesop.blocking.cancel", &aesop_debug_cancel_mask,
+        ret = triton_debug_add_mask("aesop.blocking.cancel", &ae_debug_cancel_mask,
                                     "Output when blocking operations are cancelled");
 
         if(ret != TRITON_SUCCESS)
