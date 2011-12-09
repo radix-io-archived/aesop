@@ -8,7 +8,7 @@ __attribute__((constructor)) void aesop_init_register(void);
 
 __attribute__((constructor)) void aesop_init_register(void)
 {
-    triton_init_register("aesop.control", aesop_init, aesop_finalize, NULL, "triton.debug", "aesop.hints");
+    triton_init_register("aesop.control", aesop_init, aesop_finalize, NULL, "aesop.hints");
 }
 
 triton_ret_t aesop_init(void)
