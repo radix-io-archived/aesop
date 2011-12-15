@@ -32,28 +32,28 @@ typedef struct ae_hints ae_hints_t;
 #else
 
 /* dummy functions to allow for compiling */
-static inline triton_ret_t aesop_hints_get(const char *key, int length, void *value)
+static inline int aesop_hints_get(const char *key, int length, void *value)
 {
-    return TRITON_ERR_NOSYS;
+    return AE_ERR_SYSTEM;
 }
-static inline triton_ret_t aesop_hints_put(const char *key, int length, void *value, int overwrite)
+static inline int aesop_hints_put(const char *key, int length, void *value, int overwrite)
 {
-    return TRITON_ERR_NOSYS;
+    return AE_ERR_SYSTEM;
 }
-static inline triton_ret_t aesop_hints_modify(ae_hints_t *hints, const char *key, int length, void *value)
+static inline int aesop_hints_modify(ae_hints_t *hints, const char *key, int length, void *value)
 {
-    return TRITON_ERR_NOSYS;
+    return AE_ERR_SYSTEM;
 }
-static inline triton_ret_t aesop_hints_del(ae_hints_t *hints, const char *key)
+static inline int aesop_hints_del(ae_hints_t *hints, const char *key)
 {
-    return TRITON_ERR_NOSYS;
+    return AE_ERR_SYSTEM;
 }
 #endif
 
 /**
  * Initialize the hints framework
  */
-triton_ret_t ae_hints_component_init(void);
+int ae_hints_component_init(void);
 
 /** 
  * Shut down the hints framework
@@ -63,13 +63,13 @@ void ae_hints_component_finalize(void);
 /**
  * Put might allocate a hint structure if there was no previous hint allocated
  */
-triton_ret_t ae_hints_put(ae_hints_t ** hints,
+int ae_hints_put(ae_hints_t ** hints,
                           const char *key,
                           int length,
                           void *value,
                           int overwrite);
 
-triton_ret_t ae_hints_get(ae_hints_t *hints,
+int ae_hints_get(ae_hints_t *hints,
                           const char *key,
                           int length,
                           void *value);
@@ -80,12 +80,12 @@ triton_ret_t ae_hints_get(ae_hints_t *hints,
  * found.  It is intended for lower level components that need to modify a
  * hint that was injected by a higher level component.
   */
-triton_ret_t ae_hints_modify(ae_hints_t * hints,
+int ae_hints_modify(ae_hints_t * hints,
                           const char *key,
                           int length,
                           void *value);
 
-triton_ret_t ae_hints_del(ae_hints_t *hints,
+int ae_hints_del(ae_hints_t *hints,
                           const char *key);
 
 
@@ -93,28 +93,28 @@ triton_ret_t ae_hints_del(ae_hints_t *hints,
  * Copy all hints by incrementing refcount on old hints and pointing new
  * hints to old.  Hints added to the new hints will not show up on the old hints
  */
-triton_ret_t ae_hints_copy(ae_hints_t *oldh, ae_hints_t ** newh);
+int ae_hints_copy(ae_hints_t *oldh, ae_hints_t ** newh);
 
 /**
  * Deep copy of all hints from old to new.  Updates to old or new are not reflected
  * in the other.
  */
-triton_ret_t ae_hints_clone(ae_hints_t *oldh, ae_hints_t ** newh);
+int ae_hints_clone(ae_hints_t *oldh, ae_hints_t ** newh);
 
 /**
  * Allocates a pointer for new hints and does a ae_hints_copy.
  */
-triton_ret_t ae_hints_dup(ae_hints_t *oldh, ae_hints_t ** newh);
+int ae_hints_dup(ae_hints_t *oldh, ae_hints_t ** newh);
 
 /**
  * Check that hints hold a value for a particular hint type.
  */
-triton_ret_t ae_hints_check(ae_hints_t *hints, int type);
+int ae_hints_check(ae_hints_t *hints, int type);
 
 /**
  * Initialize members of hint structure.
  */
-triton_ret_t ae_hints_init(ae_hints_t *h);
+int ae_hints_init(ae_hints_t *h);
 
 /**
  * Destroy members of hint structure, including all hints.  If
@@ -128,7 +128,7 @@ void ae_hints_destroy(ae_hints_t *h);
  */
 void ae_hints_free(ae_hints_t *h);
 
-triton_ret_t ae_hints_type_register(
+int ae_hints_type_register(
     const char *key,
     int flags);
 

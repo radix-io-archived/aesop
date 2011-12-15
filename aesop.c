@@ -10,14 +10,15 @@ static int initialized = 0;
 triton_ret_t aesop_init(const char* resource_list)
 {
     triton_ret_t tret;
+    int ret;
     char* rsc;
 
     if(initialized == 0)
     {
-        tret = ae_hints_component_init();
-        if(triton_is_error(tret))
+        ret = ae_hints_component_init();
+        if(ret < 0)
         {
-            return(tret);
+            return(TRITON_ERR_UNKNOWN);
         }
 
         if(strlen(resource_list) == 0)

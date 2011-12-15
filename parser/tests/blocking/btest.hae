@@ -95,19 +95,21 @@ int main(int argc, char **argv)  \
     ae_context_t __main_ctx; \
     ae_hints_t __main_hints; \
     ae_op_id_t __main_opid; \
-    triton_ret_t ret; \
+    triton_ret_t tret; \
+    int ret; \
     btest_init_register(); \
-    ret = aesop_init("btest"); \
-    triton_error_assert(ret); \
-    ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
-    triton_error_assert(ret); \
+    tret = aesop_init("btest"); \
+    triton_error_assert(tret); \
+    tret = ae_context_create(&__main_ctx, __VA_ARGS__); \
+    triton_error_assert(tret); \
     ret = ae_hints_init(&__main_hints); \
-    ret = ae_post_blocking(__main_blocking_function__, __main_cb, __main_ctx, &__main_hints, __main_ctx, &__main_opid, &__main_ret, argc, argv); \
-    triton_error_assert(ret); \
+    assert(ret == 0); \
+    tret = ae_post_blocking(__main_blocking_function__, __main_cb, __main_ctx, &__main_hints, __main_ctx, &__main_opid, &__main_ret, argc, argv); \
+    triton_error_assert(tret); \
     while(!__main_done) \
     { \
-        ret = ae_poll(__main_ctx, 100); \
-        triton_error_assert(ret); \
+        tret = ae_poll(__main_ctx, 100); \
+        triton_error_assert(tret); \
     } \
     ae_hints_destroy(&__main_hints); \
     ae_context_destroy(__main_ctx); \

@@ -191,6 +191,7 @@ int main(int argc, char **argv)                                \
     ae_hints_t __main_hints;                                   \
     ae_op_id_t __main_opid;                                    \
     ae_ret_t ret;                                              \
+    int hret; \
     ret = aesop_init("");                                      \
     aesop_error_assert(ret);                                   \
     if(COUNT_ARGS(__VA_ARGS__) > 0)                            \
@@ -198,7 +199,8 @@ int main(int argc, char **argv)                                \
         ret = ae_context_create(&__main_ctx, ##__VA_ARGS__);   \
         triton_error_assert(ret);                              \
     }                                                          \
-    ret = ae_hints_init(&__main_hints);                        \
+    hret = ae_hints_init(&__main_hints);                       \
+    assert(hret == 0); \
     ret = ae_post_blocking(                                    \
         __main_blocking_function__,                            \
         __main_cb,                                             \
@@ -256,6 +258,7 @@ int main(int argc, char **argv)                                   \
     ae_hints_t __main_hints;                                      \
     ae_op_id_t __main_opid;                                       \
     ae_ret_t ret;                                                 \
+    int hret; \
     ae_ret_t (*__main_init_func)(void) = __init_before_main__;    \
     if(__init_before_main__)                                      \
     {                                                             \
@@ -269,7 +272,8 @@ int main(int argc, char **argv)                                   \
         ret = ae_context_create(&__main_ctx, ##__VA_ARGS__);      \
         triton_error_assert(ret);                                 \
     }                                                             \
-    ret = ae_hints_init(&__main_hints);                           \
+    hret = ae_hints_init(&__main_hints);                          \
+    assert(hret == 0); \
     ret = ae_post_blocking(                                       \
         __main_blocking_function__,                               \
         __main_cb,                                                \
