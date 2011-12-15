@@ -32,18 +32,26 @@ void ae_opcache_complete_op_threaded_with_affinity(ae_opcache_t cache, struct ae
 /**
  * Create an opcache.
  * init_size is a hint and may be ignored.
+ * \return 0 on success, -1 on failure
  */
-ae_ret_t ae_opcache_init(int typesize, int member_offset, int init_size,
+int ae_opcache_init(int typesize, int member_offset, int init_size,
       ae_opcache_t * cache);
    
 /**
  * Activates a thread pool to run callbacks for the opcache
+ * \return 0 on success, -1 on failure
  */
-triton_ret_t ae_opcache_set_threads(ae_opcache_t cache, 
+int ae_opcache_set_threads(ae_opcache_t cache, 
     void(*completion_fn)(ae_opcache_t opcache, struct ae_op* op), 
     int num_threads);
 
-triton_ret_t ae_opcache_set_threads_with_affinity(ae_opcache_t cache, 
+/**
+ * Activates a thread pool to run callbacks for the opcache; allows users of
+ * thread pool to use additional data to pin related operations to the same
+ * thread
+ * \return 0 on success, -1 on failure
+ */
+int ae_opcache_set_threads_with_affinity(ae_opcache_t cache, 
     void(*completion_fn)(ae_opcache_t opcache, struct ae_op* op), 
     int num_threads);
 
@@ -69,35 +77,6 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache);
  * ae_opcache_put is thread-safe.
  */
 void ae_opcache_put(ae_opcache_t cache, struct ae_op *op);
-
-/* (Dries) Disabled these functions: They're not used at this time,
- * and expose information we cannot guarantee to always have.
- */
-#if 0
-ae_ret_t ae_opcache_double_size(ae_opcache_t cache);
-
-/**
- * Size of the opcache array.  This is the total size of the cache.  As
- * more in-use ops are pulled from the cache (ae_opcache_get), the cache
- * will double in size on demand.  
- */
-int ae_opcache_size(ae_opcache_t cache);
-
-/**
- * Count of the entries used in the arrays of the cache.  Once ops are given
- * back to the cache, they get put on a free list, so this count only
- * gets larger, and does not reflect the actual amount of current ops available
- * in the cache without needing to double the size.
- */
-int ae_opcache_count(ae_opcache_t cache);
-
-/**
- * Given the cache id, return the ae_op * associated with it
- */
-struct ae_op *ae_opcache_lookup(ae_opcache_t cache, cache_id_t id);
-
-#endif
-
 
 #endif
 

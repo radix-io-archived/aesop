@@ -104,7 +104,7 @@ static void* thread_pool_fn(void* foo)
     return(NULL);
 }
 
-triton_ret_t ae_opcache_set_threads_with_affinity(ae_opcache_t cache, 
+int ae_opcache_set_threads_with_affinity(ae_opcache_t cache, 
     void(*completion_fn)(ae_opcache_t opcache, struct ae_op* op), 
     int num_threads)
 {
@@ -115,12 +115,12 @@ triton_ret_t ae_opcache_set_threads_with_affinity(ae_opcache_t cache,
     cache->num_threads_active = num_threads;
     cache->tids = (pthread_t*)malloc(num_threads*sizeof(pthread_t));
     if(!cache->tids)
-        return(TRITON_ERR_NOMEM);
+        return(-1);
     cache->completion_fn = completion_fn;
 
     cache->thread_data_array = (struct thread_data*)malloc(num_threads*sizeof(*cache->thread_data_array));
     if(!cache->thread_data_array)
-        return(TRITON_ERR_NOMEM);
+        return(-1);
 
     for(i=0; i<num_threads; i++)
     {
@@ -133,15 +133,15 @@ triton_ret_t ae_opcache_set_threads_with_affinity(ae_opcache_t cache,
         ret = pthread_create(&cache->tids[i], NULL, thread_pool_fn_with_affinity, &cache->thread_data_array[i]);
         if(ret != 0)
         {
-            return(TRITON_ERR_UNKNOWN);
+            return(-1);
         }
     }
     
-    return(TRITON_SUCCESS);
+    return(0);
 }
 
 
-triton_ret_t ae_opcache_set_threads(ae_opcache_t cache, 
+int ae_opcache_set_threads(ae_opcache_t cache, 
     void(*completion_fn)(ae_opcache_t opcache, struct ae_op* op), 
     int num_threads)
 {
@@ -152,7 +152,7 @@ triton_ret_t ae_opcache_set_threads(ae_opcache_t cache,
     cache->num_threads_active = num_threads;
     cache->tids = (pthread_t*)malloc(num_threads*sizeof(pthread_t));
     if(!cache->tids)
-        return(TRITON_ERR_NOMEM);
+        return(-1);
     cache->completion_fn = completion_fn;
 
     for(i=0; i<num_threads; i++)
@@ -160,11 +160,11 @@ triton_ret_t ae_opcache_set_threads(ae_opcache_t cache,
         ret = pthread_create(&cache->tids[i], NULL, thread_pool_fn, cache);
         if(ret != 0)
         {
-            return(TRITON_ERR_UNKNOWN);
+            return(-1);
         }
     }
     
-    return(TRITON_SUCCESS);
+    return(0);
 }
 
 void ae_opcache_complete_op_threaded_with_affinity(ae_opcache_t cache, struct ae_op* op, void* affinity_data, int affinity_data_size)
@@ -218,13 +218,13 @@ void ae_opcache_complete_op_threaded(ae_opcache_t cache, struct ae_op* op)
 }
 
 
-triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache)
+int ae_opcache_init(int typesize, int member_offset, int init_size, ae_opcache_t *cache)
 {
     struct ae_opcache *c;
     c = malloc(sizeof(*c));
     if(!c)
     {
-        return TRITON_ERR_NOMEM;
+        return(-1);
     }
 
 #ifndef TRITON_OPCACHE_MALLOC
@@ -234,7 +234,7 @@ triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_
     if(!c->array[0])
     {
         free(c);
-        return TRITON_ERR_NOMEM;
+        return(-1);
     }
     c->count = 0;
     ae_ops_init(&(c->free_list));
@@ -249,11 +249,11 @@ triton_ret_t ae_opcache_init(int typesize, int member_offset, int init_size, ae_
     c->typesize = typesize;
     c->member_offset = member_offset;
     *cache = c;
-    return TRITON_SUCCESS;
+    return(0);
 }
     
 #ifndef TRITON_OPCACHE_MALLOC
-static triton_ret_t ae_opcache_double(ae_opcache_t cache)
+static int ae_opcache_double(ae_opcache_t cache)
 {
     int i;
     cache->array[cache->array_count] = malloc(cache->typesize * cache->size);
@@ -264,22 +264,11 @@ static triton_ret_t ae_opcache_double(ae_opcache_t cache)
             free(cache->array[i]);
         }
         free(cache);
-        return TRITON_ERR_NOMEM;
+        return(-1);
     }
     cache->array_count++;
     cache->size *= 2;
-    return TRITON_SUCCESS;
-}
-
-triton_ret_t ae_opcache_double_size(ae_opcache_t cache);
-
-triton_ret_t ae_opcache_double_size(ae_opcache_t cache)
-{
-    triton_ret_t ret;
-    triton_mutex_lock(&cache->mutex);
-    ret = ae_opcache_double(cache);
-    triton_mutex_unlock(&cache->mutex);
-    return ret;
+    return(0);
 }
 #endif
 
@@ -351,7 +340,7 @@ struct ae_op *ae_opcache_get(ae_opcache_t cache)
     {
         if(cache->count == cache->size)
         {
-            if (ae_opcache_double(cache) != TRITON_SUCCESS)
+            if (ae_opcache_double(cache) != 0)
             {
                triton_mutex_unlock (&cache->mutex);
                return 0;
