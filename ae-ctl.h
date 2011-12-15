@@ -4,7 +4,6 @@
 #include "src/aesop/ae-types.h"
 #include "src/aesop/ae-thread.h"
 #include "src/aesop/ae-list.h"
-#include "src/aesop/ae-init.h"
 #include "src/aesop/ae-error.h"
 #include "src/aesop/hints.h"
 

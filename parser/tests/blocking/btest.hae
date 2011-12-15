@@ -97,7 +97,7 @@ int main(int argc, char **argv)  \
     ae_op_id_t __main_opid; \
     triton_ret_t ret; \
     btest_init_register(); \
-    ret = triton_init("aesop.blocking.test"); \
+    ret = aesop_init("btest"); \
     triton_error_assert(ret); \
     ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
     triton_error_assert(ret); \
@@ -111,7 +111,7 @@ int main(int argc, char **argv)  \
     } \
     ae_hints_destroy(&__main_hints); \
     ae_context_destroy(__main_ctx); \
-    triton_finalize(); \
+    aesop_finalize(); \
     return __main_ret; \
 }
    

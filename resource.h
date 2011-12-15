@@ -4,7 +4,6 @@
 #include "src/aesop/ae-types.h"
 #include "src/aesop/ae-thread.h"
 #include "src/aesop/ae-list.h"
-#include "src/aesop/ae-init.h"
 #include "src/aesop/ae-error.h"
 #include "src/aesop/ae-ctl.h"
 #include "src/aesop/hints.h"
@@ -70,9 +69,24 @@ struct ae_resource
     struct ae_resource_config* config_array;  /* terminated by entry with NULL name */
 };
 
-/* Called by resources to register themselves to the resource framework */
+/* called to register the initialization and finalization methods for a
+ * resource with the aesop framework.  Does not activate the resource.
+ */
+triton_ret_t ae_resource_init_register(const char* resource_name, 
+    triton_ret_t (*init)(void),
+    void (*finalize)(void));
+
+/* initializes the resource named in the argument.  This function is called
+ * by aesop itself when it wants to activate a resource. 
+ */
+triton_ret_t ae_resource_init(const char* resource);
+triton_ret_t ae_resource_init_all(void);
+
+/* Called by resources to register themselves to the resource framework once
+ * they are initialized and ready for use by aesop */
 ae_ret_t ae_resource_register(struct ae_resource *resource, int *newid);
 void ae_resource_unregister(int resource_id);
+
 /* Called by resources to request polling from the event loop */
 void ae_resource_request_poll(ae_context_t context, int resource_id);
 /* Called by c programs to break ae_poll() calls once callbacks are complete */
@@ -177,7 +191,7 @@ int main(int argc, char **argv)                                \
     ae_hints_t __main_hints;                                   \
     ae_op_id_t __main_opid;                                    \
     ae_ret_t ret;                                              \
-    ret = aesop_module_init();                                 \
+    ret = aesop_init("");                                      \
     aesop_error_assert(ret);                                   \
     if(COUNT_ARGS(__VA_ARGS__) > 0)                            \
     {                                                          \
@@ -210,7 +224,7 @@ int main(int argc, char **argv)                                \
     {                                                          \
         ae_context_destroy(__main_ctx);                        \
     }                                                          \
-    aesop_module_finalize();                                   \
+    aesop_finalize();                                          \
     return __main_ret;                                         \
 }
 
@@ -225,7 +239,7 @@ int main(int argc, char **argv)                                \
  * aesop_main_set_with_init(set_zeroconf_params, "aesop.client", aesop_main, "bdb", "file");
  */
 #define aesop_main_set_with_init(__init_before_main__,            \
-                                 __init_module__,                 \
+                                 __resource_list__,               \
                                  __main_blocking_function__, ...) \
 static int __main_done=0;                                         \
 static int __main_ret;                                            \
@@ -248,7 +262,7 @@ int main(int argc, char **argv)                                   \
         ret = __main_init_func();                                 \
         aesop_error_assert(ret);                                  \
     }                                                             \
-    ret = aesop_module_init(__init_module__);                     \
+    ret = aesop_init(__resource_list__);                          \
     aesop_error_assert(ret);                                      \
     if(COUNT_ARGS(__VA_ARGS__) > 0)                               \
     {                                                             \
@@ -281,7 +295,7 @@ int main(int argc, char **argv)                                   \
     {                                                             \
         ae_context_destroy(__main_ctx);                           \
     }                                                             \
-    aesop_module_finalize();                                      \
+    aesop_finalize();                                             \
     return __main_ret;                                            \
 }
 #endif /* __AE_RESOURCE_H__ */

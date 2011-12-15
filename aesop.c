@@ -1,20 +1,16 @@
+#include <string.h>
 
 #include "src/aesop/aesop.h"
+#include "src/aesop/resource.h"
 #include "src/common/triton-init.h"
 #include "src/aesop/hints.h"
 
 static int initialized = 0;
 
-__attribute__((constructor)) void aesop_init_register(void);
-
-__attribute__((constructor)) void aesop_init_register(void)
-{
-    triton_init_register("aesop.control", aesop_init, aesop_finalize, NULL);
-}
-
-triton_ret_t aesop_init(void)
+triton_ret_t aesop_init(const char* resource_list)
 {
     triton_ret_t tret;
+    char* rsc;
 
     if(initialized == 0)
     {
@@ -22,6 +18,28 @@ triton_ret_t aesop_init(void)
         if(triton_is_error(tret))
         {
             return(tret);
+        }
+
+        if(strlen(resource_list) == 0)
+        {
+            tret = ae_resource_init_all();
+            if(triton_is_error(tret))
+            {
+                return(tret);
+            }
+        }
+        else
+        {
+            for(rsc = strtok(resource_list, ",");
+                rsc != NULL;
+                rsc = strtok(NULL, ","))
+            {
+                tret = ae_resource_init(rsc);
+                if(triton_is_error(tret))
+                {
+                    return(tret);
+                }
+            }
         }
     }
     initialized++;

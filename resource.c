@@ -16,6 +16,22 @@ struct ae_poll_data
     ae_context_t context;
 };
 
+/* data structures and tables used to track information for
+ * resources that are available to be initialized
+ */
+struct ae_resource_init_data
+{
+    char* name;
+    triton_ret_t (*init)(void);
+    void (*finalize)(void);
+};
+#define MAX_RESOURCES 32
+static struct ae_resource_init_data ae_resource_init_table[MAX_RESOURCES] = {0};
+static int ae_resource_init_table_count = 0;
+
+/* data structures and tables used to track information for resources that
+ * actually have been initialized and are now active
+ */
 struct ae_resource_entry
 {
     int id;
@@ -77,6 +93,27 @@ static void ev_async_cb(EV_P_ ev_async *w, int revents)
     ev_break(EV_A_ EVBREAK_ONE);
     return;
 }
+
+triton_ret_t ae_resource_init_register(const char* resource_name, 
+    triton_ret_t (*init)(void),
+    void (*finalize)(void))
+{
+    if(ae_resource_init_table_count > MAX_RESOURCES)
+    {
+        return(TRITON_ERR_OVERFLOW);
+    }
+    ae_resource_init_table[ae_resource_init_table_count].name = 
+        strdup(resource_name);
+    if(!ae_resource_init_table[ae_resource_init_table_count].name)
+        return(TRITON_ERR_NOMEM);
+
+    ae_resource_init_table[ae_resource_init_table_count].init = init;
+    ae_resource_init_table[ae_resource_init_table_count].finalize = finalize;
+    ae_resource_init_table_count++;
+
+    return(TRITON_SUCCESS);
+}
+
 
 triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
 {
@@ -840,6 +877,39 @@ int ae_check_debug_flag(int resource_id)
     /* return value of debug flag for this resource */
     return(ae_resource_entries[idx].debug);
 }
+
+triton_ret_t ae_resource_init(const char* resource)
+{
+    int i;
+
+    for(i=0; i<ae_resource_init_table_count; i++)
+    {
+        if(!strcmp(resource, ae_resource_init_table[i].name))
+        {
+            return(ae_resource_init_table[i].init());
+        }
+    }
+
+    return(TRITON_ERR_NOTFOUND);
+}
+
+triton_ret_t ae_resource_init_all(void)
+{
+    int i;
+    triton_ret_t tret;
+
+    for(i=0; i<ae_resource_init_table_count; i++)
+    {
+        tret = ae_resource_init_table[i].init();
+        if(triton_is_error(tret))
+        {
+            return(tret);
+        }
+    }
+
+    return(TRITON_SUCCESS);
+}
+
 
 /*
  * Local variables:
