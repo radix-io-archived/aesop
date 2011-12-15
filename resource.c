@@ -26,7 +26,7 @@ struct ae_resource_init_data
     void (*finalize)(void);
 };
 #define MAX_RESOURCES 32
-static struct ae_resource_init_data ae_resource_init_table[MAX_RESOURCES] = {0};
+static struct ae_resource_init_data ae_resource_init_table[MAX_RESOURCES];
 static int ae_resource_init_table_count = 0;
 
 /* data structures and tables used to track information for resources that
