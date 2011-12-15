@@ -65,7 +65,7 @@ static void ae_hint_info_destroy(void * hi)
 
 #include "src/common/triton-init.h"
 
-static triton_ret_t ae_hints_component_init(void)
+triton_ret_t ae_hints_component_init(void)
 {
     if(hints_type_key_table != NULL)
     {
@@ -88,7 +88,7 @@ static triton_ret_t ae_hints_component_init(void)
     return TRITON_SUCCESS;
 }
 
-static void ae_hints_component_finalize(void)
+void ae_hints_component_finalize(void)
 {
     assert(hints_type_key_table != NULL);
     triton_hash_destroy_and_finalize(
@@ -99,14 +99,6 @@ static void ae_hints_component_finalize(void)
     triton_hash_finalize(hints_type_table);
     hints_type_table = NULL;
 }
-
-__attribute__((constructor)) void ae_hints_init_register(void);
-
-__attribute__((constructor)) void ae_hints_init_register(void)
-{
-    triton_init_register("aesop.hints", ae_hints_component_init, ae_hints_component_finalize, NULL);
-}
-
 
 triton_ret_t ae_hints_type_register(
     const char *key,

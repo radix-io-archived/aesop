@@ -51,6 +51,16 @@ static inline triton_ret_t aesop_hints_del(ae_hints_t *hints, const char *key)
 #endif
 
 /**
+ * Initialize the hints framework
+ */
+triton_ret_t ae_hints_component_init(void);
+
+/** 
+ * Shut down the hints framework
+ */
+void ae_hints_component_finalize(void);
+
+/**
  * Put might allocate a hint structure if there was no previous hint allocated
  */
 triton_ret_t ae_hints_put(ae_hints_t ** hints,
