@@ -822,7 +822,7 @@ int aesop_set_config(const char* key, const char* value)
         }
     }
 
-    return(AE_CONFIG_NOT_FOUND);
+    return(AE_ERR_NOT_FOUND);
 }
 
 int aesop_dbg_blocking = 0;
@@ -836,7 +836,7 @@ int aesop_set_debugging(const char* resource, int value)
     if(value != 0 && value != 1)
     {
         /* on or off are the only possible options */
-        return(AE_CONFIG_INVALID);
+        return(AE_ERR_INVALID);
     }
 
     /* special cases; these aren't resources.  These are just different
@@ -867,7 +867,7 @@ int aesop_set_debugging(const char* resource, int value)
         }
     }
 
-    return(AE_CONFIG_NOT_FOUND);
+    return(AE_ERR_NOT_FOUND);
 }
 
 int ae_check_debug_flag(int resource_id)

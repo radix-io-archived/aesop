@@ -465,7 +465,7 @@ static int testconfig_updater(const char* key, const char* value)
     ret = sscanf(value, "%d", &tmp);
     if(ret != 1)
     {
-        return(AE_CONFIG_INVALID);
+        return(AE_ERR_INVALID);
     }
 
     printf("btest testconfig updated to %d\n", tmp);

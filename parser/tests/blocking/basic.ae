@@ -12,19 +12,19 @@ static __blocking void run_basic(void)
          * parameter
          */
         ret = aesop_set_config("foo", "bar");
-        assert(ret == AE_CONFIG_NOT_FOUND);
+        assert(ret == AE_ERR_NOT_FOUND);
 
         ret = aesop_set_config("btest.testconfig", "bar");
-        assert(ret == AE_CONFIG_INVALID);
+        assert(ret == AE_ERR_INVALID);
 
         ret = aesop_set_config("btest.testconfig", "35");
         assert(ret == 0);
 
         ret = aesop_set_debugging("foo", 1);
-        assert(ret == AE_CONFIG_NOT_FOUND);
+        assert(ret == AE_ERR_NOT_FOUND);
 
         ret = aesop_set_debugging("btest", 99);
-        assert(ret == AE_CONFIG_INVALID);
+        assert(ret == AE_ERR_INVALID);
 
         ret = aesop_set_debugging("ae_blocking", 1);
         assert(ret == 0);

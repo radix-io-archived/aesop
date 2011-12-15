@@ -16,7 +16,8 @@
 
 #define aesop_error_assert(__ret) triton_error_assert(__ret)
 
-#define AE_CONFIG_NOT_FOUND (-1)
-#define AE_CONFIG_INVALID (-2)
+#define AE_ERR_NOT_FOUND (-1)  /* object or entity not found */
+#define AE_ERR_INVALID (-2)    /* invalid argument */
+#define AE_ERR_SYSTEM (-3)     /* critical system error (out of memory, etc.) */
 
 #endif
