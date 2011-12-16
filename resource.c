@@ -12,7 +12,7 @@
 struct ae_poll_data
 {
     ev_async async;
-    triton_ret_t (*poll_context)(ae_context_t context);
+    int (*poll_context)(ae_context_t context);
     ae_context_t context;
 };
 
@@ -22,7 +22,7 @@ struct ae_poll_data
 struct ae_resource_init_data
 {
     char* name;
-    triton_ret_t (*init)(void);
+    int (*init)(void);
     void (*finalize)(void);
 };
 #define MAX_RESOURCES 32
@@ -77,15 +77,15 @@ static void ev_break_cb(EV_P_ ev_async *w, int revents)
 
 static void ev_async_cb(EV_P_ ev_async *w, int revents)
 {
-    triton_ret_t tret;
+    int ret;
 
     struct ae_poll_data* poll_data = 
         (struct ae_poll_data*)(((char*)w)-offsetof(struct ae_poll_data, async));
 
     assert(poll_data->poll_context);
-    tret = poll_data->poll_context(poll_data->context);
+    ret = poll_data->poll_context(poll_data->context);
     /* TODO: error handling? */
-    triton_error_assert(tret);
+    aesop_error_assert(ret);
     
     /* Break the loop.  Note that ev_run() will still process all events
      * that are pending at the time we call this, which is a good thing.
@@ -94,28 +94,28 @@ static void ev_async_cb(EV_P_ ev_async *w, int revents)
     return;
 }
 
-triton_ret_t ae_resource_init_register(const char* resource_name, 
-    triton_ret_t (*init)(void),
+int ae_resource_init_register(const char* resource_name, 
+    int (*init)(void),
     void (*finalize)(void))
 {
     if(ae_resource_init_table_count > MAX_RESOURCES)
     {
-        return(TRITON_ERR_OVERFLOW);
+        return(AE_ERR_OVERFLOW);
     }
     ae_resource_init_table[ae_resource_init_table_count].name = 
         strdup(resource_name);
     if(!ae_resource_init_table[ae_resource_init_table_count].name)
-        return(TRITON_ERR_NOMEM);
+        return(AE_ERR_SYSTEM);
 
     ae_resource_init_table[ae_resource_init_table_count].init = init;
     ae_resource_init_table[ae_resource_init_table_count].finalize = finalize;
     ae_resource_init_table_count++;
 
-    return(TRITON_SUCCESS);
+    return(AE_SUCCESS);
 }
 
 
-triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
+int ae_resource_register(struct ae_resource *resource, int *newid)
 {
     int reindex = ae_resource_count;
     int ret;
@@ -134,7 +134,7 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
 
     if(ae_resource_count == AE_MAX_RESOURCES)
     {
-	return TRITON_ERR_INVAL;
+	return AE_ERR_INVALID;
     }
 
     ev_async_init(&ae_resource_entries[reindex].poll_data.async, ev_async_cb);
@@ -148,7 +148,7 @@ triton_ret_t ae_resource_register(struct ae_resource *resource, int *newid)
     ae_resource_entries[reindex].debug = 0;
     ae_resource_count++;
     *newid = AE_RESOURCE_IDX2ID(reindex);
-    return TRITON_SUCCESS;
+    return AE_SUCCESS;
 }
 
 void ae_resource_unregister(int id)
@@ -274,23 +274,23 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
 
 /**
  * ae_cancel_op tries to cancel the operation with the given id.  This
- * function returns TRITON_SUCCESS if the operation was successfully cancelled,
+ * function returns AE_SUCCESS if the operation was successfully cancelled,
  * the callback for the operation is responsible for returning TRITON_ERR_CANCELLED
  * in the callback or somehow notifying through the callback that the operation was
  * cancelled.
  */
-triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
+int ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 {
     struct ae_ctl *ctl;
     int resource_id, ridx;
-    triton_ret_t ret;
+    int ret;
     int error;
 
     ae_debug_cancel("ae_cancel_op: %llu:%llu\n", llu(op_id.u), llu(op_id.l));
 
     if(triton_uint128_iszero(op_id))
     {
-        return TRITON_SUCCESS;
+        return AE_SUCCESS;
     }
 
     ae_id_lookup(op_id, &resource_id);
@@ -302,7 +302,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
         if(!ctl)
         {
             /* No blocking operation associated with this op_id.  Nothing to cancel. */
-            return TRITON_SUCCESS;
+            return AE_SUCCESS;
         }
 
 	error = triton_mutex_lock(&ctl->mutex);
@@ -320,7 +320,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
             for(ind = 0; children_ids && ind < count; ++ind)
             {
                 ret = ae_cancel_op(context, children_ids[ind]);
-                if(ret != TRITON_SUCCESS)
+                if(ret != AE_SUCCESS)
                 {
                     /* cancel failed */
                     ae_children_put(children_ids, count);
@@ -328,7 +328,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
                 }
             }
             ae_children_put(children_ids, count);
-            return TRITON_SUCCESS;
+            return AE_SUCCESS;
 	}
 	else
 	{
@@ -347,17 +347,17 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
         ridx = AE_RESOURCE_ID2IDX(resource_id);
         if(ridx > ae_resource_count)
         {
-            return TRITON_ERR_INVAL;
+            return AE_ERR_INVALID;
         }
 
         if(ae_resource_entries[ridx].id != resource_id)
         {
-            return TRITON_ERR_INVAL;
+            return AE_ERR_INVALID;
         }
 
         if(ae_resource_entries[ridx].id == -1)
         {
-            return TRITON_ERR_INVAL;
+            return AE_ERR_INVALID;
         }
 
         if(ae_resource_entries[ridx].resource->cancel)
@@ -366,7 +366,7 @@ triton_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
         }
         else
         {
-            return TRITON_SUCCESS;
+            return AE_SUCCESS;
         }
     }
 }
@@ -401,7 +401,6 @@ struct op_id_entry
  */
 static ae_op_id_t * ae_children_get(ae_context_t context, struct ae_ctl *ctl, int *count)
 {
-    triton_ret_t ret;
     struct ae_ctl *child_ctl;
     struct triton_list_link *entry, *safe;
     ae_op_id_t *op_ids;
@@ -508,9 +507,8 @@ static void timeout_cb(EV_P_ ev_timer *w, int revents)
     ev_break(EV_A_ EVBREAK_ONE);
 }
 
-triton_ret_t ae_poll(ae_context_t context, int millisecs)
+int ae_poll(ae_context_t context, int millisecs)
 {
-    triton_ret_t tret;
     struct ev_loop* target_loop;
     int ret;
     int i;
@@ -546,26 +544,26 @@ triton_ret_t ae_poll(ae_context_t context, int millisecs)
     /* this means that the event loop timed out without finding any work */
     if(hit_timeout == 1)
     {
-        return(TRITON_ERR_TIMEDOUT);
+        return(AE_ERR_TIMEDOUT);
     }
 
-    return(TRITON_SUCCESS);
+    return(AE_SUCCESS);
 }
 
 #include <stdarg.h>
 
-triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attribute__((unused)), int resource_count, ...)
+int _ae_context_create(ae_context_t *context, const char *format __attribute__((unused)), int resource_count, ...)
 {
     va_list ap;
     char *rname;
     int cindex = ae_context_count;
     ae_context_t c;
     int i, j, reindex;
-    triton_ret_t ret;
+    int ret;
 
     if(ae_context_count == AE_MAX_CONTEXTS)
     {
-        return TRITON_ERR_INVAL;
+        return AE_ERR_INVALID;
     }
 
     c = &(ae_context_entries[cindex]);
@@ -575,13 +573,13 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
     c->resource_ids = malloc(sizeof(*c->resource_ids) * resource_count);
     if(!c->resource_ids)
     {
-        return TRITON_ERR_NOMEM;
+        return AE_ERR_SYSTEM;
     }
     c->poll_data = malloc(sizeof(*c->poll_data) * resource_count);
     if(!c->poll_data)
     {
         free(c->resource_ids);
-        return TRITON_ERR_NOMEM;
+        return AE_ERR_SYSTEM;
     }
 
     c->eloop = ev_loop_new(EVFLAG_AUTO);
@@ -590,7 +588,7 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
         triton_err(triton_log_default, "Error: could not create libev event loop.\n");
         free(c->resource_ids);
         free(c->poll_data);
-        return(TRITON_ERR_NOMEM);
+        return(AE_ERR_SYSTEM);
     }
     ev_async_init(&c->eloop_breaker, ev_break_cb);
     ev_async_start(c->eloop, &c->eloop_breaker);
@@ -618,7 +616,7 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
                 if(ae_resource_entries[j].resource->register_context)
                 {
                     ret = ae_resource_entries[j].resource->register_context(c);
-                    if(ret != TRITON_SUCCESS)
+                    if(ret != AE_SUCCESS)
                     {
                         /* what do we do if a context fails to register with a resource? */
                         va_end(ap);
@@ -637,17 +635,16 @@ triton_ret_t _ae_context_create(ae_context_t *context, const char *format __attr
         if(!resource_found)
         {
             va_end(ap);
-            return triton_error_wrap(TRITON_ERR_INVAL, TRITON_ADDR_NULL,
-                                     "No aesop resource found with name '%s'.", rname);
+            return AE_ERR_NOT_FOUND;
         }
     }
     va_end(ap);
 
     *context = c;
-    return TRITON_SUCCESS;
+    return AE_SUCCESS;
 }
 
-triton_ret_t ae_context_destroy(ae_context_t context)
+int ae_context_destroy(ae_context_t context)
 {
     int rid, idx, i;
 
@@ -668,12 +665,12 @@ triton_ret_t ae_context_destroy(ae_context_t context)
     context->id = -1;
     context->resource_count = -1;
     ev_loop_destroy(context->eloop);
-    return TRITON_SUCCESS;
+    return AE_SUCCESS;
 }
 
-triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
+int ae_cancel_branches(struct ae_ctl *ctl)
 {
-    triton_ret_t ret;
+    int ret;
     ae_op_id_t *children_ids;
     int ind, count, error;
     ae_context_t context;
@@ -698,14 +695,14 @@ triton_ret_t ae_cancel_branches(struct ae_ctl *ctl)
     for(ind = 0; children_ids && ind < count; ++ind)
     {
         ret = ae_cancel_op(context, children_ids[ind]);
-        if(ret != TRITON_SUCCESS)
+        if(ret != AE_SUCCESS)
         {
             ae_children_put(children_ids, count);
             return ret;
         }
     }
     ae_children_put(children_ids, count);
-    return TRITON_SUCCESS;
+    return AE_SUCCESS;
 }
 
 int ae_count_branches(struct ae_ctl *ctl)
@@ -878,7 +875,7 @@ int ae_check_debug_flag(int resource_id)
     return(ae_resource_entries[idx].debug);
 }
 
-triton_ret_t ae_resource_init(const char* resource)
+int ae_resource_init(const char* resource)
 {
     int i;
 
@@ -890,24 +887,24 @@ triton_ret_t ae_resource_init(const char* resource)
         }
     }
 
-    return(TRITON_ERR_NOTFOUND);
+    return(AE_ERR_NOT_FOUND);
 }
 
-triton_ret_t ae_resource_init_all(void)
+int ae_resource_init_all(void)
 {
     int i;
-    triton_ret_t tret;
+    int ret;
 
     for(i=0; i<ae_resource_init_table_count; i++)
     {
-        tret = ae_resource_init_table[i].init();
-        if(triton_is_error(tret))
+        ret = ae_resource_init_table[i].init();
+        if(ret != AE_SUCCESS)
         {
-            return(tret);
+            return(ret);
         }
     }
 
-    return(TRITON_SUCCESS);
+    return(AE_SUCCESS);
 }
 
 

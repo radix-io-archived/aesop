@@ -1,24 +1,21 @@
 #ifndef AE_ERROR_H
 #define AE_ERROR_H
 
-/* Use triton errors for aesop errors.  To use aesop without
- * triton, replace the following #defines with your own.
- */
-#include "src/common/triton-error.h"
+#include <assert.h>
 
-#define ae_ret_t triton_ret_t
+/* pre-defined error codes used by aesop */
 
-#define AE_SUCCESS TRITON_SUCCESS
-#define AE_IMMEDIATE_COMPLETION TRITON_IMMEDIATE_COMPLETION
-#define AE_NOMEM TRITON_ERR_NOMEM
-#define AE_TIMEDOUT TRITON_ERR_TIMEDOUT
-#define AE_NOSYS TRITON_ERR_NOSYS
+#define aesop_error_assert(__ret) assert(__ret == AE_SUCCESS || __ret == AE_IMMEDIATE_COMPLETION)
 
-#define aesop_error_assert(__ret) triton_error_assert(__ret)
+#define AE_SUCCESS 0           /* success */
+/* not an error, just means that function completed without blocking */
+#define AE_IMMEDIATE_COMPLETION 1  
 
 #define AE_ERR_NOT_FOUND (-1)  /* object or entity not found */
 #define AE_ERR_INVALID (-2)    /* invalid argument */
 #define AE_ERR_SYSTEM (-3)     /* critical system error (out of memory, etc.) */
 #define AE_ERR_EXIST (-4)      /* object or entity already exists */
+#define AE_ERR_TIMEDOUT (-5)   /* timed out */
+#define AE_ERR_OVERFLOW (-6)   /* overflow of some resource limitation */
 
 #endif

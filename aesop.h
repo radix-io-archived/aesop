@@ -13,7 +13,7 @@
 #include "src/aesop/opcache.h"
 
 
-ae_ret_t aesop_init(const char *resource_list);
+int aesop_init(const char *resource_list);
 void aesop_finalize(void);
 
 int aesop_set_config(const char* key, const char* value);

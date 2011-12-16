@@ -91,7 +91,7 @@ ae_define_post(int, tctest1, int *a)
     pthread_attr_destroy(&attr);
     usleep(1000);
 
-    return TRITON_SUCCESS;
+    return 0;
 }
 
 static void *tcrandom_threadfun(void *ptr)
@@ -131,10 +131,10 @@ ae_define_post(int, tctest_random)
     assert(ret == 0);
     pthread_attr_destroy(&attr);
     usleep(random() % 1000);
-    return TRITON_SUCCESS;
+    return 0;
 }
 
-ae_define_post(triton_ret_t, btest_fail10, int *a)
+ae_define_post(int, btest_fail10, int *a)
 {
     struct ae_op *op;
     struct btest_op *bop;
@@ -148,7 +148,7 @@ ae_define_post(triton_ret_t, btest_fail10, int *a)
     ae_ops_enqueue(op, &list_fail10);
     ae_resource_request_poll(op->ctx, btest_resource_id);
 
-    return TRITON_SUCCESS;
+    return 0;
 }
 
 ae_define_post(int, btest1, int *a)
@@ -167,7 +167,7 @@ ae_define_post(int, btest1, int *a)
     ae_ops_enqueue(op, &list1);
     ae_resource_request_poll(op->ctx, btest_resource_id);
 
-    return TRITON_SUCCESS;
+    return 0;
 }
 
 ae_define_post(int, btest2, int *a)
@@ -185,7 +185,7 @@ ae_define_post(int, btest2, int *a)
     ae_ops_enqueue(op, &list2);
     ae_resource_request_poll(op->ctx, btest_resource_id);
 
-    return TRITON_SUCCESS;
+    return 0;
 }
 
 ae_define_post(int, btest3, int *a)
@@ -203,7 +203,7 @@ ae_define_post(int, btest3, int *a)
     ae_ops_enqueue(op, &list3);
     ae_resource_request_poll(op->ctx, btest_resource_id);
 
-    return TRITON_SUCCESS;
+    return 0;
 }
 
 ae_define_post(int, btest_sleep, int secs)
@@ -220,7 +220,7 @@ ae_define_post(int, btest_sleep, int secs)
     ae_ops_enqueue(op, &slist);
     ae_resource_request_poll(op->ctx, btest_resource_id);
 
-    return TRITON_SUCCESS;
+    return 0;
 }
 
 ae_define_post(int, btest_sleep_random)
@@ -237,7 +237,7 @@ ae_define_post(int, btest_sleep_random)
     ae_ops_enqueue(op, &srlist);
     ae_resource_request_poll(op->ctx, btest_resource_id);
 
-    return TRITON_SUCCESS;
+    return 0;
 }
 
 ae_define_post(int, btest_forever)
@@ -254,7 +254,7 @@ ae_define_post(int, btest_forever)
     ae_ops_enqueue(op, &flist);
     ae_resource_request_poll(op->ctx, btest_resource_id);
 
-    return TRITON_SUCCESS;
+    return 0;
 }
 
 ae_define_post(int, btest_random)
@@ -271,7 +271,7 @@ ae_define_post(int, btest_random)
     ae_ops_enqueue(op, &rlist);
     ae_resource_request_poll(op->ctx, btest_resource_id);
 
-    return TRITON_SUCCESS;
+    return 0;
 }
 
 static struct bsleep_op * poll_sleep_list(int *more)
@@ -331,7 +331,7 @@ static struct btest_op * poll_list(ae_ops_t *list, int *more)
    return NULL;
 }
 
-static triton_ret_t btest_poll(ae_context_t context)
+static int btest_poll(ae_context_t context)
 {
    int more, request;
    struct btest_op *b;
@@ -371,12 +371,12 @@ static triton_ret_t btest_poll(ae_context_t context)
         if(*(b->value) >= 10)
         {
             printf("BTEST_FAIL10 returning success.\n");
-            ae_opcache_complete_op(test_opcache, &b->op, triton_ret_t, TRITON_SUCCESS);
+            ae_opcache_complete_op(test_opcache, &b->op, int, 0);
         }
         else
         {
-            printf("BTEST_FAIL10 returning TRITON_ERR_AGAIN.\n");
-            ae_opcache_complete_op(test_opcache, &b->op, triton_ret_t, TRITON_ERR_AGAIN);
+            printf("BTEST_FAIL10 returning EAGAIN.\n");
+            ae_opcache_complete_op(test_opcache, &b->op, int, -EAGAIN);
         }
    }
    request = request | more;
@@ -415,10 +415,10 @@ static triton_ret_t btest_poll(ae_context_t context)
    {
        ae_resource_request_poll(context, btest_resource_id);
    }
-   return TRITON_SUCCESS;
+   return AE_SUCCESS;
 }
 
-static triton_ret_t btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
+static int btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
 {
    struct ae_op *t, *tmp;
    struct btest_op *b;
@@ -435,10 +435,10 @@ static triton_ret_t btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
 	}
    }
 
-   return TRITON_SUCCESS;
+   return AE_SUCCESS;
 }     
 
-static triton_ret_t btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
+static int btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
 {
    struct ae_op *t, *tmp;
    struct btest_op *b;
@@ -454,7 +454,7 @@ static triton_ret_t btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
 	}
    }
 
-   return TRITON_SUCCESS;
+   return AE_SUCCESS;
 }     
 
 static int testconfig_updater(const char* key, const char* value)
@@ -491,7 +491,7 @@ struct ae_resource btest_resource =
     .config_array = btest_config_array
 };
 
-static triton_ret_t btest_init(void)
+static int btest_init(void)
 {
     ae_resource_register(&btest_resource, &btest_resource_id);
 
@@ -508,7 +508,7 @@ static triton_ret_t btest_init(void)
     ae_ops_init(&flist);
     ae_ops_init(&rlist);
 
-    return TRITON_SUCCESS;
+    return AE_SUCCESS;
 }
 
 static void btest_finalize(void)

@@ -32,11 +32,10 @@
     ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal;
-    /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
 
 
 #define AE_MK_CB_FN_START(__fname)                     \
-    ae_ret_t cbret;                                    \
+    int cbret;                                         \
     enum ae_ctl_state state;                           \
     struct __fname##_ctl *__ae_ctl;                    \
     struct __fname##_ctl *__ae_ctl_done __unused__;    \
@@ -191,11 +190,11 @@ static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr) \
     enum ae_ctl_state *__ae_state;
 
 #define AE_MK_WORKER_RET_DECL() \
-    ae_ret_t __ae_postret __unused__;
+    int __ae_postret __unused__;
 
  #define AE_MK_WORKER_DECLS() \
-    ae_ret_t __ae_postret __unused__; \
-    ae_ret_t __ae_myret;
+    int __ae_postret __unused__; \
+    int __ae_myret;
 
 #define AE_MK_WORKER_START_STMTS()                      \
     __ae_myret = AE_SUCCESS;                            \
@@ -290,7 +289,7 @@ __ae_pbranch_##__pbranch_pos_str##_start:                                       
     __ae_ctl = malloc(sizeof(*__ae_ctl));                                             \
     if(__ae_ctl == NULL)                                                              \
     {                                                                                 \
-        return AE_NOMEM;                                                              \
+        return AE_ERR_SYSTEM;                                                              \
     }                                                                                 \
     ae_ctl_init(&__ae_ctl->gen,                                                       \
                 __ae_ctl,                                                             \
@@ -422,7 +421,7 @@ __ae_pbranch_##__pbranch_pos_str##_start:                                 \
     __ae_ctl = malloc(sizeof(*__ae_ctl));                                 \
     if(__ae_ctl == NULL)                                                  \
     {                                                                     \
-        return AE_NOMEM;                                                  \
+        return AE_ERR_SYSTEM;                                                  \
     }                                                                     \
     ae_ctl_init(&__ae_ctl->gen,                                           \
                 __ae_ctl,                                                 \
@@ -492,7 +491,7 @@ __ae_pbranch_##__pbranch_pos_str##_inprogress:                                  
 __ae_pbranch_##__pbranch_pos_str##_after: {}
 
 #define AE_MK_BFUN_RET_DECL() \
-    ae_ret_t __ae_myret;
+    int __ae_myret;
 
 #define AE_MK_BFUN_PARAMS_FOR_STRUCT_DECLS() \
     struct ae_ctl gen; \
@@ -504,7 +503,6 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
     ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal;
-    /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
 
 #define AE_MK_BFUN_PARAMS_FUN_PTR_DECLS(__ret_type) \
     void *__ae_user_ptr; \
@@ -513,18 +511,17 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
     ae_op_id_t *__ae_op_id; \
     int __ae_internal; \
     __ret_type *retval;
-    /* void (*callback) (void *user_ptr [, __ret_type __ae_ret]); */
 
 #define AE_MK_BFUN_DECLS(__fname)                       \
     struct __fname##_ctl *__ae_ctl;                     \
-    ae_ret_t __ae_myret;                                \
+    int __ae_myret;                                     \
     enum ae_ctl_state state;
 
 #define AE_MK_BFUN_INIT_BLOCK(__fname)                                \
     __ae_ctl = malloc(sizeof(*__ae_ctl));                             \
     if(__ae_ctl == NULL)                                              \
     {                                                                 \
-        return AE_NOMEM;                                              \
+        return AE_ERR_SYSTEM;                                              \
     }                                                                 \
     ae_ctl_init(&__ae_ctl->gen,                                       \
                 __ae_ctl,                                             \

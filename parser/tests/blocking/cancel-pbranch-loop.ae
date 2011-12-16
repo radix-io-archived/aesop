@@ -11,12 +11,12 @@ static __blocking void run_test(void)
 	{
 	    pbranch
 	    {
-                triton_ret_t tret;
+                int ret;
 
                 while(1)
                 {
-                    tret = triton_timer(4);
-                    if(tret != TRITON_SUCCESS)
+                    ret = triton_timer(4);
+                    if(ret != 0)
                     {
                         break;
                     }

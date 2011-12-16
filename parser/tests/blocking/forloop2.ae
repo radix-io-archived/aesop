@@ -6,19 +6,19 @@ static __blocking void run_forloop(void)
 {
 	int i;
 	int a = 0;
-	int ret;
-        triton_ret_t tret;
+        int ret;
+        int ret2;
 
-        for(tret = TRITON_ERR_AGAIN; tret == TRITON_ERR_AGAIN; )
+        for(ret = -EAGAIN; ret == -EAGAIN; )
         {
-            tret = btest_fail10(&a);
-            if(tret == TRITON_ERR_AGAIN)
+            ret = btest_fail10(&a);
+            if(ret == -EAGAIN)
             {
                 printf("FOO.\n");
             }
-            else if(tret == TRITON_SUCCESS)
+            else if(ret == 0)
             {
-                ret = btest1(&a);
+                ret2 = btest1(&a);
             }
         }
 }

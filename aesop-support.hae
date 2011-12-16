@@ -7,14 +7,14 @@
 
 #define aesop_cancel_branches_wait() \
     { \
-        triton_ret_t __ae_cancel_branches_wait_ret; \
+        int __ae_cancel_branches_wait_ret; \
         do { \
             aesop_cancel_branches(); \
             if (aesop_count_branches() < 2) { \
                 break; \
             } \
             __ae_cancel_branches_wait_ret = triton_timer(2); \
-        } while (__ae_cancel_branches_wait_ret == TRITON_SUCCESS); \
+        } while (__ae_cancel_branches_wait_ret == 0); \
     }
 
 #endif

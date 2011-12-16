@@ -13,7 +13,6 @@ static __blocking void lonely_pbranch(void)
 {
 	int a = 0;
 	int ret1;
-        triton_ret_t tret;
 
         ret1 = btest1(&a);
         if(ret1 != 0)

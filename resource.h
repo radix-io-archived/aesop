@@ -29,7 +29,7 @@
     __fname(__callback, __user_ptr, __hints, __resource_ctx, __op_id, 0, ##__fargs)
 
 #define ae_define_post(__ret_type, __fname, __fargs...)                    \
-    ae_ret_t __fname(void (*__ae_callback)(void *ptr, __ret_type ret), \
+    int __fname(void (*__ae_callback)(void *ptr, __ret_type ret), \
                          void *__ae_user_ptr,                              \
                          ae_hints_t *__ae_hints,                           \
                          ae_context_t __ae_ctx,                            \
@@ -61,30 +61,30 @@ struct ae_resource_config
 struct ae_resource
 {
     const char *resource_name;
-    ae_ret_t (*test)(ae_op_id_t id, int ms_timeout);
-    ae_ret_t (*poll_context)(ae_context_t context);
-    ae_ret_t (*cancel)(ae_context_t ctx, ae_op_id_t id);
-    ae_ret_t (*register_context)(ae_context_t context);
-    ae_ret_t (*unregister_context)(ae_context_t context);
+    int (*test)(ae_op_id_t id, int ms_timeout);
+    int (*poll_context)(ae_context_t context);
+    int (*cancel)(ae_context_t ctx, ae_op_id_t id);
+    int (*register_context)(ae_context_t context);
+    int (*unregister_context)(ae_context_t context);
     struct ae_resource_config* config_array;  /* terminated by entry with NULL name */
 };
 
 /* called to register the initialization and finalization methods for a
  * resource with the aesop framework.  Does not activate the resource.
  */
-triton_ret_t ae_resource_init_register(const char* resource_name, 
-    triton_ret_t (*init)(void),
+int ae_resource_init_register(const char* resource_name, 
+    int (*init)(void),
     void (*finalize)(void));
 
 /* initializes the resource named in the argument.  This function is called
  * by aesop itself when it wants to activate a resource. 
  */
-triton_ret_t ae_resource_init(const char* resource);
-triton_ret_t ae_resource_init_all(void);
+int ae_resource_init(const char* resource);
+int ae_resource_init_all(void);
 
 /* Called by resources to register themselves to the resource framework once
  * they are initialized and ready for use by aesop */
-ae_ret_t ae_resource_register(struct ae_resource *resource, int *newid);
+int ae_resource_register(struct ae_resource *resource, int *newid);
 void ae_resource_unregister(int resource_id);
 
 /* Called by resources to request polling from the event loop */
@@ -100,7 +100,7 @@ struct ev_loop * ae_resource_get_eloop(ae_context_t context);
  * groups of operations.  Don't use this function.  Instead, use the associated
  * ae_context_create macro.
  */
-ae_ret_t _ae_context_create(ae_context_t *context, const char *format, int resource_count, ...) __attribute__((format (printf, 2, 4))) ;
+int _ae_context_create(ae_context_t *context, const char *format, int resource_count, ...) __attribute__((format (printf, 2, 4))) ;
 
 /* macro to calculate the number of resources passed in as string 
  * arguments so we don't have to pass in the count explicitly. */
@@ -109,19 +109,19 @@ ae_ret_t _ae_context_create(ae_context_t *context, const char *format, int resou
 
 /* Context destruction.  Called to cleanup state allocated in ae_context_create.
  */
-ae_ret_t ae_context_destroy(ae_context_t context);
+int ae_context_destroy(ae_context_t context);
 
 /* Poll for completion of the operations within the given context up to a
  * timeout value.
  */
-ae_ret_t ae_poll(ae_context_t context, int ms);
+int ae_poll(ae_context_t context, int ms);
 
 /* Cancel an operation */
-ae_ret_t ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
+int ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
 
 void ae_backtrace(void);
 
-ae_ret_t ae_cancel_branches(struct ae_ctl *ctl);
+int ae_cancel_branches(struct ae_ctl *ctl);
 
 int ae_count_branches(struct ae_ctl *ctl);
 
@@ -131,7 +131,7 @@ void ae_get_stack(struct ae_ctl *ctl, ae_string_t *stack, int *inout_count);
 #define aesop_cancel_branches() ae_cancel_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
 #define aesop_count_branches() ae_count_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
 #else
-static inline ae_ret_t aesop_cancel_branches(void) { return AE_NOSYS; }
+static inline int aesop_cancel_branches(void) { return AE_ERR_SYSTEM; }
 static inline int aesop_count_branches(void) { return -1; }
 #endif
 
@@ -152,12 +152,12 @@ static inline void aesop_get_stack(ae_string_t *strings, int *inout_count)
 static inline void aesop_print_stack(FILE *stream) { }
 #endif
 
-ae_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, ae_ret_t);
+triton_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, triton_ret_t);
 
 #if defined(AESOP_PARSER) && !defined(NDEBUG)
 #define aesop_error_wrap_stack(__ret) ae_error_wrap_stack(&__ae_ctl->gen, __ret)
 #else
-static inline ae_ret_t aesop_error_wrap_stack(ae_ret_t ret) { return ret; }
+static inline triton_ret_t aesop_error_wrap_stack(triton_ret_t ret) { return ret; }
 #endif
 
 /* Set this to zero to cause the main_set macros to busy spin on ae_poll(),
@@ -190,17 +190,16 @@ int main(int argc, char **argv)                                \
     ae_context_t __main_ctx = NULL;                            \
     ae_hints_t __main_hints;                                   \
     ae_op_id_t __main_opid;                                    \
-    ae_ret_t ret;                                              \
-    int hret; \
+    int ret;                                                   \
     ret = aesop_init("");                                      \
     aesop_error_assert(ret);                                   \
     if(COUNT_ARGS(__VA_ARGS__) > 0)                            \
     {                                                          \
         ret = ae_context_create(&__main_ctx, ##__VA_ARGS__);   \
-        triton_error_assert(ret);                              \
+        aesop_error_assert(ret);                              \
     }                                                          \
-    hret = ae_hints_init(&__main_hints);                       \
-    assert(hret == 0); \
+    ret = ae_hints_init(&__main_hints);                       \
+    assert(ret == 0); \
     ret = ae_post_blocking(                                    \
         __main_blocking_function__,                            \
         __main_cb,                                             \
@@ -216,7 +215,7 @@ int main(int argc, char **argv)                                \
         while(!__main_done)                                    \
         {                                                      \
             ret = ae_poll(__main_ctx, AESOP_MAIN_SET_POLL_TIMEOUT); \
-            if(ret == AE_TIMEDOUT) continue;                   \
+            if(ret == AE_ERR_TIMEDOUT) continue;               \
             aesop_error_assert(ret);                           \
         }                                                      \
     }                                                          \
@@ -237,7 +236,7 @@ int main(int argc, char **argv)                                \
  * Example:
  *
  * __blocking int aesop_main(int argc, char **argv) { ... }
- * ae_ret_t set_zeroconf_params(void) { ... }
+ * int set_zeroconf_params(void) { ... }
  * aesop_main_set_with_init(set_zeroconf_params, "aesop.client", aesop_main, "bdb", "file");
  */
 #define aesop_main_set_with_init(__init_before_main__,            \
@@ -257,9 +256,8 @@ int main(int argc, char **argv)                                   \
     ae_context_t __main_ctx = NULL;                               \
     ae_hints_t __main_hints;                                      \
     ae_op_id_t __main_opid;                                       \
-    ae_ret_t ret;                                                 \
-    int hret; \
-    ae_ret_t (*__main_init_func)(void) = __init_before_main__;    \
+    int ret;                                                      \
+    int (*__main_init_func)(void) = __init_before_main__;         \
     if(__init_before_main__)                                      \
     {                                                             \
         ret = __main_init_func();                                 \
@@ -270,10 +268,10 @@ int main(int argc, char **argv)                                   \
     if(COUNT_ARGS(__VA_ARGS__) > 0)                               \
     {                                                             \
         ret = ae_context_create(&__main_ctx, ##__VA_ARGS__);      \
-        triton_error_assert(ret);                                 \
+        aesop_error_assert(ret);                                 \
     }                                                             \
-    hret = ae_hints_init(&__main_hints);                          \
-    assert(hret == 0); \
+    ret = ae_hints_init(&__main_hints);                          \
+    assert(ret == 0); \
     ret = ae_post_blocking(                                       \
         __main_blocking_function__,                               \
         __main_cb,                                                \
@@ -289,7 +287,7 @@ int main(int argc, char **argv)                                   \
         while(!__main_done)                                       \
         {                                                         \
             ret = ae_poll(__main_ctx, AESOP_MAIN_SET_POLL_TIMEOUT); \
-            if(ret == AE_TIMEDOUT) continue;                      \
+            if(ret == AE_ERR_TIMEDOUT) continue;                  \
             aesop_error_assert(ret);                              \
         }                                                         \
     }                                                             \

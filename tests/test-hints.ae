@@ -4,15 +4,13 @@
 
 __blocking void do_blocking3(void)
 {
-    triton_ret_t tret;
     int ret;
     int sleep;
 
     ret = aesop_hints_get("aesop.test.sleepy_time", sizeof(sleep), &sleep);
     assert(ret == 0);
 
-    tret = triton_timer(sleep);
-    triton_error_assert(tret);
+    triton_timer(sleep);
 }
 
 __blocking void do_blocking2(void)
