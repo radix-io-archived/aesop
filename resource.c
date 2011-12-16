@@ -755,42 +755,6 @@ void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
     }
 }
 
-#define TRITON_ERROR_WRAP_AESOP_STACK_SIZE 32
-
-triton_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, triton_ret_t parent)
-{
-    triton_ret_t ret = TRITON_SUCCESS;
-    triton_string_t stack[TRITON_ERROR_WRAP_AESOP_STACK_SIZE];
-    int rcount, i;
-    int count = TRITON_ERROR_WRAP_AESOP_STACK_SIZE;
-    ae_get_stack(ctl, stack, &count);
-    rcount = count;
-    if(count > 0)
-    {
-        int bleft, offset;
-        bleft = count * 1024;
-        char *stackstr = malloc(bleft);
-        char *ptr = stackstr;
-
-        i = 0;
-        while(count-- > 0 && bleft > 0)
-        {
-            offset = snprintf(ptr, bleft, "\t\t[%d]:\t%s\n", i++, triton_string_get(&stack[count]));
-            ptr += offset;
-            bleft -= offset;
-        }
-        ret = triton_error_wrap(parent, TRITON_ADDR_NULL, "Error Stack:\n%s\n", stackstr);
-        free(stackstr);
-    }
-
-    for(i = 0; i < rcount; ++i)
-    {
-        triton_string_destroy(&stack[i]);
-    }
-
-    return ret;
-}
-
 struct ev_loop * ae_resource_get_eloop(ae_context_t context)
 {
     if(!context)

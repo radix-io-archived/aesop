@@ -152,14 +152,6 @@ static inline void aesop_get_stack(ae_string_t *strings, int *inout_count)
 static inline void aesop_print_stack(FILE *stream) { }
 #endif
 
-triton_ret_t ae_error_wrap_stack(struct ae_ctl *ctl, triton_ret_t);
-
-#if defined(AESOP_PARSER) && !defined(NDEBUG)
-#define aesop_error_wrap_stack(__ret) ae_error_wrap_stack(&__ae_ctl->gen, __ret)
-#else
-static inline triton_ret_t aesop_error_wrap_stack(triton_ret_t ret) { return ret; }
-#endif
-
 /* Set this to zero to cause the main_set macros to busy spin on ae_poll(),
  * although this probably is not a good idea.
  */
