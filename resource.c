@@ -200,16 +200,16 @@ static void find_async_watcher(ae_context_t context, int resource_id, ev_async**
 
     if(!async)
     {
-        triton_err(triton_log_default, "Error: context %p is not configured to handle resource with id %d", context, resource_id);
+        aesop_err("Error: context %p is not configured to handle resource with id %d", context, resource_id);
         for(i=0; i<ae_resource_count; i++)
         {
             if(ae_resource_entries[i].id == resource_id)
             {
-                triton_err(triton_log_default, "Consider adding the \"%s\" resource your aesop context.", ae_resource_entries[i].resource->resource_name);
+                aesop_err("Consider adding the \"%s\" resource your aesop context.", ae_resource_entries[i].resource->resource_name);
                 assert(0);
             }
         }
-        triton_err(triton_log_default, "Error: resource_id %d is unknown to aesop.  Are you using a resource that was not initialized?\n", resource_id);
+        aesop_err("Error: resource_id %d is unknown to aesop.  Are you using a resource that was not initialized?\n", resource_id);
         assert(0);
     }
 
@@ -585,7 +585,7 @@ int _ae_context_create(ae_context_t *context, const char *format __attribute__((
     c->eloop = ev_loop_new(EVFLAG_AUTO);
     if(!c->eloop)
     {
-        triton_err(triton_log_default, "Error: could not create libev event loop.\n");
+        aesop_err("Error: could not create libev event loop.\n");
         free(c->resource_ids);
         free(c->poll_data);
         return(AE_ERR_SYSTEM);

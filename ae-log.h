@@ -1,11 +1,10 @@
 #ifndef AE_LOG_H
 #define AE_LOG_H
 
-/* Use triton log interface for aesop logging.  To use aesop without
- * triton, replace the following #defines with your own.
+/* TODO: provide hooks for aesop user to override logging function used by
+ * aesop.  For now it is hard coded to stderr.
  */
-#include "src/common/triton-log.h"
 
-#define aesop_err(...) triton_err(triton_log_default, __VA_ARGS__)
+#define aesop_err(...) fprintf(stderr, __VA_ARGS__)
 
 #endif
