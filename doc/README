@@ -1,0 +1,15 @@
+The files in this directory contain documentation in asciidoc
+format.
+
+To convert all documents from .txt asciidoc files to pdf format, run "make
+docs" from the top level build directory.
+
+To convert a document from .txt to html format, then run "make doc/foo.html"
+where foo is the name of the document that you want to convert.
+
+Some asciidoc files included embedded figures in ditta or graphviz
+format.  The graphviz package must be installed on your build system in 
+order to generate the graphviz figures. 
+
+See http://www.methods.co.nz/asciidoc/ for documenation on the asciidoc
+syntax.  The "Cheatsheet" link is especially helpful.
