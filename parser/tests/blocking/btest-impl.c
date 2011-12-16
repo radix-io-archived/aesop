@@ -7,7 +7,6 @@
 #include "src/aesop/aesop.h"
 #include "src/common/triton-list.h"
 #include "src/aesop/parser/tests/blocking/btest.h"
-#include "src/common/triton-init.h"
 
 #define RESOURCE_NAME "btest"
 

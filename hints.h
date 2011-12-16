@@ -18,8 +18,6 @@ typedef struct ae_hints ae_hints_t;
 
 #define AE_HINT_TRANSFER_FLAG 0x1
 
-#include "src/common/triton-error.h"
-
 #ifdef AESOP_PARSER
 #define aesop_hints_get(__key, __length, __value) \
     ae_hints_get(__ae_ctl->gen.hints, __key, __length, __value)

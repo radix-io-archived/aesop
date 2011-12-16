@@ -2,7 +2,6 @@
 
 #include "src/aesop/aesop.h"
 #include "src/aesop/resource.h"
-#include "src/common/triton-init.h"
 #include "src/aesop/hints.h"
 
 static int initialized = 0;

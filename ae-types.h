@@ -7,8 +7,8 @@
  * want to use Triton.
  */
 
-#include "src/common/triton-types.h"
 #include "src/common/triton-string.h"
+#include "src/common/triton-uint128.h"
 
 #define ae_op_id_t uint128_t
 #define ae_op_id_clear triton_uint128_setzero

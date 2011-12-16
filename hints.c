@@ -64,8 +64,6 @@ static void ae_hint_info_destroy(void * hi)
     free(info);
 }
 
-#include "src/common/triton-init.h"
-
 int ae_hints_component_init(void)
 {
     if(hints_type_key_table != NULL)

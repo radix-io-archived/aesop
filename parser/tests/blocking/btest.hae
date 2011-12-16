@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
+
 #include "src/aesop/aesop.h"
 #include "src/aesop/op.h"
 

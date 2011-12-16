@@ -1,6 +1,5 @@
 #include "src/aesop/aesop.h"
 #include "src/aesop/opcache.h"
-#include "src/common/triton-error.h"
 #include "src/common/jenkins-hash.h"
 
 #include <errno.h>
