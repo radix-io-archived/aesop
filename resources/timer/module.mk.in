@@ -1,0 +1,5 @@
+DIR := src/aesop/resources/timer
+
+AESOP_HDR += $(DIR)/timer.hae
+
+LIBSRC += $(DIR)/timer.c

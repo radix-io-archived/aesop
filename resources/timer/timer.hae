@@ -1,0 +1,18 @@
+#ifndef __TRITON_TIMER_HAE__
+#define __TRITON_TIMER_HAE__
+
+#include <errno.h>
+
+#include "src/aesop/aesop.h"
+
+/**
+ * run a timer for the specified number of milliseconds
+ * \return 0 on success, -ECANCELED if canceled
+ */
+__blocking int triton_timer(int millisecs);
+
+int triton_timer_init(void);
+void triton_timer_finalize(void);
+
+#endif
+
