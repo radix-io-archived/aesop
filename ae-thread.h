@@ -6,7 +6,7 @@
  * you want to use Aesop without Triton, replace the
  * following macros with your own.
  */
-#include "src/common/triton-thread.h"
+#include "triton-thread.h"
 
 typedef triton_mutex_t ae_mutex_t;
 #define ae_mutex_init triton_mutex_init

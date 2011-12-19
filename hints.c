@@ -1,9 +1,9 @@
 
 #include "src/aesop/ae-error.h"
 #include "src/aesop/hints.h"
-#include "src/common/triton-hash.h"
-#include "src/common/jenkins-hash.h"
-#include "src/common/triton-list.h"
+#include "triton-hash.h"
+#include "jenkins-hash.h"
+#include "triton-list.h"
 
 /**
  * hint info structure for static hint definitions.

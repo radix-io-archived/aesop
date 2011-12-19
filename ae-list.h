@@ -6,7 +6,7 @@
  * this header with your own if you want to use Aesop without
  * Triton.
  */
-#include "src/common/triton-list.h"
+#include "triton-list.h"
 
 typedef triton_list_t ae_list_t;
 typedef triton_list_link_t ae_list_link_t;

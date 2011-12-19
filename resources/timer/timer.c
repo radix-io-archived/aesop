@@ -11,7 +11,7 @@
 #include "src/aesop/op.h"
 #include "src/aesop/opcache.h"
 #include "src/aesop/resources/timer/timer.h"
-#include "src/common/libev/ev.h"
+#include "libev/ev.h"
 
 /* NOTES:
  *

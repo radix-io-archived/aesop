@@ -6,6 +6,6 @@
  * this header with your own if you want to use Aesop without
  * Triton.
  */
-#include "src/common/triton-base.h"
+#include "triton-base.h"
 
 #endif
