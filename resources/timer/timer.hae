@@ -3,7 +3,7 @@
 
 #include <errno.h>
 
-#include "src/aesop/aesop.h"
+#include "aesop.h"
 
 /**
  * run a timer for the specified number of milliseconds

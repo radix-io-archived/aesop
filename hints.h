@@ -1,9 +1,9 @@
 #ifndef __AE_HINTS_H__
 #define __AE_HINTS_H__
 
-#include "src/aesop/ae-base.h"
-#include "src/aesop/ae-list.h"
-#include "src/aesop/ae-thread.h"
+#include "ae-base.h"
+#include "ae-list.h"
+#include "ae-thread.h"
 
 struct ae_hints
 {

@@ -1,10 +1,8 @@
-DIR := src/aesop
+AESOP_HDR += aesop-support.hae
 
-AESOP_HDR += $(DIR)/aesop-support.hae
-
-LIBSRC += $(DIR)/opcache.c \
-	  $(DIR)/aesop.c \
-	  $(DIR)/resource.c \
-	  $(DIR)/hints.c \
-          $(DIR)/ae-ctl.c
+LIBSRC += opcache.c \
+	  aesop.c \
+	  resource.c \
+	  hints.c \
+          ae-ctl.c
 

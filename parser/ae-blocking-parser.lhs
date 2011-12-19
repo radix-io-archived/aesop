@@ -1364,7 +1364,7 @@ a BlockingContext as we go along
 >	let r = if isJust report then fromJust report else headerfile
 >	ctu <- generateAST headerfile
 >       let tdIdents = getTypeDefIdents ctu
->	w <- newWalkerState debug r compiler "src/aesop/ae-blocking-parser.h" gccopts tdIdents
+>	w <- newWalkerState debug r compiler "ae-blocking-parser.h" gccopts tdIdents
 >	(pairs, w) <- runStateT (getBlockingHeaderDecls ctu) w
 >	writeFile outfile "\n\n/* This is an auto-generated file created by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
 >	outputHeader r outfile pairs
@@ -1390,7 +1390,7 @@ a BlockingContext as we go along
 >	let r = if isJust report then fromJust report else f
 > 	ctu <- generateAST f
 >       let typeDefIdents = getTypeDefIdents ctu
-> 	w <- newWalkerState debug r compiler "src/aesop/ae-blocking-parser.h" gccopts typeDefIdents
+> 	w <- newWalkerState debug r compiler "ae-blocking-parser.h" gccopts typeDefIdents
 >       let extDecls (CTranslUnit d _) = d
 >       let (preBlockingCTU, mainCTU) = splitExtDeclsAtAesop ctu
 >       let (CTranslUnit mainExtDecls _) = mainCTU

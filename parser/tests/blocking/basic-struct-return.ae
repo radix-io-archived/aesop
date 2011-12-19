@@ -1,7 +1,7 @@
 
 #include <assert.h>
-#include "src/aesop/aesop.h"
-#include "src/aesop/parser/tests/blocking/btest.hae"
+#include "aesop.h"
+#include "parser/tests/blocking/btest.hae"
 
 struct foo
 {

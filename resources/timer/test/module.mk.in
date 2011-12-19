@@ -1,4 +1,4 @@
-DIR := src/aesop/resources/timer/test
+DIR := resources/timer/test
 
 AETESTSRC += $(DIR)/timer1.ae \
 	     $(DIR)/pthread-compare.ae \

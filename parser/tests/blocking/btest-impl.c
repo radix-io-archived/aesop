@@ -4,9 +4,9 @@
 #include <unistd.h>
 #include <assert.h>
 #include <pthread.h>
-#include "src/aesop/aesop.h"
+#include "aesop.h"
 #include "triton-list.h"
-#include "src/aesop/parser/tests/blocking/btest.h"
+#include "parser/tests/blocking/btest.h"
 
 #define RESOURCE_NAME "btest"
 

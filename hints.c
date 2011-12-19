@@ -1,6 +1,6 @@
 
-#include "src/aesop/ae-error.h"
-#include "src/aesop/hints.h"
+#include "ae-error.h"
+#include "hints.h"
 #include "triton-hash.h"
 #include "jenkins-hash.h"
 #include "triton-list.h"

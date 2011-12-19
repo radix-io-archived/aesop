@@ -1,8 +1,8 @@
 
 #include <stdio.h>
-#include "src/aesop/aesop.h"
-#include "src/aesop/resources/timer/timer.hae"
-#include "src/aesop/aesop-support.hae"
+#include "aesop.h"
+#include "resources/timer/timer.hae"
+#include "aesop-support.hae"
 
 static __blocking int dotimer(void)
 {

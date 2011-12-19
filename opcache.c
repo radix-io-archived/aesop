@@ -1,5 +1,5 @@
-#include "src/aesop/aesop.h"
-#include "src/aesop/opcache.h"
+#include "aesop.h"
+#include "opcache.h"
 #include "jenkins-hash.h"
 
 #include <errno.h>

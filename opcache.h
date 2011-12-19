@@ -1,8 +1,8 @@
 #ifndef __OPCACHE_H__
 #define __OPCACHE_H__
 
-#include "src/aesop/op.h"
-#include "src/aesop/ae-error.h"
+#include "op.h"
+#include "ae-error.h"
 
 typedef struct ae_opcache *ae_opcache_t;
 

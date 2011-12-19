@@ -8,10 +8,10 @@
  * either a C statement, a C declaration, or a C expression.
  */
 
-#include "src/aesop/aesop.h"
-#include "src/aesop/ae-error.h"
-#include "src/aesop/ae-log.h"
-#include "src/aesop/ae-debug.h"
+#include "aesop.h"
+#include "ae-error.h"
+#include "ae-log.h"
+#include "ae-debug.h"
 
 #define AE_MK_START_OF_BLOCKING(__fname__) \
     ae_debug_blocking("[START]: %s (%p)\n", #__fname__, __ae_ctl);

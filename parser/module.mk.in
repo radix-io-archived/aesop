@@ -1,4 +1,4 @@
-DIR := src/aesop/parser
+DIR := parser
 
 HSSRC += $(DIR)/CGen.lhs \
 	 $(DIR)/CParse.lhs \

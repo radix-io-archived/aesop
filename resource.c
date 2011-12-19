@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "src/aesop/resource.h"
-#include "src/aesop/aesop.h"
-#include "src/aesop/ae-debug.h"
+#include "resource.h"
+#include "aesop.h"
+#include "ae-debug.h"
 
 struct ae_poll_data
 {

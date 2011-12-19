@@ -1,4 +1,4 @@
-DIR := src/aesop/parser/tests/blocking
+DIR := tests/blocking
 
 AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/tcpfor.ae \

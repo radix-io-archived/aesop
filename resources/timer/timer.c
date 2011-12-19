@@ -7,10 +7,10 @@
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
-#include "src/aesop/aesop.h"
-#include "src/aesop/op.h"
-#include "src/aesop/opcache.h"
-#include "src/aesop/resources/timer/timer.h"
+#include "aesop.h"
+#include "op.h"
+#include "opcache.h"
+#include "resources/timer/timer.h"
 #include "libev/ev.h"
 
 /* NOTES:

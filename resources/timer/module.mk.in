@@ -1,4 +1,4 @@
-DIR := src/aesop/resources/timer
+DIR := resources/timer
 
 AESOP_HDR += $(DIR)/timer.hae
 

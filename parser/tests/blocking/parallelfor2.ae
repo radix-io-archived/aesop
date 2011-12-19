@@ -4,8 +4,8 @@
  * See COPYING in top-level directory.
  */
 
-#include "src/aesop/aesop.h"
-#include "src/aesop/parser/tests/blocking/btest.hae"
+#include "aesop.h"
+#include "parser/tests/blocking/btest.hae"
 
 static __blocking void run_parfor(
     void)

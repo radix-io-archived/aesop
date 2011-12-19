@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "src/aesop/aesop.h"
-#include "src/aesop/op.h"
+#include "aesop.h"
+#include "op.h"
 
 /* These interfaces are used to test the gsl code for correctness.  They
  * emulate a basic resource with blocking functions, using different completion

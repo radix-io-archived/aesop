@@ -1,8 +1,8 @@
 #include <string.h>
 
-#include "src/aesop/aesop.h"
-#include "src/aesop/resource.h"
-#include "src/aesop/hints.h"
+#include "aesop.h"
+#include "resource.h"
+#include "hints.h"
 
 static int initialized = 0;
 

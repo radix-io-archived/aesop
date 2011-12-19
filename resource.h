@@ -1,12 +1,12 @@
 #ifndef __RESOURCE_H__
 #define __RESOURCE_H__
 
-#include "src/aesop/ae-types.h"
-#include "src/aesop/ae-thread.h"
-#include "src/aesop/ae-list.h"
-#include "src/aesop/ae-error.h"
-#include "src/aesop/ae-ctl.h"
-#include "src/aesop/hints.h"
+#include "ae-types.h"
+#include "ae-thread.h"
+#include "ae-list.h"
+#include "ae-error.h"
+#include "ae-ctl.h"
+#include "hints.h"
 
 #define AE_MAX_RESOURCES 255
 #define AE_MAX_CONTEXTS 1024

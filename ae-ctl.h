@@ -1,11 +1,11 @@
 #ifndef __AE_CTL_H__
 #define __AE_CTL_H__
 
-#include "src/aesop/ae-types.h"
-#include "src/aesop/ae-thread.h"
-#include "src/aesop/ae-list.h"
-#include "src/aesop/ae-error.h"
-#include "src/aesop/hints.h"
+#include "ae-types.h"
+#include "ae-thread.h"
+#include "ae-list.h"
+#include "ae-error.h"
+#include "hints.h"
 
 #include <opa_primitives.h>
 

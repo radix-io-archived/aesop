@@ -2,8 +2,8 @@
 #ifndef __OP_H__
 #define __OP_H__
 
-#include "src/aesop/aesop.h"
-#include "src/aesop/ae-list.h"
+#include "aesop.h"
+#include "ae-list.h"
 
 #include <stdint.h>
 
