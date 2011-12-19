@@ -369,9 +369,9 @@ runVALGRIND = $(patsubst %,valgrind%,$(TESTS))
 
 # for now we just use static if we're not on a mac
 ifneq (,$(USE_DYLIBS))
-LIBRARIES=lib/libtriton.dylib
+LIBRARIES=lib/libaesop.dylib
 else
-LIBRARIES=lib/libtriton.a
+LIBRARIES=lib/libaesop.a
 endif
 
 DOCHTML=$(patsubst %.txt,%.html,$(DOCSRC))
@@ -429,22 +429,22 @@ $(TESTLIBOBJS): %.o: %.c
 		$(LIBCFLAGS) $(CFLAGS) $(CWARNS) \
 		$(call MODCFLAGS_C,$*) $<
 
-lib/libtriton.a: $(AELIBOBJS) $(LIBOBJS) $(GENLIBOBJS)
+lib/libaesop.a: $(AELIBOBJS) $(LIBOBJS) $(GENLIBOBJS)
 	$(Q) "  RANLIB  	$@"
 	$(E)$(INSTALL) -d lib
 	$(E)ar rcs $@ $(AELIBOBJS) $(LIBOBJS) $(GENLIBOBJS)
 
 # shared objects
 
-lib/libtriton.so: $(AELIBOBJS) $(LIBOBJS) $(GENLIBOBJS)
+lib/libaesop.so: $(AELIBOBJS) $(LIBOBJS) $(GENLIBOBJS)
 	$(Q) "  LDSO  	        $@"
 	$(E)$(INSTALL) -d lib
-	$(E)$(LDSHARED) -Wl,-soname,libtriton.so -o $@ $(AELIBOBJS) $(LIBOBJS) $(GENLIBOBJS)
+	$(E)$(LDSHARED) -Wl,-soname,libaesop.so -o $@ $(AELIBOBJS) $(LIBOBJS) $(GENLIBOBJS)
 
-lib/libtriton.dylib: $(AELIBOBJS) $(LIBOBJS)
+lib/libaesop.dylib: $(AELIBOBJS) $(LIBOBJS)
 	$(Q) " DYLIB		$@"
 	$(E)$(INSTALL) -d lib
-	$(E)$(TCC) -o lib/libtriton.dylib -dynamiclib -current_version 0.0.1 -install_name lib/libtriton.0.0.1.dylib \
+	$(E)$(TCC) -o lib/libaesop.dylib -dynamiclib -current_version 0.0.1 -install_name lib/libaesop.0.0.1.dylib \
 		$(AELIBOBJS) $(LIBOBJS) $(DEPLIBS)
 
 # AE rule compiles *.ae files to object files
