@@ -386,28 +386,28 @@ $(TEST): %: %.o $(LIBRARIES) $(TEST_LIBRARIES)
 	$(Q) "  LD		$@"
 	$(E)$(call MCC_C,$*) \
 		-o $@ $< $(LDFLAGS) \
-		-L$(builddir)/lib -ltriton $(call MODLIBS_C,$*) \
+		-L$(builddir)/lib -laesop $(call MODLIBS_C,$*) \
 		$(LIBS)
 
 $(PROGRAM): %: %.o $(LIBRARIES) $(TEST_LIBRARIES)
 	$(Q) "  LD		$@"
 	$(E)$(call MCC_C,$*) \
 		-o $@ $< $(LDFLAGS) \
-		-L$(builddir)/lib -ltriton $(call MODLIBS_C,$*) \
+		-L$(builddir)/lib -laesop $(call MODLIBS_C,$*) \
 		$(LIBS)
 
 $(AETEST): %: %.o $(LIBRARIES) $(TEST_LIBRARIES)
 	$(Q) "  LD		$@"
 	$(E)$(call MCC_AE,$*) \
 		-o $@ $< $(LDFLAGS)  \
-		-L$(builddir)/lib -ltriton \
+		-L$(builddir)/lib -laesop \
 		$(call MODLDFLAGS_AE,$*) $(call MODLIBS_AE,$*) $(LIBS)
 
 $(AEPROGRAM): %: %.o $(LIBRARIES)
 	$(Q) "  LD		$@"
 	$(E)$(call MCC_AE,$*) \
 		-o $@ $< $(LDFLAGS) \
-		-L$(builddir)/lib -ltriton \
+		-L$(builddir)/lib -laesop \
 		$(call MODLDFLAGS_AE,$*) $(call MODLIBS_AE,$*) \
 		$(LIBS)
 
