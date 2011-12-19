@@ -1,0 +1,317 @@
+diff -Naur language-c-0.4/language-c.cabal language-c-0.4-new/language-c.cabal
+--- language-c-0.4/language-c.cabal	2011-01-06 11:46:35.000000000 -0600
++++ language-c-0.4-new/language-c.cabal	2011-01-06 15:31:57.629238232 -0600
+@@ -1,4 +1,4 @@
+-Name:           language-c
++Name:           language-aesop
+ Version:        0.4
+ Cabal-Version:  >= 1.2
+ Build-Type:     Simple
+@@ -6,7 +6,7 @@
+ License-File:   LICENSE
+ Copyright:      LICENSE
+ Author:         AUTHORS
+-Maintainer:     benedikt.huber@gmail.com
++Maintainer:     benedikt.huber@gmail.com [Modified by Sam Lang (slang@mcs.anl.gov) for aesop]
+ Stability:      experimental
+ Homepage:       http://www.sivity.net/projects/language.c/
+ Bug-reports:    http://www.sivity.net/projects/language.c/
+@@ -14,6 +14,7 @@
+ Description:    Language C is a haskell library for the analysis and generation of C code.
+                 It features a complete, well tested parser and pretty printer for all of C99 and a large
+                 set of GNU extensions.
++                This modified version includes extensions for AESOP.
+ Category:       Language
+ 
+ Extra-Source-Files: AUTHORS AUTHORS.c2hs ChangeLog README
+@@ -48,7 +49,6 @@
+         Build-Depends: bytestring >= 0.9.0
+     else
+         cpp-options: -DNO_BYTESTRING
+-    Build-Tools:    happy, alex
+ 
+     Hs-Source-Dirs: src
+     Exposed-Modules:
+diff -Naur language-c-0.4/src/Language/C/Data/Ident.hs language-c-0.4-new/src/Language/C/Data/Ident.hs
+--- language-c-0.4/src/Language/C/Data/Ident.hs	2011-01-06 11:46:35.000000000 -0600
++++ language-c-0.4-new/src/Language/C/Data/Ident.hs	2011-01-06 15:31:57.632007216 -0600
+@@ -17,7 +17,7 @@
+ module Language.C.Data.Ident (
+     Ident(..),
+     SUERef(..), isAnonymousRef,
+-    mkIdent, builtinIdent, internalIdent, internalIdentAt, isInternalIdent, identToString, dumpIdent)
++    mkIdent, builtinIdent, internalIdent, internalIdentAt, isInternalIdent, identToString, dumpIdent, hashIdent)
+ where
+   
+ -- TODO (comment from manuel):
+@@ -133,3 +133,6 @@
+ -- | dump the identifier string and its positions for debugging purposes
+ dumpIdent     :: Ident -> String
+ dumpIdent ide  = identToString ide ++ " at " ++ show (nodeInfo ide)
++
++hashIdent :: Ident -> Int
++hashIdent (Ident _ h _) = h
+diff -Naur language-c-0.4/src/Language/C/Data/Position.hs language-c-0.4-new/src/Language/C/Data/Position.hs
+--- language-c-0.4/src/Language/C/Data/Position.hs	2011-01-06 11:46:35.000000000 -0600
++++ language-c-0.4-new/src/Language/C/Data/Position.hs	2011-01-06 15:31:57.634482017 -0600
+@@ -50,7 +50,7 @@
+   show BuiltinPosition          = "<builtin>"
+   show InternalPosition         = "<internal>"
+ 
+-{-# DEPRECATED posColumn "column number information is inaccurate in presence of macros - do not rely on it." #-}
++{-- DEPRECATED posColumn "column number information is inaccurate in presence of macros - do not rely on it." --}
+ 
+ -- | @position absoluteOffset fileName lineNumber columnNumber@ initializes a @Position@ using the given arguments
+ position :: Int -> String -> Int -> Int -> Position
+diff -Naur language-c-0.4/src/Language/C/Parser/Lexer.x language-c-0.4-new/src/Language/C/Parser/Lexer.x
+--- language-c-0.4/src/Language/C/Parser/Lexer.x	2011-01-06 11:46:35.000000000 -0600
++++ language-c-0.4-new/src/Language/C/Parser/Lexer.x	2011-01-06 15:31:57.636922062 -0600
+@@ -351,6 +351,13 @@
+ idkwtok ('v' : 'o' : 'l' : 'a' : 't' : 'i' : 'l' : 'e' : []) = tok 8 CTokVolatile
+ idkwtok ('_' : '_' : 'v' : 'o' : 'l' : 'a' : 't' : 'i' : 'l' : 'e' : '_' : '_' : []) = tok 12 CTokVolatile
+ idkwtok ('w' : 'h' : 'i' : 'l' : 'e' : []) = tok 5 CTokWhile
++idkwtok ('_':'_':'b':'l':'o':'c':'k':'i':'n':'g':[]) = tok 10 CTokBlocking
++idkwtok ('_':'_':'r':'e':'m':'o':'t':'e':[]) = tok 10 CTokRemote
++idkwtok ('p':'w':'a':'i':'t':[]) = tok 5 CTokPWait
++idkwtok ('p':'b':'r':'a':'n':'c':'h':[]) = tok 7 CTokPBranch
++idkwtok ('p':'b':'r':'e':'a':'k':[]) = tok 6 CTokPBreak
++idkwtok ('p':'p':'r':'i':'v':'a':'t':'e':[]) = tok 6 CTokPPrivate
++idkwtok ('p':'s':'h':'a':'r':'e':'d':[]) = tok 6 CTokPShared
+ 
+ idkwtok cs = \pos -> do
+   name <- getNewName
+diff -Naur language-c-0.4/src/Language/C/Parser/Parser.y language-c-0.4-new/src/Language/C/Parser/Parser.y
+--- language-c-0.4/src/Language/C/Parser/Parser.y	2011-01-11 11:33:19.331089585 -0600
++++ language-c-0.4-new/src/Language/C/Parser/Parser.y	2011-01-11 11:44:45.593786776 -0600
+@@ -217,6 +217,8 @@
+ typedef		{ CTokTypedef	_ }
+ typeof		{ CTokTypeof	_ }
+ "__thread"	{ CTokThread	_ }
++"__blocking"    { CTokBlocking  _ }
++"__remote"      { CTokRemote  _ }
+ union		{ CTokUnion	_ }
+ unsigned	{ CTokUnsigned	_ }
+ void		{ CTokVoid	_ }
+@@ -236,6 +238,11 @@
+ "__builtin_va_arg"		{ CTokGnuC GnuCVaArg    _ }
+ "__builtin_offsetof"		{ CTokGnuC GnuCOffsetof _ }
+ "__builtin_types_compatible_p"	{ CTokGnuC GnuCTyCompat _ }
++pwait		{ CTokPWait _ }
++pbranch		{ CTokPBranch _ }
++pbreak		{ CTokPBreak _ }
++pshared		{ CTokPShared _ }
++pprivate	{ CTokPPrivate _ }
+ 
+ %%
+ 
+@@ -359,6 +366,7 @@
+   | iteration_statement		{ $1 }
+   | jump_statement			  { $1 }
+   | asm_statement			    {% withNodeInfo $1 (CAsm $1) }
++  | parallel_statement { $1 }
+ 
+ 
+ -- parse C labeled statement (C99 6.8.1)
+@@ -473,6 +481,16 @@
+   | for '(' enter_scope declaration expression_opt ';' expression_opt ')' statement leave_scope
+ 	{% withNodeInfo $1 $ CFor (Right $4) $5 $7 $9 }
+ 
++-- parse Parallel C statement
++--
++parallel_statement :: { CStat }
++parallel_statement
++  : pwait statement
++	{% withNodeInfo $1 $ CPWait $2 }
++  | pbranch statement
++	{% withNodeInfo $1 $ CPBranch $2 }
++  | pbreak
++        {% withNodeInfo $1 $ CPBreak }
+ 
+ -- parse C jump statement (C99 6.8.6)
+ --
+@@ -550,7 +568,7 @@
+ -- storage class and type qualifier
+ ---------------------------------------------------------------------------------------------------------------
+ attr                       :-   __attribute__((..))
+-storage_class              :-   typedef | extern | static | auto | register | __thread
++storage_class              :-   typedef | extern | static | auto | register | __thread | __blocking | pprivate | ppshared
+ type_qualifier             :-   const | volatile | restrict | inline
+ type_qualifier_list        :-   type_qualifier+
+ 
+@@ -755,7 +773,7 @@
+ 
+ 
+ -- A mixture of type qualifiers (const, volatile, restrict, inline) and storage class specifiers
+--- (extern, static, auto, register, __thread), in any order, but containing at least one storage class specifier.
++-- (extern, static, auto, register, __thread, __blocking, pshared, pprivate), in any order, but containing at least one storage class specifier.
+ --
+ -- declaration_qualifier_list :- <permute> type_qualifier* storage_class+
+ --
+@@ -1188,6 +1206,10 @@
+   | volatile		{% withNodeInfo $1 $ CVolatQual }
+   | restrict		{% withNodeInfo $1 $ CRestrQual }
+   | inline		{% withNodeInfo $1 $ CInlineQual }
++  | "__blocking"	{% withNodeInfo $1 $ CBlocking }
++  | "__remote"	        {% withNodeInfo $1 $ CRemote }
++  | pshared	        {% withNodeInfo $1 $ CPShared }
++  | pprivate	        {% withNodeInfo $1 $ CPPrivate }
+ 
+ -- a list containing at least one type_qualifier (const, volatile, restrict, inline)
+ --    and additionally CAttrs
+@@ -2161,13 +2183,17 @@
+ withAsmNameAttrs (mAsmName, newAttrs) declr = setAsmName mAsmName (appendObjAttrsR newAttrs declr)
+ 
+ appendDeclrAttrs :: [CAttr] -> CDeclrR -> CDeclrR
+-appendDeclrAttrs newAttrs (CDeclrR ident (Reversed []) asmname cattrs at)
+-    = CDeclrR ident empty asmname (cattrs ++ newAttrs) at
+ appendDeclrAttrs newAttrs (CDeclrR ident (Reversed (x:xs)) asmname cattrs at)
+-    = CDeclrR ident (Reversed (appendAttrs x : xs)) asmname cattrs at where
+-    appendAttrs (CPtrDeclr typeQuals at)           = CPtrDeclr (typeQuals ++ map CAttrQual newAttrs) at
+-    appendAttrs (CArrDeclr typeQuals arraySize at) = CArrDeclr (typeQuals ++ map CAttrQual newAttrs) arraySize at
+-    appendAttrs (CFunDeclr parameters cattrs at)   = CFunDeclr parameters (cattrs ++ newAttrs) at
++ | hasFunDeclr (x:xs) = CDeclrR ident (Reversed (appendAttrs x : xs)) asmname cattrs at
++ | otherwise = CDeclrR ident (Reversed (x:xs)) asmname (cattrs ++ newAttrs) at
++        where appendAttrs (CPtrDeclr typeQuals at)           = CPtrDeclr (typeQuals ++ map CAttrQual newAttrs) at
++              appendAttrs (CArrDeclr typeQuals arraySize at) = CArrDeclr (typeQuals ++ map CAttrQual newAttrs) arraySize at
++              appendAttrs (CFunDeclr parameters cattrs at)   = CFunDeclr parameters (cattrs ++ newAttrs) at
++              isFunDeclr (CFunDeclr _ _ _) = True
++              isFunDeclr _ = False
++              hasFunDeclr ds = any isFunDeclr ds
++appendDeclrAttrs newAttrs (CDeclrR ident derived asmname cattrs at)
++    = CDeclrR ident derived asmname (cattrs ++ newAttrs) at
+ 
+ ptrDeclr :: CDeclrR -> [CTypeQual] -> NodeInfo -> CDeclrR
+ ptrDeclr (CDeclrR ident derivedDeclrs asmname cattrs dat) tyquals at
+diff -Naur language-c-0.4/src/Language/C/Parser/Tokens.hs language-c-0.4-new/src/Language/C/Parser/Tokens.hs
+--- language-c-0.4/src/Language/C/Parser/Tokens.hs	2011-01-06 11:46:35.000000000 -0600
++++ language-c-0.4-new/src/Language/C/Parser/Tokens.hs	2011-01-06 15:31:57.643469288 -0600
+@@ -132,6 +132,13 @@
+             | CTokTyIdent  !PosLength !Ident     -- `typedef-name' identifier
+             | CTokGnuC !GnuCTok !PosLength       -- special GNU C tokens
+             | CTokEof                           -- end of file
++ 	    | CTokBlocking !PosLength            -- '__blocking'
++ 	    | CTokRemote   !PosLength            -- '__remote'
++ 	    | CTokPWait    !PosLength            -- `pwait'
++ 	    | CTokPBranch  !PosLength            -- `pbranch'
++ 	    | CTokPBreak   !PosLength		-- `pbreak'
++            | CTokPShared  !PosLength           -- `pshared'
++            | CTokPPrivate !PosLength           -- `pprivate'
+ 
+ -- special tokens used in GNU C extensions to ANSI C
+ --
+@@ -242,6 +249,13 @@
+ posLenOfTok (CTokIdent    pos _) = pos
+ posLenOfTok (CTokTyIdent  pos _) = pos
+ posLenOfTok (CTokGnuC   _ pos  ) = pos
++posLenOfTok (CTokBlocking pos  ) = pos
++posLenOfTok (CTokRemote   pos  ) = pos
++posLenOfTok (CTokPWait    pos  ) = pos
++posLenOfTok (CTokPBranch  pos  ) = pos
++posLenOfTok (CTokPBreak   pos  ) = pos
++posLenOfTok (CTokPPrivate pos  ) = pos
++posLenOfTok (CTokPShared  pos  ) = pos
+ posLenOfTok CTokEof = error "tokenPos: Eof"
+ 
+ instance Show CToken where
+@@ -327,11 +341,18 @@
+   showsPrec _ (CTokTypedef  _  ) = showString "typedef"
+   showsPrec _ (CTokTypeof   _  ) = showString "typeof"
+   showsPrec _ (CTokThread   _  ) = showString "__thread"
++  showsPrec _ (CTokBlocking _  ) = showString "__blocking"
++  showsPrec _ (CTokRemote   _  ) = showString "__remote"
+   showsPrec _ (CTokUnion    _  ) = showString "union"
+   showsPrec _ (CTokUnsigned _  ) = showString "unsigned"
+   showsPrec _ (CTokVoid     _  ) = showString "void"
+   showsPrec _ (CTokVolatile _  ) = showString "volatile"
+   showsPrec _ (CTokWhile    _  ) = showString "while"
++  showsPrec _ (CTokPWait    _  ) = showString "pwait"
++  showsPrec _ (CTokPBranch  _  ) = showString "pbranch"
++  showsPrec _ (CTokPBreak   _  ) = showString "pbreak"
++  showsPrec _ (CTokPPrivate _  ) = showString "pprivate"
++  showsPrec _ (CTokPShared  _  ) = showString "pshared"
+   showsPrec _ (CTokCLit     _ c) = shows c
+   showsPrec _ (CTokILit     _ i) = shows i
+   showsPrec _ (CTokFLit     _ f) = shows f
+diff -Naur language-c-0.4/src/Language/C/Pretty.hs language-c-0.4-new/src/Language/C/Pretty.hs
+--- language-c-0.4/src/Language/C/Pretty.hs	2011-01-06 11:46:35.000000000 -0600
++++ language-c-0.4-new/src/Language/C/Pretty.hs	2011-01-06 15:31:57.646019992 -0600
+@@ -154,7 +154,11 @@
+     pretty (CReturn Nothing _) = ii $ text "return" <> semi
+     pretty (CReturn (Just e) _) = ii $ text "return" <+> pretty e <> semi
+     pretty (CAsm asmStmt _) = pretty asmStmt
+-    prettyPrec p (CCompound localLabels bis _) =
++    pretty (CPWait stmt _) =
++    	ii $ text "pwait" $+$ prettyPrec (-1) stmt
++    pretty (CPBranch stmt _) = ii $ text "pbranch" $+$ prettyPrec (-1) stmt
++    pretty (CPBreak _) = ii $ text "pbreak" <> semi
++    prettyPrec p (CCompound localLabels bis ni) =
+         let inner = text "{" $+$ mlistP ppLblDecls localLabels $+$ vcat (map pretty bis) $$ text "}"
+         in  if p == -1 then inner else ii inner
+         where ppLblDecls =  vcat . map (\l -> text "__label__" <+> identP l <+> semi)
+@@ -253,6 +257,10 @@
+     pretty (CRestrQual _) = text "__restrict"
+     pretty (CInlineQual _) = text "inline"
+     pretty (CAttrQual a)  = attrlistP [a]
++    pretty (CBlocking _) = text "__blocking"
++    pretty (CRemote _) = text "__remote"
++    pretty (CPShared _) = text "pshared"
++    pretty (CPPrivate _) = text "pprivate"
+ 
+ instance Pretty CStructUnion where
+     pretty (CStruct tag ident Nothing cattrs _) = pretty tag <+> attrlistP cattrs <+> maybeP identP ident
+@@ -375,8 +383,8 @@
+            <+> maybeP pretty expr2 <+> text ":" <+> prettyPrec 4 expr3
+     prettyPrec p (CBinary op expr1 expr2 _) =
+         let prec = binPrec op
+-        in  parenPrec p prec $ prettyPrec prec expr1
+-                             <+> pretty op <+> prettyPrec (prec + 1) expr2
++        in  parenPrec p prec $ text "(" <+> prettyPrec prec expr1
++                             <+> pretty op <+> prettyPrec (prec + 1) expr2 <+> text ")"
+     prettyPrec p (CCast decl expr _) =
+         parenPrec p 25 $ text "(" <> pretty decl <> text ")"
+                        <+> prettyPrec 25 expr
+diff -Naur language-c-0.4/src/Language/C/Syntax/AST.hs language-c-0.4-new/src/Language/C/Syntax/AST.hs
+--- language-c-0.4/src/Language/C/Syntax/AST.hs	2011-01-06 11:46:35.000000000 -0600
++++ language-c-0.4-new/src/Language/C/Syntax/AST.hs	2011-01-06 15:31:57.648960933 -0600
+@@ -276,6 +276,9 @@
+   | CReturn (Maybe (CExpression a)) a
+   -- | assembly statement
+   | CAsm CAsmStmt a
++  | CPWait CStat a
++  | CPBranch CStat a
++  | CPBreak a
+     deriving (Data,Typeable {-! CNode !-})
+ 
+ -- | GNU Assembler statement
+@@ -399,6 +402,10 @@
+   | CRestrQual a
+   | CInlineQual a
+   | CAttrQual  (CAttribute a)
++  | CBlocking a    -- ^ blocking function
++  | CRemote   a     -- ^ remote function
++  | CPShared  a     -- ^ shared variable across pbranch blocks
++  | CPPrivate a     -- ^ private variable across pbranch blocks
+     deriving (Data,Typeable {-! CNode !-})
+ 
+ -- | C structure or union specifiers (K&R A8.3, C99 6.7.2.1)
+@@ -663,6 +670,9 @@
+           nodeInfo (CBreak d) = nodeInfo d
+           nodeInfo (CReturn _ t) = nodeInfo t
+           nodeInfo (CAsm _ t) = nodeInfo t
++	  nodeInfo (CPWait _ t) = nodeInfo t
++	  nodeInfo (CPBranch _ t) = nodeInfo t
++	  nodeInfo (CPBreak t) = nodeInfo t
+ instance CNode t1 => Pos (CStatement t1)
+     where posOf x = posOfNode (nodeInfo x)
+ 
+@@ -726,6 +736,10 @@
+           nodeInfo (CRestrQual d) = nodeInfo d
+           nodeInfo (CInlineQual d) = nodeInfo d
+           nodeInfo (CAttrQual d) = nodeInfo d
++	  nodeInfo (CBlocking d) = nodeInfo d
++	  nodeInfo (CRemote d) = nodeInfo d
++	  nodeInfo (CPPrivate d) = nodeInfo d
++	  nodeInfo (CPShared d) = nodeInfo d
+ instance CNode t1 => Pos (CTypeQualifier t1)
+     where posOf x = posOfNode (nodeInfo x)
+ 
