@@ -1,0 +1,9 @@
+GHC
+alex-2.3.1
+build
+happy-1.18.4
+mtl-1.1.0.2
+regex-base-0.93.1
+regex-pcre-builtin-0.94.2.1.7.7
+regex-posix-0.94.1
+syb-0.1.0.1

@@ -1,0 +1,51 @@
+#!/bin/sh
+
+#wget --connect-timeout=2 --read-timeout=2 --tries=1 http://hackage.haskell.org/packages/archive/language-c/0.3.1/language-c-0.3.1.tar.gz
+
+VERSION=0.4
+
+OLDPWD=$PWD
+
+cmdpath=$(echo $0|sed -e "s|^\(.*\)/[^/]*$|\1|")
+
+# put happy and alex in the path
+PATH=${OLDPWD}/GHC/bin:$PATH
+
+echo "Patching language-c-${VERSION} with Aesop extensions..."
+
+# use local copy for now
+tar xvfz ${cmdpath}/language-c-${VERSION}.tar.gz >/dev/null 2>&1 
+if [ $? != 0 ]; then
+        echo "Untar of language-c-${VERSION}.tar.gz failed!"
+        exit 1
+fi
+
+cd language-c-${VERSION}
+patch -p 1 < ${OLDPWD}/${cmdpath}/language-c.patch >/dev/null 2>&1 
+if [ $? != 0 ]; then
+        echo "Patch of language-c failed!"
+        exit 1
+fi
+
+echo "Building/Installing language-aesop-${VERSION} package..."
+runhaskell Setup configure --prefix=${OLDPWD}/GHC --user >/dev/null 2>&1 
+if [ $? != 0 ]; then
+        echo "Configure of language-aesop failed!"
+        exit 1
+fi
+
+runhaskell Setup build >/dev/null 2>&1 
+if [ $? != 0 ]; then
+        echo "Build of language-aesop failed!"
+        exit 1
+fi
+
+runhaskell Setup install --user >/dev/null 2>&1 
+if [ $? != 0 ]; then
+        echo "Install of language-aesop failed!"
+        exit 1
+fi
+
+
+cd -
+rm -r language-c-${VERSION}
