@@ -1,0 +1,3 @@
+[submodule "src/c-utils"]
+	path = src/c-utils
+	url = http://git.mcs.anl.gov/c-utils
