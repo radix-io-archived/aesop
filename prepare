@@ -1,7 +1,17 @@
-#!/bin/sh
+#!/bin/bash
+
+echo "preparing src/c-utils:"
+cd src/c-utils
+./prepare
+if [[ $? != 0 ]] ; then
+    exit $rc
+fi
+cd -
 
 if aclocal --force -I ./maint/config && autoheader -f && autoconf -f; then
 	echo "configure script successfully regenerated"
+        exit 0
 else
 	echo "some part of configure regeneration failed"
+        exit 1
 fi
