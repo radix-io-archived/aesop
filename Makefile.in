@@ -370,9 +370,13 @@ runVALGRIND = $(patsubst %,valgrind%,$(TESTS))
 # for now we just use static if we're not on a mac
 ifneq (,$(USE_DYLIBS))
 LIBRARIES=lib/libaesop.dylib
+TEST_LIBRARIES=lib/libaesop-test.dylib
 else
 LIBRARIES=lib/libaesop.a
+TEST_LIBRARIES=lib/libaesop-test.a
 endif
+
+
 
 DOCHTML=$(patsubst %.txt,%.html,$(DOCSRC))
 DOCPDF=$(patsubst %.txt,%.pdf,$(DOCSRC))
@@ -397,11 +401,12 @@ $(PROGRAM): %: %.o $(LIBRARIES) $(TEST_LIBRARIES)
 		$(LIBS)
 
 $(AETEST): %: %.o $(LIBRARIES) $(TEST_LIBRARIES)
-	$(Q) "  LD		$@"
+	$(Q) "  LD (AETEST)	$@"
 	$(E)$(call MCC_AE,$*) \
 		-o $@ $< $(LDFLAGS)  \
 		-L$(builddir)/lib -laesop \
-		$(call MODLDFLAGS_AE,$*) $(call MODLIBS_AE,$*) $(LIBS)
+		$(call MODLDFLAGS_AE,$*) $(call MODLIBS_AE,$*) \
+		$(TEST_LIBRARIES) $(LIBRARIES) $(LIBS)
 
 $(AEPROGRAM): %: %.o $(LIBRARIES)
 	$(Q) "  LD		$@"
@@ -446,6 +451,29 @@ lib/libaesop.dylib: $(AELIBOBJS) $(LIBOBJS)
 	$(E)$(INSTALL) -d lib
 	$(E)$(TCC) -o lib/libaesop.dylib -dynamiclib -current_version 0.0.1 -install_name lib/libaesop.0.0.1.dylib \
 		$(AELIBOBJS) $(LIBOBJS) $(DEPLIBS)
+
+
+# --- aesop-test ----
+
+lib/libaesop-test.a: $(AETESTLIBOBJS) $(TESTLIBOBJS) $(REMOTE_TESTLIB_OBJS)
+	$(Q) "  RANLIB          $@"
+	$(E)$(INSTALL) -d lib
+	$(E)ar rcs $@ $(AETESTLIBOBJS) $(TESTLIBOBJS) $(REMOTE_TESTLIB_OBJS)
+
+lib/libaesop-test.so: $(AETESTLIBOBJS) $(TESTLIBOBJS)
+	$(Q) "  LDSO            $@"
+	$(E)$(INSTALL) -d lib
+	$(E)$(LDSHARED) -Wl,-soname,libaesop-test.so -o $@ $(AETESTLIBOBJS) $(TESTLIBOBJS)
+
+lib/libaesop-test.dylib: $(AETESTLIBOBJS) $(TESTLIBOBJS)
+	$(Q) " DYLIB            $@"
+	$(E)$(INSTALL) -d lib
+	$(E)$(TCC) -o lib/libtriton-test.dylib -dynamiclib -current_version 0.0.1 \
+	   		-install_name lib/libaesop-test.0.0.1.dylib \
+                $(AETESTLIBOBJS) $(TESTLIBOBJS) $(DEPLIBS) -L$(builddir)/lib \
+		-laesop
+
+
 
 # AE rule compiles *.ae files to object files
 #
@@ -516,6 +544,10 @@ $(runTESTS): run%: %
 
 check: $(runTESTS) test_results
 
+.PHONY: tests
+tests: test
+
+.PHONY: test
 test: $(TESTS)
 
 test_results: $(TEST_RESULTS)
