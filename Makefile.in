@@ -39,7 +39,7 @@ bindir = $(DESTDIR)@bindir@
 libdir = $(DESTDIR)@libdir@
 
 # subdirs that contain configure/make
-# SUBDIRS = @subdirs@
+SUBDIRS = @subdirs@
 
 VPATH = $(srcdir)
 AEPRETTY =
@@ -67,7 +67,7 @@ ifneq (0,$(VALGRIND_CLEAN))
    CPPFLAGS += -DVALGRIND_CLEAN -DVALGRIND
 endif
 
-CFLAGS= -I$(srcdir)/../c-utils -I$(srcdir)/include -I. -I$(srcdir) @CFLAGS@ $(CPPFLAGS)
+CFLAGS= -I$(srcdir)/src/c-utils -I$(srcdir)/include -I. -I src/c-utils -I$(srcdir) @CFLAGS@ $(CPPFLAGS)
 
 # enable relocatable
 #CFLAGS += -fPIC
@@ -97,11 +97,7 @@ CWARNS += -Wno-unused-label
 LDSHARED = $(TCC) -shared
 
 LIBCFLAGS=@LIBCFLAGS@
-# tell libev to use our config.h instead of its own; we can't just put this
-# in the module.mk.in because we need it to take effect when the .d file is
-# generated as well.
-LIBCFLAGS += -DEV_CONFIG_H=\"triton-config.h\"
-LDFLAGS += @LDFLAGS@ -L$(srcdir)/../c-utils 
+LDFLAGS += @LDFLAGS@ -Lsrc/c-utils 
 LIBS += @LIBS@ -lcrypto -lc-utils -lm -lpthread
 
 DEPLIBS += @THREAD_LIB@
@@ -181,7 +177,7 @@ endif
 #    of a file that has the same name as the target.  Listing them
 #    here keeps make from accidentally doing too much work (see GNU
 #    make manual).
-.PHONY: all clean parserclean test_results
+.PHONY: all clean parserclean test_results 
 
 ################################################################
 # Find project subdirectories
@@ -196,17 +192,17 @@ MODULES := $(shell find . -name "*.mk" | sed -e 's/^.\///;s/module.mk//')
 # Default target forward pointer, to avoid other targets in make stubs
 all::
 
-#all:: subdirs
+all:: subdirs
 
 
 ################################################################
 # Subdir configure
 ################################################################
-#.PHONY: subdirs $(SUBDIRS)
-#subdirs: $(SUBDIRS)
+.PHONY: subdirs $(SUBDIRS)
+subdirs: $(SUBDIRS)
 
-#$(SUBDIRS) :
-#	make -C $@ $(MAKECMDGOALS)
+$(SUBDIRS) :
+	make -C $@ $(MAKECMDGOALS)
 
 ################################################################
 # Auto regenerate makefile / rerun configure                   #
@@ -649,4 +645,3 @@ docs: $(DOCPDF)
 doc: $(DOCPDF)
 docshtml: $(DOCHTML)
 dochtml: $(DOCHTML)
-
