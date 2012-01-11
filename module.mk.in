@@ -4,5 +4,7 @@ LIBSRC += opcache.c \
 	  aesop.c \
 	  resource.c \
 	  hints.c \
-          ae-ctl.c
+          ae-ctl.c \
+	  ae-init.c
+
 

@@ -3,6 +3,7 @@
 #include "aesop.h"
 #include "resource.h"
 #include "hints.h"
+#include "ae-init.h"
 
 static int initialized = 0;
 
@@ -11,6 +12,9 @@ int aesop_init(const char* resource_list)
     int ret;
     char* rsc;
     char* tmp_resource_list;
+
+    /* call __constructor__ functions */
+    ae_init ();
 
     tmp_resource_list = strdup(resource_list);
     if(!tmp_resource_list)
