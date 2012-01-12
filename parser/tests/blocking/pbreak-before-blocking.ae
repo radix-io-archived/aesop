@@ -87,7 +87,7 @@ __blocking int aesop_main(int argc, char **argv)
     run_par1();
     return 0;
 }
-btest_main_set(aesop_main, "btest", "timer");
+aesop_main_set(aesop_main, "btest", "timer");
 
 /*
  * Local variables:

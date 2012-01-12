@@ -75,4 +75,4 @@ __blocking int aesop_main(int argc, char **argv)
     run_twofors();
     return 0;
 }
-btest_main_set(aesop_main, "btest");
+aesop_main_set(aesop_main, "btest");
