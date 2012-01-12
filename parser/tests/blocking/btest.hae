@@ -92,6 +92,7 @@ static void __main_cb(void *user_ptr, int t) \
       ae_poll_break(ctx); \
 } \
 void btest_init_register(void); \
+void triton_timer_init_register(void); \
 int main(int argc, char **argv)  \
 { \
     ae_context_t __main_ctx; \
@@ -99,7 +100,8 @@ int main(int argc, char **argv)  \
     ae_op_id_t __main_opid; \
     int ret; \
     btest_init_register(); \
-    ret = aesop_init("btest"); \
+    triton_timer_init_register(); \
+    ret = aesop_init(""); \
     aesop_error_assert(ret); \
     ret = ae_context_create(&__main_ctx, __VA_ARGS__); \
     aesop_error_assert(ret); \

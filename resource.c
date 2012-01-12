@@ -96,6 +96,17 @@ int ae_resource_init_register(const char* resource_name,
     int (*init)(void),
     void (*finalize)(void))
 {
+    int i;
+
+    /* see if we have already registered this resource */
+    for(i=0; i<ae_resource_init_table_count; i++)
+    {
+        if(strcmp(ae_resource_init_table[i].name, resource_name) == 0)
+        {
+            return(AE_SUCCESS);
+        }
+    }
+
     if(ae_resource_init_table_count > MAX_RESOURCES)
     {
         return(AE_ERR_OVERFLOW);
