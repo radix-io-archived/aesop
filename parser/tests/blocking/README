@@ -1,0 +1,12 @@
+These are test programs for the aesop parser.
+
+As of January 2011 the following are known to be broken:
+
+cancel-pbranch1
+cancel-pbranch2
+cancel-pbranch3
+cancel-pbranch4
+cancel-pbranch-loop
+lonely-pbranch3
+parallelfor2
+nbfun
