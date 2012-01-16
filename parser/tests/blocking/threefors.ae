@@ -4,6 +4,7 @@
 #include <assert.h>
 
 int val = 0;
+int printflag = 1;
 
 static __blocking void run_threefors(void)
 {
@@ -20,7 +21,11 @@ static __blocking void run_threefors(void)
 			{
 				if(val == 0)
 				{
-					printf("no calls\n");
+                                        if(printflag == 1)
+                                        {
+					    printf("no calls\n");
+                                            printflag = 0;
+                                        }
 				}
 				else if(val == 1)
 				{
