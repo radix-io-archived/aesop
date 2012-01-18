@@ -262,9 +262,6 @@ AC_SUBST(BLOCKSOPT)
 AC_SUBST(LIBCFLAGS)
 AC_SUBST(THREAD_LIB)
 
-AC_CHECK_LIB([crypto], [SHA1], [],
-             [AC_MSG_ERROR([-lcrypto required. Install OpenSSL.])])
-
 AC_CONFIG_FILES([bin/aecc-utils], [chmod +x bin/aecc-utils])
 AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
 
