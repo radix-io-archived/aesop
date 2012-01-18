@@ -98,7 +98,7 @@ LDSHARED = $(TCC) -shared
 
 LIBCFLAGS=@LIBCFLAGS@
 LDFLAGS += @LDFLAGS@ -Lsrc/c-utils 
-LIBS += @LIBS@ -lcrypto -lc-utils -lm -lpthread
+LIBS += @LIBS@ -lc-utils -lm -lpthread
 
 DEPLIBS += @THREAD_LIB@
 
