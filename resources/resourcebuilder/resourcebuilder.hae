@@ -1,0 +1,47 @@
+#ifndef __RESOURCEBUILDER_RESOURCEBUILDER_HAE
+#define __RESOURCEBUILDER_RESOURCEBUILDER_HAE
+
+#include "opa_primitives.h"
+#include "aesop.h"
+#include "resource.h"
+#include "op.h"
+
+struct rb_slot_t
+{
+   ae_op_id_t    op_id;
+   struct ae_op  op;
+
+   OPA_int_t     completed;
+};
+
+typedef struct rb_slot_t rb_slot_t;
+
+/**
+ * Create a slot to hold the callback context.
+ * Sets the private slot pointer.
+ */
+void rb_slot_initialize (rb_slot_t * slot);
+
+/**
+ * Complete the callback stored in a slot.
+ * Does not release the private data.
+ * Returns AE_SUCCESS if the slot completed, error code if the slot was or
+ * already completed (due to cancel or reguler complete).
+ */
+int rb_slot_complete (rb_slot_t * slot);
+
+/**
+ * Free slot. Slot must be empty. Invalidates private data.
+ */
+void rb_slot_destroy (rb_slot_t * slot);
+
+/**
+ * Capture the caller's context into a slot.
+ *
+ * This call will block until the somebody calls rb_slot_complete on the slot.
+ * Returns AE_SUCCESS if the slot completed normally, or an unspecified
+ * AE_xxxx error code if it was cancelled.
+ */
+__blocking int rb_slot_capture (rb_slot_t * slot);
+
+#endif

@@ -1,0 +1,10 @@
+
+Possible things that will be needed:
+- Access to the config array. Can easily be exposed through rb API
+- Option to provide a poll function.
+- Stateful cancel support
+    - Since aesop decides to cancel, there might be a race between
+    the resource (completing the call) and the capture_slot call.  Meaning the
+    user of RB has to check after returning from the capture_slot call if the
+    call really was cancelled or not.
+
