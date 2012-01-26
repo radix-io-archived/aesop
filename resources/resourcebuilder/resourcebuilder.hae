@@ -11,7 +11,8 @@ struct rb_slot_t
    ae_op_id_t    op_id;
    struct ae_op  op;
 
-   OPA_int_t     completed;
+   OPA_int_t     status;
+   int           returncode;  /* in case of immediate completion */
 };
 
 typedef struct rb_slot_t rb_slot_t;

@@ -8,47 +8,90 @@
 
 static int rb_resource_id;
 
+enum {
+       STATUS_UNINITIALIZED = 0,
+       STATUS_EMPTY,
+       STATUS_ARMED,
+       STATUS_COMPLETED_SUCCESS,
+       STATUS_COMPLETED_CANCEL
+     };
+
 
 void rb_slot_initialize (rb_slot_t * slot)
 {
-   OPA_store_int (&slot->completed, 0);
+   OPA_store_int (&slot->status, STATUS_EMPTY);
 }
 
 /**
  * Complete the slot with the given error code.
  * Return AE_SUCCESS if successful, AE_ERR_INVALID if the slot was already
  * completed.
+ * Return AE_ERR_NOT_FOUND if the slot was not properly initialized or was
+ * already destroyed.
  */
-static int rb_callback (rb_slot_t * slot, int returncode)
+static int rb_callback (rb_slot_t * slot, int success)
 {
-   if (OPA_fetch_and_incr_int (&slot->completed))
+   const int newstatus = (success ? STATUS_COMPLETED_SUCCESS
+         : STATUS_COMPLETED_CANCEL);
+
+   while (1)
    {
-      /* somebody else already completed this slot (probably cancelled) */
-      return AE_ERR_INVALID;
+      int status =  OPA_cas_int (&slot->status, STATUS_ARMED, newstatus);
+
+      if (status == STATUS_UNINITIALIZED)
+      {
+         /* invalid slot */
+         return AE_ERR_NOT_FOUND;
+      }
+
+      if (status == STATUS_COMPLETED_SUCCESS | status == STATUS_COMPLETED_CANCEL)
+      {
+         /* was already completed */
+         return AE_ERR_INVALID;
+      }
+
+      if (status == STATUS_ARMED)   /* we changed status ! */
+      {
+         /* was armed, we just completed it */
+
+         /* some internal checks */
+         int resource_id;
+         struct ae_op * op = &slot->op;
+
+         assert (slot == (rb_slot_t *) intptr2op (ae_id_lookup (slot->op_id,
+                     &resource_id)));
+
+         assert (resource_id == rb_resource_id);
+
+         // Complete op
+         void (*callback)(void *, int) = slot->op.callback;
+         void * user_ptr = slot->op.user_ptr;
+         callback (user_ptr, (success ? AE_SUCCESS : AE_ERR_INVALID));
+         return AE_SUCCESS;
+      }
+
+      if (status == STATUS_EMPTY) /* Did not change status; try again */
+      {
+         status = OPA_cas_int (&slot->status, STATUS_EMPTY, newstatus);
+         if (status == STATUS_EMPTY)
+         {
+            /* just went from EMPTY -> COMPLETED: immediate completion */
+            return AE_SUCCESS;
+         }
+
+         /* somebody changed the status in between our previous check and this
+          * one. Try again */
+      }
    }
-
-   // Complete op
-   void (*callback)(void *, int) = slot->op.callback;
-   void * user_ptr = slot->op.user_ptr;
-   callback (user_ptr, returncode);
-
-   return AE_SUCCESS;
+   return AE_SUCCESS; /* silence warning */
 }
 
 int rb_slot_complete (rb_slot_t * slot)
 {
-   int resource_id;
-   struct ae_op * op = &slot->op;
-
-   assert (slot == (rb_slot_t *) intptr2op (ae_id_lookup (slot->op_id,
-               &resource_id)));
-
-   assert (resource_id == rb_resource_id);
-
    /* We return AE_SUCCESS if we completed the slot,
     * AE_ERR_INVALID if the slot was already completed or cancelled.
     */
-   return (rb_callback (slot, AE_SUCCESS) == AE_SUCCESS ?
+   return (rb_callback (slot, 1) == AE_SUCCESS ?
          AE_SUCCESS       /* we completed the slot */
        : AE_ERR_INVALID   /* slot was already completed */);
 }
@@ -56,16 +99,53 @@ int rb_slot_complete (rb_slot_t * slot)
 void rb_slot_destroy (rb_slot_t * slot)
 {
    /* make sure the slot has been properly completed (or cancelled) */
-   assert (OPA_load_int (&slot->completed));
+   const int status = OPA_load_int (&slot->status);
+   assert (status == STATUS_COMPLETED_CANCEL |
+         status == STATUS_COMPLETED_SUCCESS);
+   OPA_store_int (&slot->status, STATUS_UNINITIALIZED);
 }
 
 ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
 {
-   /* slot must be unused */
-   assert (!OPA_load_int (&slot->completed));
+   /* Only arm the slot if it hasn't completed yet */
+   int status;
 
+   /* need to do this first before changing status */
    ae_op_fill (&slot->op);
    slot->op_id = ae_id_gen (rb_resource_id, (uintptr_t) slot);
+
+   status = OPA_cas_int (&slot->status, STATUS_EMPTY, STATUS_ARMED);
+
+   if (status == STATUS_UNINITIALIZED)
+   {
+      /* invalid slot */
+      *__ae_retval = AE_ERR_NOT_FOUND;
+      return AE_IMMEDIATE_COMPLETION;
+   }
+
+   if (status == STATUS_COMPLETED_SUCCESS)
+   {
+      *__ae_retval = AE_SUCCESS;
+      return AE_IMMEDIATE_COMPLETION; /* immediate completion */
+   }
+
+   if (status == STATUS_COMPLETED_CANCEL)
+   {
+      /* immediate completion */
+      /* was already cancelled. (Really not possible right now) */
+      assert (0);
+      *__ae_retval = AE_ERR_INVALID;
+      return AE_IMMEDIATE_COMPLETION;
+   }
+
+   if (status == STATUS_ARMED)
+   {
+      assert (0 && "Slot was already armed (and we overwrote the context)!");
+      return AE_IMMEDIATE_COMPLETION;
+   }
+   assert (status == STATUS_EMPTY);
+   /* we just transitioned from empty to armed */
+
    return AE_SUCCESS;
 }
 
@@ -84,7 +164,7 @@ static int rb_cancel (ae_context_t rb_ctx, ae_op_id_t op_id)
 
    /* Make the capture function return AE_ERR_INVALID since the slot
     * was cancelled. */
-   return (rb_callback (slot, AE_ERR_INVALID) == AE_SUCCESS ?
+   return (rb_callback (slot, 0) == AE_SUCCESS ?
          AE_SUCCESS       /* we managed to cancel the slot */
        : AE_ERR_INVALID);   /* slot already completed */
 }

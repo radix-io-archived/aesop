@@ -62,9 +62,25 @@ static __blocking int dotest (void)
    return 0;
 }
 
+__blocking int test_immediate_completion ()
+{
+   rb_slot_t slot;
+   int ret;
+
+   rb_slot_initialize (&slot);
+
+   always_assert (rb_slot_complete (&slot) == AE_SUCCESS, "immediate");
+   ret = rb_slot_capture (&slot);
+   always_assert (ret == AE_SUCCESS, "capture");
+
+   rb_slot_destroy (&slot);
+   return 0;
+}
+
 __blocking int test_main (int argc, char ** args)
 {
    dotest ();
+   test_immediate_completion ();
    return errors;
 }
 
