@@ -134,37 +134,51 @@ AC_ARG_WITH(perftools,
                    [Location of google perftools installation]),
     PERFTOOL_DIR="$withval",PERFTOOL_DIR="")
 
-if test -n "$PERFTOOL_DIR" ;
+if test "A$PERFTOOL_DIR" == "Ano"
+then
+   use_perftools=0
+   PERFTOOL_DIR=""
+elif test "A$PERFTOOL_DIR" == "Ayes"
+then
+   use_perftools=1
+   PERFTOOL_DIR=""
+elif test  "A$PERFTOOL_DIR" != "A"
+then
+   use_perftools=1
+else
+dnl 2 means autodetect
+   use_perftools=2
+fi
+
+if test -n "$PERFTOOL_DIR"
 then
    CPPFLAGS="$CPPFLAGS -I${PERFTOOL_DIR}/include"
    LDFLAGS="$LDFLAGS -L${PERFTOOL_DIR}/lib"
 fi
 
-if test -n "$PERFTOOL_DIR" ;
+if test "A$use_perftools" != "A0"
 then
-use_perftools=1
+   perftools_found=1
+   AC_CHECK_HEADERS([google/tcmalloc.h],[],
+                    [perftools_found=])
+
+   AC_CHECK_LIB([tcmalloc],[tc_new],[],[perftools_found=])
+   AC_CHECK_LIB([profiler],[ProfilerStart], [], [perftools_found=])
 else
-use_perftools=
-fi
-
-AC_CHECK_HEADERS([google/tcmalloc.h],[],
-                 [use_perftools=])
-
-if test -n "$use_perftools"; then
-AC_CHECK_LIB([tcmalloc],[tc_new],[],[use_perftools=])
-AC_CHECK_LIB([profiler],[ProfilerStart], [], [use_perftools=])
+   perftools_found=0
 fi
 
 AC_MSG_CHECKING([if Google Perftools are used])
-if test "x${use_perftools}" == "x1" ; then
-      AC_DEFINE([HAVE_PERFTOOLS], [1], [If google perftools are available])
-      AC_MSG_RESULT([yes])
+if test "x${perftools_found}" == "x1"
+then
+   AC_DEFINE([HAVE_PERFTOOLS], [1], [If google perftools are available])
+   AC_MSG_RESULT([yes])
 else
-      AC_MSG_RESULT([no])
+   AC_MSG_RESULT([no])
+   if test "A$use_perftools" == "A1"; then
+         AC_MSG_ERROR([Perftools requested but could not be found... Aborting])
+   fi
 fi
-
-dnl todo: add check making sure that if the user manually enabled perftools
-dnl and we cannot find them we complain
 
 dnl check for unix variants
 AX_UNIX("")
