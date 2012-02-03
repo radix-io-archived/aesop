@@ -1,0 +1,100 @@
+#include "aesop.h"
+#include "resources/timer/timer.hae"
+
+#include <sys/time.h>
+
+
+#define BENCHMARK_TIME 1
+#define CALL_COUNT     40000000UL
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static int c;
+
+
+static double get_time ()
+{
+   struct timeval t;
+
+   gettimeofday (&t, 0);
+   return (double) t.tv_sec + ((double) t.tv_usec / (1000000UL));
+}
+
+void regular_func (int a, void * b);
+
+void regular_func (int a, void * b)
+{
+   c = a + (intptr_t) b;
+  // OPA_cas_int (&a, 1, 2);
+
+   // pthread_mutex_lock (&mutex);
+  //free (malloc (100));
+  // pthread_mutex_unlock (&mutex);
+}
+
+
+__blocking void blocking_func (int a, void * b);
+
+__blocking void blocking_func (int a, void * b)
+{
+   c = a + (intptr_t) b;
+}
+
+__blocking double do_blocking_test ()
+{
+   unsigned long long count = 0;
+   unsigned long long i;
+   double start, stop;
+
+   start = get_time ();
+
+   printf ("Starting blocking test...\n");
+   for (i=0; i<CALL_COUNT; ++i)
+   {
+      blocking_func (count, 0);
+      ++count;
+   }
+
+   stop = get_time ();
+
+   return (stop-start);
+}
+
+
+double do_regular_test (void);
+
+double do_regular_test ()
+{
+   unsigned long long count = 0;
+   unsigned long long i;
+   double start, stop;
+   printf ("Starting regular test...\n");
+
+   start = get_time ();
+
+   for (i=0; i<CALL_COUNT; ++i)
+   {
+      regular_func (count, 0);
+      ++count;
+   }
+
+   stop = get_time ();
+   return (stop-start);
+}
+
+
+__blocking int aesop_main(int argc, char **argv)
+{
+   double i;
+   fprintf (stdout, "Making %lu calls.\n", CALL_COUNT);
+   i = do_regular_test ();
+   fprintf (stdout, "regular calls: %g (%g / call)\n", i,
+         i / CALL_COUNT);
+   i = do_blocking_test ();
+   fprintf (stdout, "blocking calls: %g (%g / call)\n", i,
+         i / CALL_COUNT);
+   return 0;
+}
+
+
+aesop_main_set_with_init(NULL, "timer", aesop_main, "timer");
