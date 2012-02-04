@@ -1,0 +1,17 @@
+#ifndef __AETHREAD_HAE__
+#define __AETHREAD_HAE__
+
+#include "aesop.h"
+
+struct aethread_group;
+
+struct aethread_group* aethread_create_group_pool(int size);
+void aethread_destroy_group(struct aethread_group* group);
+
+__blocking void aethread_hint(struct aethread_group* group);
+
+int aethread_init(void);
+void aethread_finalize(void);
+
+#endif
+

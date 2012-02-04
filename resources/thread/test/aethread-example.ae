@@ -1,0 +1,143 @@
+
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/time.h>
+
+#include "aesop.h"
+#include "resources/thread/aethread.hae"
+
+static double wtime(void)
+{
+    struct timeval t;
+    gettimeofday(&t, (void *) 0);
+    return ( (double) t.tv_sec + ( (double) t.tv_usec / 1000000 ) );
+}
+
+static __blocking int dotest(void)
+{
+    struct aethread_group* agroup;
+    double start, end;
+
+    agroup = aethread_create_group_pool(8);
+    assert(agroup);
+
+    start = wtime();
+    pwait
+    {
+        pbranch
+        {
+            sleep(3);
+        }
+
+        pbranch
+        {
+            sleep(3);
+        }
+
+        pbranch
+        {
+            sleep(3);
+        }
+    }
+    end = wtime();
+
+    printf("First example (should be about 9 seconds): %f seconds.\n", (end-start));
+
+    start = wtime();
+    pwait
+    {
+        pbranch
+        {
+            aethread_hint(agroup);
+            sleep(3);
+        }
+
+        pbranch
+        {
+            aethread_hint(agroup);
+            sleep(3);
+        }
+
+        pbranch
+        {
+            aethread_hint(agroup);
+            sleep(3);
+        }
+    }
+    end = wtime();
+
+    printf("Second example (should be about 3 seconds): %f seconds.\n", (end-start));
+
+    start = wtime();
+    pwait
+    {
+        pprivate int i;        
+
+        /* deliberate go one past the thread pool size */
+        for(i=0; i<9; i++)
+        {
+            pbranch
+            {
+                aethread_hint(agroup);
+                sleep(3);
+            }
+        }
+    }
+    end = wtime();
+    
+    printf("Third example (should be about 6 seconds): %f seconds.\n", (end-start));
+
+    aethread_destroy_group(agroup);
+    return 0;
+}
+
+int done = 0;
+int dotest_ret;
+
+static void done_callback(void *up, int ret)
+{
+    ae_context_t ctx = (ae_context_t)up;
+    done = 1;
+    dotest_ret = ret;
+    ae_poll_break(ctx);
+}
+
+/* TODO: why isn't this using the main_set macros? */
+int main(int argc, char *argv[])
+{
+    int ret;
+    ae_hints_t hints;
+    ae_context_t ctx;
+    int pc = 0;
+    ae_op_id_t op_id;
+
+    aethread_init();
+    /* TODO: why create a context?  use default... */
+    ae_context_create(&ctx, "thread");
+
+    ae_hints_init(&hints);
+    ret = ae_post_blocking(dotest, done_callback, ctx, &hints, ctx, &op_id, &dotest_ret);
+    if(ret == AE_SUCCESS)
+    {
+        while(done == 0)
+        {
+            ae_poll(ctx, 10);
+        }
+    }
+    aesop_error_assert(ret);
+
+    ae_hints_destroy(&hints);
+    ae_context_destroy(ctx);
+    aethread_finalize();
+
+    return dotest_ret;
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

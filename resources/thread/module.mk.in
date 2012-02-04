@@ -1,0 +1,5 @@
+DIR := resources/thread
+
+AESOP_HDR += $(DIR)/aethread.hae
+
+LIBSRC += $(DIR)/aethread.c

@@ -1,0 +1,4 @@
+DIR := resources/thread/test
+
+AETESTSRC += $(DIR)/aethread-example.ae 
+
