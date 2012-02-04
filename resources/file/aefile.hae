@@ -1,0 +1,12 @@
+#ifndef __AEFILE_HAE__
+#define __AEFILE_HAE__
+
+#include "aesop.h"
+
+int aefile_init(void);
+void aefile_finalize(void);
+
+__blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t offset);
+
+#endif
+

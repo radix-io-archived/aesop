@@ -1,0 +1,51 @@
+#define _GNU_SOURCE
+#define _XOPEN_SOURCE 600
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <limits.h>
+#include <stdlib.h>
+
+#include "resources/file/aefile.hae"
+#include "resources/thread/aethread.hae"
+
+struct aethread_group* file_threads = NULL;
+
+int aefile_init(void)
+{
+    assert(file_threads == NULL);
+    /* TODO: make this configurable */
+    file_threads = aethread_create_group_pool(32);
+    if(!file_threads)
+        return(AE_ERR_SYSTEM);
+
+    return(0);
+}
+
+void aefile_finalize(void)
+{
+    assert(file_threads);
+    aethread_destroy_group(file_threads);
+
+    return;
+}
+
+__blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t offset)
+{
+    ssize_t ret;
+
+    aethread_hint(file_threads);
+
+    ret = pwrite(fd, buf, count, offset);
+    if(ret < 0)
+    {
+        ret = -errno;
+    }
+
+    return(ret);
+}
+

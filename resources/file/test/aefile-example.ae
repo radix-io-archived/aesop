@@ -1,0 +1,124 @@
+
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
+
+#include "aesop.h"
+#include "resources/file/aefile.hae"
+#include "resources/thread/aethread.hae"
+
+static double wtime(void)
+{
+    struct timeval t;
+    gettimeofday(&t, (void *) 0);
+    return ( (double) t.tv_sec + ( (double) t.tv_usec / 1000000 ) );
+}
+
+static __blocking int dotest(void)
+{
+    int fd;
+    int ret;
+    double start, end;
+    char fname_template[256];
+    char buf[4096];
+
+    start = wtime();
+
+    /* create a temporary file */
+    sprintf(fname_template, "/tmp/aefile-example.XXXXXX");
+    fd = mkstemp(fname_template);
+    if(fd < 0)
+    {
+        perror("mkstemp");
+        return(-1);
+    }
+
+    /* use aefile resource to access file */
+    ret = aefile_pwrite(fd, &buf, 4096, 0);
+    if(ret < 0)
+    {
+        /* aefile_pwrite() does not set errno.  Look for error code in the
+         * return value instead 
+         */
+        fprintf(stderr, "aefile_pwrite: %s\n", strerror(-ret));
+        return(-1);
+    }
+
+    ret = close(fd);
+    if(ret < 0)
+    {
+        perror("close");
+        return(-1);
+    }
+    ret = unlink(fname_template);
+    if(ret < 0)
+    {
+        perror("unlink");
+        return(-1);
+    }
+
+    end = wtime();
+
+    printf("Example complete: %f seconds.\n", (end-start));
+
+    return 0;
+}
+
+int done = 0;
+int dotest_ret;
+
+static void done_callback(void *up, int ret)
+{
+    ae_context_t ctx = (ae_context_t)up;
+    done = 1;
+    dotest_ret = ret;
+    ae_poll_break(ctx);
+}
+
+/* TODO: why isn't this using the main_set macros? */
+int main(int argc, char *argv[])
+{
+    int ret;
+    ae_hints_t hints;
+    ae_context_t ctx;
+    int pc = 0;
+    ae_op_id_t op_id;
+
+    aethread_init();
+    /* TODO: why create a context?  use default... */
+    ae_context_create(&ctx, "thread");
+
+    ret = aefile_init();
+    assert(ret == 0);
+
+    ae_hints_init(&hints);
+    ret = ae_post_blocking(dotest, done_callback, ctx, &hints, ctx, &op_id, &dotest_ret);
+    if(ret == AE_SUCCESS)
+    {
+        while(done == 0)
+        {
+            ae_poll(ctx, 10);
+        }
+    }
+    aesop_error_assert(ret);
+
+    ae_hints_destroy(&hints);
+    aefile_finalize();
+    ae_context_destroy(ctx);
+    aethread_finalize();
+
+    return dotest_ret;
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

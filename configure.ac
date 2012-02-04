@@ -282,6 +282,8 @@ AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
 AC_OUTPUT([Makefile
 resources/timer/test/module.mk
 resources/timer/module.mk
+resources/file/module.mk
+resources/file/test/module.mk
 resources/thread/module.mk
 resources/thread/test/module.mk
 resources/resourcebuilder/module.mk

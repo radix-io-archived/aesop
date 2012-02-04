@@ -1,0 +1,5 @@
+DIR := resources/file
+
+AESOP_HDR += $(DIR)/aefile.hae
+
+AELIBSRC += $(DIR)/aefile.ae

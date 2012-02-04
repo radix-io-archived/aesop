@@ -32,6 +32,7 @@ struct aethread_group
 static int aethread_resource_id;
 #define AETHREAD_DEFAULT_OPCACHE_SIZE 1024
 static ae_opcache_t aethread_opcache;
+static int initialized = 0;
 
 static void* thread_pool_fn(void* foo);
 
@@ -59,6 +60,8 @@ struct aethread_group* aethread_create_group_pool(int size)
     struct aethread_group* group;
     int i;
     int ret;
+
+    assert(initialized);
 
     group = malloc(sizeof(*group));
     if(!group)
@@ -152,6 +155,8 @@ int aethread_hint(void (*__ae_callback)(void *ptr), \
     pthread_attr_t attr;
     int ret;
  
+    assert(initialized && group);
+
     if(!aethread_opcache)
     {
         fprintf(stderr, "Error: thread resource not initialized.\n");
@@ -206,6 +211,8 @@ __attribute__((constructor)) void triton_aethread_init_register(void)
 int aethread_init(void)
 {
     int ret;
+
+    assert(!initialized);
     
     ret = AE_OPCACHE_INIT(struct aethread_op, op, AETHREAD_DEFAULT_OPCACHE_SIZE, &aethread_opcache);
     if(ret != 0)
@@ -213,14 +220,19 @@ int aethread_init(void)
         return AE_ERR_SYSTEM;
     }
 
+    initialized = 1;
     return ae_resource_register(&triton_aethread_resource, &aethread_resource_id);
 }
 
 void aethread_finalize(void)
 {
+    assert(initialized);
+
     ae_resource_unregister(aethread_resource_id);
 
     ae_opcache_destroy(aethread_opcache);
+
+    initialized = 0;
 }
 
 /*
