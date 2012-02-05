@@ -23,4 +23,4 @@ __blocking int aesop_main(int argc, char **argv)
     run_params(10, "FOO", "BAR");
     return 0;
 }
-aesop_main_set(aesop_main, "btest");
+aesop_main_set(aesop_main);

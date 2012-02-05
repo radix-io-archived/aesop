@@ -56,7 +56,7 @@ __blocking int aesop_main(int argc, char **argv)
     lonely_pbranch_wrapper();
     return 0;
 }
-aesop_main_set(aesop_main, "btest");
+aesop_main_set(aesop_main);
 
 /*
  * Local variables:
