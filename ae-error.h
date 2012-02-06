@@ -17,5 +17,7 @@
 #define AE_ERR_EXIST (-4)      /* object or entity already exists */
 #define AE_ERR_TIMEDOUT (-5)   /* timed out */
 #define AE_ERR_OVERFLOW (-6)   /* overflow of some resource limitation */
+#define AE_ERR_CANCELLED (-7)  /* Call was cancelled. */
+#define AE_ERR_OTHER     (-8)  /* Other error */
 
 #endif
