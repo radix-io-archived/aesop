@@ -3,10 +3,18 @@
 
 #include "aesop.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+
 int aefile_init(void);
 void aefile_finalize(void);
 
 __blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t offset);
+__blocking ssize_t aefile_pread(int fd, void *buf, size_t count, off_t offset);
+__blocking int aefile_fsync(int fd);
+__blocking int aefile_fdatasync(int fd);
+__blocking int aefile_ftruncate(int fd, off_t length);
+__blocking int aefile_unlink(const char *pathname);
 
 #endif
 

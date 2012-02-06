@@ -38,13 +38,41 @@ static __blocking int dotest(void)
     }
 
     /* use aefile resource to access file */
-    ret = aefile_pwrite(fd, &buf, 4096, 0);
+    /* NOTE: the aefile calls do not set errno; check the return code for
+     * -errno instead 
+     */
+    ret = aefile_pwrite(fd, buf, 4096, 0);
     if(ret < 0)
     {
-        /* aefile_pwrite() does not set errno.  Look for error code in the
-         * return value instead 
-         */
         fprintf(stderr, "aefile_pwrite: %s\n", strerror(-ret));
+        return(-1);
+    }
+
+    ret = aefile_fsync(fd);
+    if(ret < 0)
+    {
+        fprintf(stderr, "aefile_fsync: %s\n", strerror(-ret));
+        return(-1);
+    }
+
+    ret = aefile_fdatasync(fd);
+    if(ret < 0)
+    {
+        fprintf(stderr, "aefile_fdatasync: %s\n", strerror(-ret));
+        return(-1);
+    }
+
+    ret = aefile_pread(fd, buf, 4096, 0);
+    if(ret < 0)
+    {
+        fprintf(stderr, "aefile_pread: %s\n", strerror(-ret));
+        return(-1);
+    }
+
+    ret = aefile_ftruncate(fd, 100);
+    if(ret < 0)
+    {
+        fprintf(stderr, "aefile_ftruncate: %s\n", strerror(-ret));
         return(-1);
     }
 
@@ -54,10 +82,11 @@ static __blocking int dotest(void)
         perror("close");
         return(-1);
     }
-    ret = unlink(fname_template);
+
+    ret = aefile_unlink(fname_template);
     if(ret < 0)
     {
-        perror("unlink");
+        fprintf(stderr, "aefile_ftruncate: %s\n", strerror(-ret));
         return(-1);
     }
 

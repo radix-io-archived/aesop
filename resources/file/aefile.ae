@@ -49,3 +49,80 @@ __blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t of
     return(ret);
 }
 
+__blocking ssize_t aefile_pread(int fd, void *buf, size_t count, off_t offset)
+{
+    ssize_t ret;
+
+    aethread_hint(file_threads);
+
+    ret = pread(fd, buf, count, offset);
+    if(ret < 0)
+    {
+        ret = -errno;
+    }
+
+    return(ret);
+}
+
+__blocking int aefile_fsync(int fd)
+{
+    int ret;
+
+    aethread_hint(file_threads);
+
+    ret = fsync(fd);
+    if(ret < 0)
+    {
+        ret = -errno;
+    }
+
+    return(ret);
+}
+
+__blocking int aefile_fdatasync(int fd)
+{
+    int ret;
+
+    aethread_hint(file_threads);
+
+    ret = fdatasync(fd);
+    if(ret < 0)
+    {
+        ret = -errno;
+    }
+
+    return(ret);
+}
+
+__blocking int aefile_ftruncate(int fd, off_t length)
+{
+    int ret;
+
+    aethread_hint(file_threads);
+
+    ret = ftruncate(fd, length);
+    if(ret < 0)
+    {
+        ret = -errno;
+    }
+
+    return(ret);
+}
+
+__blocking int aefile_unlink(const char *pathname)
+{
+    int ret;
+
+    aethread_hint(file_threads);
+
+    ret = unlink(pathname);
+    if(ret < 0)
+    {
+        ret = -errno;
+    }
+
+    return(ret);
+}
+
+
+
