@@ -73,7 +73,7 @@ static __blocking int dotest(void)
     {
         pprivate int i;        
 
-        /* deliberate go one past the thread pool size */
+        /* deliberately go one past the thread pool size */
         for(i=0; i<9; i++)
         {
             pbranch
@@ -91,47 +91,20 @@ static __blocking int dotest(void)
     return 0;
 }
 
-int done = 0;
-int dotest_ret;
-
-static void done_callback(void *up, int ret)
-{
-    ae_context_t ctx = (ae_context_t)up;
-    done = 1;
-    dotest_ret = ret;
-    ae_poll_break(ctx);
-}
-
-/* TODO: why isn't this using the main_set macros? */
-int main(int argc, char *argv[])
+__blocking int aesop_main(int argc, char **argv)
 {
     int ret;
-    ae_hints_t hints;
-    ae_context_t ctx;
-    int pc = 0;
-    ae_op_id_t op_id;
 
-    aethread_init();
-    /* TODO: why create a context?  use default... */
-    ae_context_create(&ctx, "thread");
+    ret = dotest();
+    if(ret == 0)
+        printf("Success.\n");
+    else
+        printf("Failure.\n");
 
-    ae_hints_init(&hints);
-    ret = ae_post_blocking(dotest, done_callback, ctx, &hints, ctx, &op_id, &dotest_ret);
-    if(ret == AE_SUCCESS)
-    {
-        while(done == 0)
-        {
-            ae_poll(ctx, 10);
-        }
-    }
-    aesop_error_assert(ret);
-
-    ae_hints_destroy(&hints);
-    ae_context_destroy(ctx);
-    aethread_finalize();
-
-    return dotest_ret;
+    return(ret);
 }
+
+aesop_main_set(aesop_main);
 
 /*
  * Local variables:
