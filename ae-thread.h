@@ -8,6 +8,8 @@
  */
 #include "triton-thread.h"
 
+#define AE_MUTEX_INITIALIZER TRITON_MUTEX_INITIALIZER
+
 typedef triton_mutex_t ae_mutex_t;
 #define ae_mutex_init triton_mutex_init
 #define ae_mutex_lock triton_mutex_lock
