@@ -2,6 +2,7 @@
  * make will try to build ./resourcebuilder.h and fail.
  */
 #include "resources/resourcebuilder/resourcebuilder.h"
+#include "ae-thread.h"
 
 #define RB_DEFAULT_SIZE 64
 #define RB_RESOURCE_NAME "resourcebuilder"
@@ -20,6 +21,9 @@ enum {
 void rb_slot_initialize (rb_slot_t * slot)
 {
    OPA_store_int (&slot->status, STATUS_EMPTY);
+#ifdef RB_NO_OPA
+   pthread_mutex_init (&slot->lock, 0);
+#endif
 }
 
 /**
@@ -31,6 +35,55 @@ void rb_slot_initialize (rb_slot_t * slot)
  */
 static int rb_callback (rb_slot_t * slot, int success)
 {
+#ifdef RB_NO_OPA
+   const int newstatus = (success ? STATUS_COMPLETED_SUCCESS
+         : STATUS_COMPLETED_CANCEL);
+   int ret;
+   void (*callback)(void *, int) = 0;
+   void * user_ptr = 0;
+
+   ae_mutex_lock (&slot->lock);
+   switch (slot->status)
+   {
+      case STATUS_UNINITIALIZED:
+         ret = AE_ERR_NOT_FOUND;
+         break;
+      case STATUS_EMPTY:
+         /* slot is not armed yet */
+         slot->status = newstatus;
+         break;
+      case STATUS_ARMED:
+         {
+            int resource_id;
+            struct ae_op * op = &slot->op;
+
+            assert (slot == (rb_slot_t *) intptr2op (ae_id_lookup (slot->op_id,
+                        &resource_id)));
+
+            assert (resource_id == rb_resource_id);
+
+            slot->status = newstatus;
+
+            callback = slot->op.callback;
+            user_ptr = slot->op.user_ptr;
+            ret = AE_SUCCESS;
+            break;
+         }
+      case STATUS_COMPLETED_SUCCESS:
+      case STATUS_COMPLETED_CANCEL:
+         /* already completed */
+         ret = AE_ERR_INVALID;
+         break;
+   }
+
+   ae_mutex_unlock (&slot->lock);
+
+   if (callback)
+      callback (user_ptr, (success ? AE_SUCCESS : AE_ERR_INVALID));
+
+   return ret;
+
+#else
    const int newstatus = (success ? STATUS_COMPLETED_SUCCESS
          : STATUS_COMPLETED_CANCEL);
 
@@ -84,6 +137,7 @@ static int rb_callback (rb_slot_t * slot, int success)
       }
    }
    return AE_SUCCESS; /* silence warning */
+#endif
 }
 
 int rb_slot_complete (rb_slot_t * slot)
@@ -107,6 +161,43 @@ void rb_slot_destroy (rb_slot_t * slot)
 
 ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
 {
+#ifdef RB_NO_OPA
+   int ret;
+   int aret;
+
+   ae_mutex_lock (&slot->lock);
+   switch (slot->status)
+   {
+      case STATUS_COMPLETED_SUCCESS:
+         ret = AE_SUCCESS;
+         aret = AE_IMMEDIATE_COMPLETION;
+         break;
+      case STATUS_COMPLETED_CANCEL:
+         aret = AE_ERR_INVALID;
+         ret = AE_IMMEDIATE_COMPLETION;
+         break;
+      case STATUS_UNINITIALIZED:
+         ret = AE_ERR_NOT_FOUND;
+         aret = AE_IMMEDIATE_COMPLETION;
+         break;
+      case STATUS_ARMED:
+         ret = AE_ERR_INVALID;
+         aret = AE_IMMEDIATE_COMPLETION;
+         break;
+      case STATUS_EMPTY:
+         ae_op_fill (&slot->op);
+         slot->op_id = ae_id_gen (rb_resource_id, (uintptr_t) slot);
+         ret = AE_SUCCESS;
+         aret = AE_SUCCESS;
+         slot->status = STATUS_ARMED;
+         break;
+   }
+   ae_mutex_unlock (&slot->lock);
+
+   *__ae_retval = ret;
+   return aret;
+
+#else
    /* Only arm the slot if it hasn't completed yet */
    int status;
 
@@ -147,6 +238,7 @@ ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
    /* we just transitioned from empty to armed */
 
    return AE_SUCCESS;
+#endif
 }
 
 static int rb_cancel (ae_context_t rb_ctx, ae_op_id_t op_id)
