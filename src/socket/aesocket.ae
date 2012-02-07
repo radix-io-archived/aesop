@@ -48,7 +48,8 @@ typedef struct aesocket_entry_t aesocket_entry_t;
 static aesocket_entry_t * socket_thread_add = 0;
 static aesocket_entry_t * socket_thread_remove = 0;
 
-static void socket_thread_wake_cb (struct ev_loop * loop, ev_async * w, int revents)
+static void socket_thread_wake_cb (struct ev_loop * loop, ev_async * w, int
+      revents)
 {
 }
 
@@ -61,6 +62,7 @@ static void aesocket_check_queue (void)
       aesocket_entry_t * e = socket_thread_add;
       ev_io_start (socket_ev_loop, &e->watcher);
       socket_thread_add = socket_thread_add->next;
+      e->next = 0;
    }
 
    while (socket_thread_remove != 0)
@@ -69,9 +71,14 @@ static void aesocket_check_queue (void)
       ev_io_stop (socket_ev_loop, &e->watcher);
       e->mode = MODE_COMPLETED;
       socket_thread_remove = socket_thread_remove->next;
+      e->next = 0;
    }
 
+   assert (!socket_thread_remove);
+   assert (!socket_thread_add);
+
    pthread_cond_broadcast (&cond);
+
    ae_mutex_unlock (&mutex);
 }
 
@@ -126,6 +133,9 @@ static void aesocket_fd_ready (struct ev_loop * loop, struct ev_io * io,
       int revents)
 {
    aesocket_entry_t * e = io->data;
+
+   ev_io_stop (loop, &e->watcher);
+
    e->mode = MODE_COMPLETED;
    rb_slot_complete (&e->slot);
 }
@@ -146,11 +156,16 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
    rb_slot_initialize (&entry.slot);
 
    ae_mutex_lock (&mutex);
-   entry.next = socket_thread_add->next;
-   socket_thread_add = &entry;
+
+   {
+      entry.next = socket_thread_add;
+      socket_thread_add = &entry;
+
+      aesocket_thread_wakeup ();
+   }
+
    ae_mutex_unlock (&mutex);
 
-   aesocket_thread_wakeup ();
 
    ret = rb_slot_capture (&entry.slot);
    if (ret != AE_SUCCESS)
@@ -189,6 +204,8 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
           * until it is removed */
          entry.next = socket_thread_remove;
          socket_thread_remove = &entry;
+
+         aesocket_thread_wakeup ();
 
          while (entry.mode != MODE_REMOVED)
          {
