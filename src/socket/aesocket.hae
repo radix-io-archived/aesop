@@ -1,0 +1,80 @@
+#ifndef SOCKET_TRITON_SOCKET_HAE
+#define SOCKET_TRITON_SOCKET_HAE
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include "aesop.h"
+
+
+/**
+ * Prepare fd for use with the functions in the triton-socket module.
+ * This function might change the blocking/non-blocking nature of the fd.
+ **/
+int aesocket_prepare (int fd);
+
+/** initialize the socket module.
+ * Can be called multiple times
+ */
+int aesocket_init (void);
+
+/**
+ * Inform the socket module it is no longer needed.
+ */
+int aesocket_done (void);
+
+
+/**
+ * Wait for a successful accept on the fd.
+ * Returns AE_ERR_CANCELLED if cancelled,
+ * AE_ERR_OTHER if the accept call returned an error
+ * (storing the error in *error),
+ * and AE_SUCCESS otherwise.
+ */
+__blocking int aesocket_accept(
+    int sockfd,
+    struct sockaddr *addr,
+    socklen_t * addrlen,
+    int *newfd,
+    int * err);
+
+/**
+ * Returns the number of bytes read in *ret.
+ * Returns errno on error, 0 otherwise.
+ */
+__blocking int aesocket_read(
+    int fd,
+    void *buf,
+    size_t count,
+    int *ret,
+    int * err);
+
+/**
+ * Returns the number of bytes written in *ret.
+ * Returns errno on error, otherwise 0.
+ */
+__blocking int aesocket_write(
+    int fd,
+    const void *buf,
+    size_t count,
+    int *ret,
+    int * err);
+
+
+enum
+{
+    AESOCKET_READ = 0x01,
+    AESOCKET_WRITE = 0x02
+};
+
+__blocking int aesocket_ready (int fd, int flags, int * err);
+
+#endif
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ts=8 sts=4 sw=4 expandtab
+ */

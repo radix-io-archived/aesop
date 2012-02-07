@@ -1,0 +1,4 @@
+DIR := src/socket/test
+
+AETESTSRC += $(DIR)/simple.ae
+

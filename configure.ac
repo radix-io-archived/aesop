@@ -292,5 +292,7 @@ module.mk
 tests/module.mk
 parser/module.mk
 parser/tests/blocking/module.mk
+src/socket/module.mk
+src/socket/test/module.mk
 ])
 

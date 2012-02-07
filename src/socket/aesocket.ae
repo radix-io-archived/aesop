@@ -1,0 +1,395 @@
+#include "aesocket.hae"
+#include "resources/resourcebuilder/resourcebuilder.hae"
+
+#include <unistd.h>
+#include <assert.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <errno.h>
+#include "libev/ev.h"
+
+/**
+ * If true, before testing if the socket is ready, try to read/write under the
+ * assumption that it will be ready. When it is not ready, wait until ready
+ * and try again.
+ */
+static int immediate_completion = 1;
+
+
+/* Number of zero byte reads in a row that we will observe before assuming
+ * that the peer has closed the socket; this is a hack to weed out
+ * spurious zero byte reads that can show up on some systems. 
+ */
+#define ZERO_BYTE_READ_THRESHOLD 0
+
+
+static ae_mutex_t mutex = AE_MUTEX_INITIALIZER;
+static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static unsigned int refcount = 0;
+
+static pthread_t socket_thread;
+static volatile sig_atomic_t socket_thread_done;
+static struct ev_async socket_thread_wake;
+
+static struct ev_loop * socket_ev_loop = 0;
+
+enum { MODE_WAITING, MODE_COMPLETED, MODE_REMOVED };
+struct aesocket_entry_t
+{
+   ev_io                        watcher;
+   rb_slot_t                    slot;
+   struct aesocket_entry_t *    next;
+   int                          flags;
+   int                          mode;
+};
+
+typedef struct aesocket_entry_t aesocket_entry_t;
+
+static aesocket_entry_t * socket_thread_add = 0;
+static aesocket_entry_t * socket_thread_remove = 0;
+
+static void socket_thread_wake_cb (struct ev_loop * loop, ev_async * w, int revents)
+{
+}
+
+static void aesocket_check_queue (void)
+{
+   ae_mutex_lock (&mutex);
+
+   while (socket_thread_add != 0)
+   {
+      aesocket_entry_t * e = socket_thread_add;
+      ev_io_start (socket_ev_loop, &e->watcher);
+      socket_thread_add = socket_thread_add->next;
+   }
+
+   while (socket_thread_remove != 0)
+   {
+      aesocket_entry_t * e = socket_thread_remove;
+      ev_io_stop (socket_ev_loop, &e->watcher);
+      e->mode = MODE_COMPLETED;
+      socket_thread_remove = socket_thread_remove->next;
+   }
+
+   pthread_cond_broadcast (&cond);
+   ae_mutex_unlock (&mutex);
+}
+
+static void aesocket_thread_wakeup (void)
+{
+   ev_async_send (socket_ev_loop, &socket_thread_wake);
+}
+
+static void * aesocket_thread_main (void * arg)
+{
+   while (!socket_thread_done)
+   {
+      aesocket_check_queue ();
+      ev_loop (socket_ev_loop, EVLOOP_ONESHOT);
+   }
+}
+
+int aesocket_init (void)
+{
+   ae_mutex_lock (&mutex);
+   if (!refcount++)
+   {
+      socket_ev_loop = ev_loop_new (EVFLAG_AUTO);
+      socket_thread_done = 0;
+      ev_async_init (&socket_thread_wake, &socket_thread_wake_cb);
+
+      pthread_create (&socket_thread, 0, aesocket_thread_main, 0);
+   }
+   ae_mutex_unlock (&mutex);
+   return AE_SUCCESS;
+}
+
+int aesocket_done (void)
+{
+   ae_mutex_lock (&mutex);
+   if (0 == --refcount)
+   {
+      socket_thread_done = 1;
+      aesocket_thread_wakeup ();
+      pthread_join (socket_thread, 0);
+
+      ev_loop_destroy (socket_ev_loop);
+   }
+   ae_mutex_unlock (&mutex);
+   return AE_SUCCESS;
+}
+
+/**
+ * libev callback for when fd is ready.
+ */
+static void aesocket_fd_ready (struct ev_loop * loop, struct ev_io * io,
+      int revents)
+{
+   aesocket_entry_t * e = io->data;
+   e->mode = MODE_COMPLETED;
+   rb_slot_complete (&e->slot);
+}
+
+__blocking int aesocket_ready (int fd, int flags, int * err)
+{
+   int ret;
+   aesocket_entry_t entry;
+
+   entry.flags = flags;
+   ev_io_init (&entry.watcher, &aesocket_fd_ready, fd,
+         (flags & AESOCKET_READ ? EV_READ : 0) 
+       | (flags & AESOCKET_WRITE ? EV_WRITE : 0));
+
+   entry.watcher.data = &entry;
+   entry.mode = MODE_WAITING;
+
+   rb_slot_initialize (&entry.slot);
+
+   ae_mutex_lock (&mutex);
+   entry.next = socket_thread_add->next;
+   socket_thread_add = &entry;
+   ae_mutex_unlock (&mutex);
+
+   aesocket_thread_wakeup ();
+
+   ret = rb_slot_capture (&entry.slot);
+   if (ret != AE_SUCCESS)
+   {
+      /* note: could save time here by checking for completion */
+
+      int added = 1;
+      /* we're cancelled */
+
+      ae_mutex_lock (&mutex);
+
+      /* check if the libev thread already added the fd */
+      if (socket_thread_add == &entry)
+      {
+         socket_thread_add = entry.next;
+         added = 0;
+      }
+      else
+      {
+         aesocket_entry_t * cur = socket_thread_add;
+         while (cur)
+         {
+            if (cur->next == &entry)
+            {
+               cur->next = entry.next;
+               added = 0;
+               break;
+            }
+            cur = cur->next;
+         }
+      }
+
+      if (added)
+      {
+         /* we need to add it to the remove list and wait 
+          * until it is removed */
+         entry.next = socket_thread_remove;
+         socket_thread_remove = &entry;
+
+         while (entry.mode != MODE_REMOVED)
+         {
+            pthread_cond_wait (&cond, &mutex);
+         }
+      }
+
+      ae_mutex_unlock (&mutex);
+
+      ret = AE_ERR_CANCELLED;
+   }
+   else
+   {
+      /* completed OK */
+      ret = AE_SUCCESS;
+   }
+
+   rb_slot_destroy (&entry.slot);
+   *err = 0;
+
+   return ret;
+}
+
+
+int aesocket_prepare (int fd)
+{
+   /* mark socket as nonblocking */
+   return fcntl(fd, F_SETFL, O_NONBLOCK);
+}
+
+__blocking int aesocket_accept(
+    int sockfd,
+    struct sockaddr *addr,
+    socklen_t * addrlen,
+    int *newfd,
+    int * err)
+{
+    int ret;
+    int r;
+
+    *newfd = -1;
+
+    *err = 0;
+
+    while(1)
+    {
+        if(!immediate_completion)
+        {
+            ret = aesocket_ready(sockfd, AESOCKET_READ, err);
+            if (ret != AE_SUCCESS)
+                return ret;
+        }
+
+        r = accept(sockfd, addr, addrlen);
+        if (r >= 0)
+        {
+            *newfd = r;
+            return(AE_SUCCESS);
+        }
+        else if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
+        {
+            *err = errno;
+            return AE_ERR_OTHER;
+        }
+
+        if(immediate_completion)
+        {
+            ret = aesocket_ready(sockfd, AESOCKET_READ, err);
+            if (ret != AE_SUCCESS)
+                return ret;
+        }
+    }
+
+    return AE_SUCCESS;
+}
+
+
+__blocking int aesocket_read(
+    int fd,
+    void *buf,
+    size_t count,
+    int *len,
+    int * err)
+{
+    int ret;
+    int r;
+    char* tmp_buf = (char*)buf;
+    int tmp_count = count;
+    int zero_reads = 0;
+
+    assert(buf && count);
+    *len  = 0;
+
+    *err = 0;
+
+    do
+    {
+       if(!immediate_completion)
+       {
+          ret = aesocket_ready(fd, AESOCKET_READ, err);
+
+          if (ret != AE_SUCCESS)
+             return ret;
+       }
+       r = read(fd, tmp_buf, tmp_count);
+
+       if(r > 0)
+       {
+          tmp_buf += r;
+          tmp_count -= r;
+          zero_reads = 0;
+       }
+       else if(r == 0)
+       {
+          zero_reads++;
+          if(zero_reads >= ZERO_BYTE_READ_THRESHOLD)
+          {
+             /* assume that the peer has closed the socket */
+             *err = errno;
+             return(AE_ERR_OTHER);
+          }
+       }
+       else if(errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
+       {
+          *err = errno;
+          return AE_ERR_OTHER;
+       }
+
+       if(immediate_completion && tmp_count > 0)
+       {
+          ret = aesocket_ready(fd, AESOCKET_READ, err);
+
+          if (ret != AE_SUCCESS)
+             return ret;
+       }
+
+    } while (tmp_count > 0);
+
+    *len = count;
+
+    return AE_SUCCESS;
+}
+
+__blocking int aesocket_write(
+    int fd,
+    const void *buf,
+    size_t count,
+    int *len,
+    int * err)
+{
+    int ret;
+    int r;
+    const char* tmp_buf = (const char*)buf;
+    int tmp_count = count;
+
+    assert(buf && count);
+    *len  = 0;
+
+    *err = 0;
+
+    do
+    {
+       if(!immediate_completion)
+       {
+          ret = aesocket_ready(fd, AESOCKET_WRITE, err);
+
+          if (ret != AE_SUCCESS)
+             return ret;
+       }
+
+       r = write(fd, tmp_buf, tmp_count);
+       if(r >= 0)
+       {
+          tmp_buf += r;
+          tmp_count -= r;
+       }
+       else if(errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
+       {
+          *err = errno;
+          return AE_ERR_OTHER;
+       }
+
+       if(immediate_completion && tmp_count > 0)
+       {
+          ret = aesocket_ready(fd, AESOCKET_WRITE, err);
+
+          if (ret != AE_ERR_OTHER)
+             return ret;
+       }
+
+    } while (tmp_count > 0);
+    *len = count;
+
+    return AE_SUCCESS;
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ts=8 sts=4 sw=4 expandtab
+ */
