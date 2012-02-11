@@ -38,6 +38,10 @@ sbindir = $(DESTDIR)@sbindir@
 bindir = $(DESTDIR)@bindir@
 libdir = $(DESTDIR)@libdir@
 
+# tools
+A2X = @A2X@
+ASCIIDOC = @ASCIIDOC@
+
 # subdirs that contain configure/make
 SUBDIRS = @subdirs@
 
@@ -129,7 +133,7 @@ PROGRAMSRC :=
 TEST_OUT :=
 TEST_RESULTS :=
 
-DOCSRC :=
+ASCIIDOCSRC :=
 
 # Eliminate all default suffixes.  We want explicit control.
 .SUFFIXES:
@@ -374,8 +378,13 @@ endif
 
 
 
-DOCHTML=$(patsubst %.txt,%.html,$(DOCSRC))
-DOCPDF=$(patsubst %.txt,%.pdf,$(DOCSRC))
+DOCHTML=$(patsubst %.txt,%.html,$(ASCIIDOCSRC))
+DOCPDF=$(patsubst %.txt,%.pdf,$(ASCIIDOCSRC))
+
+CLEANDOC=
+CLEANDOC+=$(patsubst %.txt,%.html,$(ASCIIDOCSRC))
+CLEANDOC+=$(patsubst %.txt,%.pdf,$(ASCIIDOCSRC))
+CLEANDOC+=$(patsubst %.txt,%.ditta_txt,$(ASCIIDOCSRC))
 
 ####################################################################
 # Rules and dependencies
@@ -589,7 +598,7 @@ INTERM=$(INTERM_AESRC) \
        $(INTERM_AEINC) \
        $(INTERM_HAEINC)
 
-clean::
+clean:: docclean
 	$(Q) "  CLEAN"
 	$(E)rm -f $(AEOBJS) $(LIBOBJS) $(GENLIBOBJS) $(AETEST) $(AEPROGRAM) $(TEST) $(PROGRAM) \
 	        $(AESOP_TRHDR) $(TESTLIBOBJS) \
@@ -599,6 +608,12 @@ clean::
 parserclean::
 	$(Q) "  PARSER CLEAN"
 	$(E)rm -f $(HSBIN) $(HSOBJ) $(HSINT)
+
+
+.PHONY: docclean
+docclean:
+	$(Q) "  DOCCLEAN"
+	$(E) rm -f $(CLEANDOC)
 
 # this is where we include all of our automatic dependencies.
 # NOTE: we wrap this in ifneq's in order to prevent the dependencies
@@ -629,18 +644,19 @@ etags:
 #%.txt: %.doc
 #	$(srcdir)/maint/handle-ditaa.py -j $(srcdir)/maint/ditaa/ditaa.jar -d $(dir $@) $< > $@
 #
-$(DOCHTML): %.html: %.ditta_txt
-	$(srcdir)/maint/asciidoc/asciidoc/asciidoc.py -a data-uri -a icons -a toc -a max-width=55em $<
+%.html: %.ditta_txt
+	$(ASCIIDOC) -a data-uri -a icons -a toc -a max-width=55em $<
 
-$(DOCPDF): %.pdf: %.ditta_txt
-	$(srcdir)/maint/asciidoc/asciidoc/a2x.py -L -v -v --dblatex-opts "-P latex.output.revhistory=0" -a data-uri -a icons -a toc -a max-width=55em $<
+%.pdf: %.ditta_txt
+	$(A2X) -L -v -v --dblatex-opts "-P latex.output.revhistory=0" -a data-uri -a icons -a toc -a max-width=55em $<
 
+
+.INTERMEDIATE: %.ditta_txt
 %.ditta_txt: %.txt
 	$(srcdir)/maint/handle-ditaa.py -j $(srcdir)/maint/ditaa/ditaa.jar -d $(dir $@) $< > $@
 
-#%.pdf: %.txt
-#	$(srcdir)/maint/asciidoc/asciidoc/a2x.py --dblatex-opts "-P latex.output.revhistory=0" -a data-uri -a icons -a toc -a max-width=55em $<
 
+.PHONY: docs doc docshtml dochtml
 docs: $(DOCPDF)
 doc: $(DOCPDF)
 docshtml: $(DOCHTML)
