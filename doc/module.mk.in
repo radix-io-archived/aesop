@@ -1,0 +1,4 @@
+ASCIIDOCSRC += doc/aesop-user-guide.txt \
+	       doc/aesop-performance.txt \
+	       doc/aesop-pbranch-cancel.txt
+
