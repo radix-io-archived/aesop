@@ -287,7 +287,7 @@ AC_SUBST(BLOCKSOPT)
 AC_SUBST(LIBCFLAGS)
 AC_SUBST(THREAD_LIB)
 
-AC_CONFIG_FILES([bin/aecc-utils], [chmod +x bin/aecc-utils])
+AC_CONFIG_FILES([bin/aecc-utils], [])
 AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
 
 AC_OUTPUT([Makefile
