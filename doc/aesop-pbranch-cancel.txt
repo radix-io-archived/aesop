@@ -62,11 +62,17 @@ Problems with the current implementation:
 === Semantics of the aesop-level cancel:
 * totally asynchronous (no longer blocks until pbranches exit)
 * cancel signal to pbranch is guaranteed to be delivered exactly once
-** will affect current resource operation (if present) or the next one to
-    be posted
-** cancel status is cleared for a pbranch once it has impacted one blocking
-    resource call (so pbranch can issue blocking cleanup functions safely if
-    it needs to)
+* Cancel sets a flag in the execution context of the pbranch
+** will affect current resource operation (if present), calling the cancel
+   function of the resource.
+** If no resource call is active, it will simply set the flag in the execution
+context.
+** The cancel flag remains in the pbranch execution context. Currently we do
+not plan to provide a way to clear the flag.
+** The resources are responsible for checking the flag in the post functions,
+and return immediately with an appropriate error code if they detect the
+cancel flag is set.
+
 * cancel will return true if it succeeded in delivering the cancel request,
   false if it detects that another pbranch *at the same scope or higher* 
   already issued a cancel
@@ -83,7 +89,7 @@ Problems with the current implementation:
   question (and the operation is guaranteed to return ECANCEL or 
   whatever is appropriate for the resource)
 * returns false if it failed to cancel the operation in question
-* cancel function can no longer issue op callback directly (this complicates 
+* cancel function is no longer allowed to call the op callback directly (this complicates 
   some possible deadlock scenarios)
 
 === Aesop internal implementation details:
@@ -101,13 +107,13 @@ Problems with the current implementation:
 ** proceed recursively, setting flag in child pbranches in the same manner
 
 === Semantics of the resource-level post functions:
-* will have hook to check (and clear) parent ctrl structure cancel flag
+* will have hook to check parent ctrl structure cancel flag
 * if detect that pbranch has cancelled, the post should immediately fail
   with appropriate return code for resource
 
 === Misc:
-* provide helper functions is_cancelled() and clear_cancelled() so a pbranch
-  can check and clear it's cancelled status manually if it wants to
+* provide helper functions is_cancelled() so a pbranch
+  can check it's cancelled status manually if it wants to
 * One possible implementation idea is to treat child pwait blocks as
   resources, so that they generate op ids and have a cancel function just
   like a resource call.  Might make the aesop code a little cleaner in
@@ -178,7 +184,7 @@ Example resource cancel semantics:
 triton_ret_t resource_post(void)
 {
     /* don't start op if we have a pending, undelivered cancel signal */
-    if(test_and_clear_cancelled_state())
+    if(test_cancelled_state())
         return(ECANCELLED);  
 
     /* do whatever .... */
