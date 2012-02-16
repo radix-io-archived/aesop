@@ -56,8 +56,8 @@ addOption()
     if test "${takesArg}" = "yes"; then
         msg="${msg} ${argString}"
     fi
-    len=$(expr 40 - length "${msg}")
-    sp=$(expr substr "${SPACES}" 1 $len)
+    len=$(expr 40 - $(echo "${msg}" | wc -c))
+    sp=$(echo "${SPACES}" | cut -c 1-${len})
 
     HELPMESSAGE="${HELPMESSAGE}${msg}${sp}${message}\n"
 }
@@ -494,7 +494,7 @@ runCmd()
     verbose="$1" ; shift
     error="$1" ; shift
     cmd=$@
-    compilerout=$(mktemp)
+    compilerout=$(mktemp tmp.XXXXXXXX)
     if test "$verbose" = "yes"; then
         echo "$cmd"
     fi
