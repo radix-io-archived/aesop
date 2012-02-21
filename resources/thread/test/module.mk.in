@@ -1,4 +1,5 @@
 DIR := resources/thread/test
 
-AETESTSRC += $(DIR)/aethread-example.ae 
+AETESTSRC += $(DIR)/aethread-example.ae \
+ $(DIR)/aethread-cancel.ae
 
