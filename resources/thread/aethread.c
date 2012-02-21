@@ -24,6 +24,7 @@ struct aethread_group
     pthread_cond_t pool_cond;
     pthread_mutex_t pool_mutex;
     ae_ops_t oplist;
+    triton_list_link_t link;
 };
 /* TODO: make configurable, or better yet dynamic based a runtime
  * calculation that compares typical op service times against how long it
@@ -37,9 +38,23 @@ static int initialized = 0;
 
 static void* thread_pool_fn(void* foo);
 
+/* list of active groups.  We have to track them all so that we can look
+ * through the groups to find operations to be cancelled.
+ */
+static triton_list_t group_list = TRITON_LIST_STATIC_INITIALIZER(group_list);
+static pthread_mutex_t group_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void aethread_destroy_group(struct aethread_group* group)
 {
     int i;
+
+    pthread_mutex_lock(&group_mutex);
+    triton_list_del(&group->link);
+    pthread_mutex_unlock(&group_mutex);
+
+    /* TODO: should we do something to handle operations still in the queue
+     * for this group?
+     */
 
     pthread_mutex_lock(&group->pool_mutex);
     group->pool_started = 0;
@@ -89,6 +104,10 @@ struct aethread_group* aethread_create_group_pool(int size)
         ret = pthread_create(&group->pool_tids[i], NULL, thread_pool_fn, group);
         assert(ret == 0); /* TODO: err handling */
     }
+
+    pthread_mutex_lock(&group_mutex);
+    triton_list_add_back(&group->link, &group_list);
+    pthread_mutex_unlock(&group_mutex);
 
     return(group);
 }
