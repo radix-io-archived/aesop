@@ -198,6 +198,40 @@ static int triton_aethread_poll(ae_context_t context)
 
 static int triton_aethread_cancel(ae_context_t triton_ctx, ae_op_id_t op_id)
 {
+    int resource_id;
+    struct ae_op *op;
+    struct aethread_op *aop;
+    ae_context_t ctx;
+    struct aethread_group *group, *tmpgroup;
+    int found = 0;
+        
+    triton_mutex_lock(&group_mutex);
+
+    op = intptr2op (ae_id_lookup(op_id, &resource_id));
+    assert(resource_id == aethread_resource_id);
+
+    /* search to see if this operation is still in a queue waiting for
+     * service.  If so, cancel it.  If not, let it complete naturally.
+     */
+    triton_list_for_each_entry(group, tmpgroup, &group_list, struct aethread_group, link)
+    {
+        pthread_mutex_lock(&group->pool_mutex);
+        if(ae_ops_exists(&group->oplist, &op->link))
+        {
+            /* found it */
+            triton_list_del(&op->link);
+            aop = ae_op_entry(op, struct aethread_op, op);
+            aop->ret = AE_ERR_CANCELLED;
+            ae_opcache_complete_op(aethread_opcache, op, int, AE_ERR_CANCELLED);
+            found = 1;
+        }
+        pthread_mutex_unlock(&group->pool_mutex);
+        if(found)
+            break;
+    }
+
+    triton_mutex_unlock(&group_mutex);
+
     return AE_SUCCESS;
 }
 

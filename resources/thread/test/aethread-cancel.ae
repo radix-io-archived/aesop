@@ -32,22 +32,33 @@ static __blocking int dotest(void)
      */
     pwait
     {
+        pprivate int ret;
+
         pbranch
         {
-            aethread_hint(agroup);
-            sleep(3);
+            ret = aethread_hint(agroup);
+            if(ret != AE_ERR_CANCELLED)
+                sleep(3);
+            else
+                printf("pbranch cancelled.\n");
         }
 
         pbranch
         {
-            aethread_hint(agroup);
-            sleep(3);
+            ret = aethread_hint(agroup);
+            if(ret != AE_ERR_CANCELLED)
+                sleep(3);
+            else
+                printf("pbranch cancelled.\n");
         }
 
         pbranch
         {
-            aethread_hint(agroup);
-            sleep(3);
+            ret = aethread_hint(agroup);
+            if(ret != AE_ERR_CANCELLED)
+                sleep(3);
+            else
+                printf("pbranch cancelled.\n");
         }
         
         pbranch
