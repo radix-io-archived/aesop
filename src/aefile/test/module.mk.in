@@ -1,4 +1,4 @@
-DIR := aefile/test
+DIR := src/aefile/test
 
 AETESTSRC += $(DIR)/aefile-example.ae 
 
