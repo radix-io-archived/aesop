@@ -1,4 +1,4 @@
-DIR := resources/file
+DIR := aefile
 
 AESOP_HDR += $(DIR)/aefile.hae
 

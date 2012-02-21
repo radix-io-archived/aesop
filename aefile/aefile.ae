@@ -10,7 +10,7 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#include "resources/file/aefile.hae"
+#include "aefile/aefile.hae"
 #include "resources/thread/aethread.hae"
 
 struct aethread_group* file_threads = NULL;
