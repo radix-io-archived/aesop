@@ -37,47 +37,20 @@ static __blocking int receiver()
     return 0;
 }
 
-int done = 0;
-int receiver_ret;
-
-static void done_callback(void *user_ptr, int ret)
+__blocking int aesop_main(int argc, char **argv)
 {
-    ae_context_t ctx = (ae_context_t)user_ptr;
-    done = 1;
-    receiver_ret = ret;
-    ae_poll_break(ctx);
-}
-
-int main(int argc, char *argv[])
-{
-    int ret;
-    ae_op_id_t op_id;
-    ae_context_t ctx;
-    ae_hints_t hints;
-
-    triton_timer_init();
-
-    ae_context_create(&ctx, "timer");
+    int receiver_ret;
 
     printf("ready\n");
 
-    ae_hints_init(&hints);
-    ret = ae_post_blocking(receiver, done_callback, ctx, &hints, ctx, &op_id, &receiver_ret);
-    if(ret == AE_SUCCESS)
-    {
-        while (done == 0)
-        {
-            ae_poll(ctx, 10);
-        }
-    }
-    aesop_error_assert(ret);
-    ae_hints_destroy(&hints);
+    receiver_ret = receiver();
 
     printf("done\n");
 
-    ae_context_destroy(ctx);
     return receiver_ret;
 }
+
+aesop_main_set(aesop_main);
 
 /*
  * Local Variables:

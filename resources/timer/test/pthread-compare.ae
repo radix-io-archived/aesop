@@ -24,16 +24,6 @@ static __blocking int triton_dosleep(void)
     return 0;
 }
 
-static int done = 0;
-static int dosleep_ret;
-static void done_cb(void *up, int ret)
-{
-    ae_context_t ctx = (ae_context_t)up;
-    dosleep_ret = ret;
-    done = 1;
-    ae_poll_break(ctx);
-}
-
 static void *threadfun(void *cb)
 {
     sleep(1);
@@ -65,30 +55,13 @@ static void thread_dosleep(void)
 
 
 
-int main(int argc, char *argv[])
+__blocking int aesop_main(int argc, char **argv)
 {
-    int ret;
-    ae_op_id_t op_id;
-    ae_context_t ctx;
-    ae_hints_t hints;
+    int dosleep_ret;
     struct timeval t1, t2, diff;
 
-    triton_timer_init();
-
-    ae_context_create(&ctx, "timer");
-
     gettimeofday(&t1, NULL);
-    ae_hints_init(&hints);
-    ret = ae_post_blocking(triton_dosleep, done_cb, ctx, &hints, ctx, &op_id, &dosleep_ret);
-    if(ret == AE_SUCCESS)
-    {
-        while (done == 0)
-        {
-            ae_poll(ctx, 10);
-        }
-    }
-    aesop_error_assert(ret);
-    ae_hints_destroy(&hints);
+    dosleep_ret = triton_dosleep();
     gettimeofday(&t2, NULL);
     diff.tv_sec = t2.tv_sec - t1.tv_sec;
     diff.tv_usec = t2.tv_usec - t1.tv_usec;
@@ -111,10 +84,10 @@ int main(int argc, char *argv[])
     }
     printf("thread time: %d.%06d secs\n", (int)diff.tv_sec, (int)diff.tv_usec);
     
-    ae_context_destroy(ctx);
-    triton_timer_finalize();
     return dosleep_ret;
 }
+
+aesop_main_set(aesop_main);
 
 /*
  * Local variables:
