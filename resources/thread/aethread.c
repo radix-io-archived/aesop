@@ -12,6 +12,7 @@ struct aethread_op
 {
     ae_op_id_t op_id;
     struct ae_op op;
+    int ret;
 };
 
 struct aethread_group
@@ -96,8 +97,6 @@ static void* thread_pool_fn(void* foo)
 {
     struct aethread_group* group = (struct aethread_group*)foo;
     struct ae_op* op = NULL;
-    void* user_ptr;
-    void (*callback)(void*);
 
     while(1)
     {
@@ -129,25 +128,14 @@ static void* thread_pool_fn(void* foo)
         
         /* no work; just run callback in the context of this thread */
         /* trigger completion of the operation */
-        /* TODO: follow up on this.  Can't use the usual complete_op macro
-         * because there is no return code
-         */
-        user_ptr = op->user_ptr;
-        callback = op->callback;
-        callback(user_ptr);
-        ae_opcache_put(aethread_opcache, op);
+
+        ae_opcache_complete_op(aethread_opcache, op, int, 0);
     }
 
     return(NULL);
 }
 
-int aethread_hint(void (*__ae_callback)(void *ptr), \
-                         void *__ae_user_ptr,                              \
-                         ae_hints_t *__ae_hints,                           \
-                         ae_context_t __ae_ctx,                            \
-                         ae_op_id_t *__ae_op_id,                           \
-                         int __ae_internal,                                \
-                         struct aethread_group* group)
+ae_define_post(int, aethread_hint, struct aethread_group *group)
 {
     struct ae_op *op;
     struct aethread_op *a_op;
@@ -168,6 +156,7 @@ int aethread_hint(void (*__ae_callback)(void *ptr), \
 
     a_op = ae_op_entry(op, struct aethread_op, op);
     a_op->op_id = ae_id_gen(aethread_resource_id, (intptr_t) op);
+    a_op->ret = 0;
 
     *__ae_op_id = a_op->op_id;
 
