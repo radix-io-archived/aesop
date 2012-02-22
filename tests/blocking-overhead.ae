@@ -20,18 +20,39 @@ static double get_time ()
    return (double) t.tv_sec + ((double) t.tv_usec / (1000000UL));
 }
 
-void regular_func (int a, void * b);
-
-void regular_func (int a, void * b)
+void regular_func_nomalloc_nomutex_noopa (int a, void * b) __attribute__ ((noinline));
+void regular_func_nomalloc_nomutex_noopa (int a, void * b)
 {
    c = a + (intptr_t) b;
-  // OPA_cas_int (&a, 1, 2);
-
-   // pthread_mutex_lock (&mutex);
-  //free (malloc (100));
-  // pthread_mutex_unlock (&mutex);
 }
 
+
+void regular_func_malloc_nomutex_noopa (int a, void * b) __attribute__ ((noinline));
+void regular_func_malloc_nomutex_noopa (int a, void * b)
+{
+   c = a + (intptr_t) b;
+   free (malloc (100));
+}
+
+
+void regular_func_malloc_mutex_noopa (int a, void * b) __attribute__ ((noinline));
+void regular_func_malloc_mutex_noopa (int a, void * b)
+{
+   c = a + (intptr_t) b;
+  pthread_mutex_lock (&mutex);
+  free (malloc (100));
+  pthread_mutex_unlock (&mutex);
+}
+
+
+void regular_func_malloc_nomutex_opa (int a, void * b) __attribute__ ((noinline));
+void regular_func_malloc_nomutex_opa (int a, void * b)
+{
+   c = a + (intptr_t) b;
+   OPA_int_t d;
+   OPA_cas_int (&d, 1, 2);
+   free (malloc (100));
+}
 
 __blocking void blocking_func (int a, void * b);
 
@@ -48,7 +69,6 @@ __blocking double do_blocking_test ()
 
    start = get_time ();
 
-   printf ("Starting blocking test...\n");
    for (i=0; i<CALL_COUNT; ++i)
    {
       blocking_func (count, 0);
@@ -61,38 +81,49 @@ __blocking double do_blocking_test ()
 }
 
 
-double do_regular_test (void);
-
-double do_regular_test ()
-{
-   unsigned long long count = 0;
-   unsigned long long i;
-   double start, stop;
-   printf ("Starting regular test...\n");
-
-   start = get_time ();
-
-   for (i=0; i<CALL_COUNT; ++i)
-   {
-      regular_func (count, 0);
-      ++count;
-   }
-
-   stop = get_time ();
-   return (stop-start);
+#define CALL_REGULAR(a) \
+\
+double test_##a (void);\
+\
+double test_##a ()\
+{\
+   unsigned long long count = 0;\
+   unsigned long long i;\
+   double start, stop;\
+\
+   start = get_time ();\
+\
+   for (i=0; i<CALL_COUNT; ++i)\
+   {\
+      a (count, 0);\
+      ++count;\
+   }\
+\
+   stop = get_time ();\
+   return (stop-start);\
 }
 
+
+CALL_REGULAR(regular_func_nomalloc_nomutex_noopa);
+CALL_REGULAR(regular_func_malloc_nomutex_noopa );
+CALL_REGULAR(regular_func_malloc_mutex_noopa );
+CALL_REGULAR(regular_func_malloc_nomutex_opa );
 
 __blocking int aesop_main(int argc, char **argv)
 {
    double i;
    fprintf (stdout, "Making %lu calls.\n", CALL_COUNT);
-   i = do_regular_test ();
-   fprintf (stdout, "regular calls: %g (%g / call)\n", i,
-         i / CALL_COUNT);
+
+   i = test_regular_func_nomalloc_nomutex_noopa ();
+   fprintf (stdout, "regular calls: %g (%g / call)\n", i, i / CALL_COUNT);
+   i = test_regular_func_malloc_nomutex_noopa ();
+   fprintf (stdout, "regular calls, malloc: %g (%g / call)\n", i, i / CALL_COUNT);
+   i = test_regular_func_malloc_mutex_noopa ();
+   fprintf (stdout, "regular calls, malloc, mutex: %g (%g / call)\n", i, i / CALL_COUNT);
+   i = test_regular_func_malloc_nomutex_opa ();
+   fprintf (stdout, "regular calls, malloc, opa: %g (%g / call)\n", i, i / CALL_COUNT);
    i = do_blocking_test ();
-   fprintf (stdout, "blocking calls: %g (%g / call)\n", i,
-         i / CALL_COUNT);
+   fprintf (stdout, "blocking calls: %g (%g / call)\n", i, i / CALL_COUNT);
    return 0;
 }
 
