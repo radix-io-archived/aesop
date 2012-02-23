@@ -1,0 +1,463 @@
+
+Aesop Performance Tuning Guide
+==============================
+
+== Introduction
+
+This document describes a number of tips and techniques to speed up code
+development using aesop. This includes the time required to execute the source
+to source translator as well as the runtime efficiency of the generated code.
+
+//=========================================================================
+== Translation Performance
+//=========================================================================
+
+=== Parallel Make
+
+It is possible to speed up the translation of aesop files by using the `-jn`
+option to make, replacing `n` by the desired number of concurrent jobs.
+
+=== CCache
+
+At this time, there are a number of issues blocking the use  of ccache in
+combination with the aesop source to source translator (either to cache the
+translation or to cache the compilation of the generated C source code).
+
+A first issue is related to incorrect handling of compiler names in the build
+system, causing the build to fail if the compiler is set to `ccache gcc`.
+
+The second issue stems from the fact that aesop introduces additional
+dependencies which are not understood by ccache. Therefore, subtly failures
+would be introduced when aesop is updated and the cache is not manually
+cleared.
+
+Given these issues, at this point it is not recommended to use ccache in
+combination with aesop. However, both issues can be resolved in a later
+aesop release (see ticket #137 and #200 in the triton repository).
+
+
+//=========================================================================
+== Runtime Memory Efficiency
+//=========================================================================
+
+This section examines the memory efficiency of the translated aesop code.
+
+=== Function arguments and stack variables of blocking calls
+
+Aesop, in order to implement the additional functionality provided by blocking
+calls, rewrites blocking calls when translating the aesop code to C code.
+This translation introduces a certain amount of overhead, both in memory usage
+and execution performance. This section focuses on memory overhead,
+deferring the discussion of execution overhead to <<ref-blocking-runtime>>.
+
+The main memory overhead incurred by blocking functions originates from the
+need to protect the logical state of the function while temporarily switching
+to other functions.
+
+For example, stack variables are moved to the heap. As long as the blocking
+function does not complete, the memory for these variables is not released.
+Arguments to the function need to be relocated to the heap as well,
+and so does the type returned from the function (if not void).
+
+In a normal C program, the items listed above consume stack space. In blocking
+functions, these consume heap space instead.  In addition, aesop internally
+maintains a number of control structures. Pointers to these structures are
+passed as function arguments to the blocking function, and consequently
+consume stack space. Currently, aesop adds about 4 pointers and 2 integers to
+each blocking function call.
+
+
+
+
+=== Lonely pbranches
+
+A lonely pbranch will keep the enclosing scope alive (up to the function
+scope) until the pbranch exits.
+
+.lonely pbranch scope
+[source, C]
+----
+__blocking int test (void)
+{
+   int var[10000];
+   pbranch {
+      ...
+   }
+}
+----
+
+So, in the example above, even though the test will return without waiting for
+the pbranch to complete, it's stack variables (var in this case) will consume
+memory until the pbranch returns.
+
+
+//=========================================================================
+== Runtime Execution Speed
+//=========================================================================
+
+[[ref-blocking-runtime]]
+=== Performance Implications of Blocking Calls
+
+While this isn't immediately visible from looking at the aesop source code,
+blocking calls, when compared to a plain C function call, have extra overhead
+due to the way they are transformed by the aesop compiler. The following
+section highlights the sources of this overhead.
+
+==== Understanding Blocking Call Overhead
+
+===== State Management
+
+Most of the overhead is caused by the need to preserve the state
+of the blocking call while execution (temporarily) switches to another
+function. In order to preserve this state, the aesop compiler relocates all
+function-scoped variables from the stack to the heap.
+When entering a blocking function, heap memory needs to be allocated for these
+variables. As allocating heap memory is much more time consuming than
+allocating space on the stack, calling a blocking function is more expensive
+than calling a regular function.
+
+
+
+===== Synchronization Overhead
+
+A second source of overhead originates from the multi-threaded nature of aesop
+code. While aesop does not create any threads, many of the aesop resources
+internally use threads.  Therefore, the aesop compiler has to ensure that the
+emitted code is multi-thread safe. For example, in the following code,
+two pbranches might be executing concurrently using different threads.
+Since these threads could both by modifying the pwait state simultaneously,
+aesop
+uses locks to serialize their access. Locks, and other synchronization
+primitives account for most of the remaining performance difference between
+blocking and regular function calls.
+
+.pwait synchronization
+[source,C]
+----
+pwait {
+  pbranch {
+     ...
+  }
+  pbranch {
+     ...
+  }
+}
+----
+
+
+[NOTE]
+Currently, the aesop compiler uses a combination of atomic operations and
+mutexes to maintain thread-safety. There is an ongoing effort to convert to
+atomic operations where possible.
+
+
+==== Quantifying Blocking Call Overhead
+
+
+For this test, a regular and a blocking function are called in a loop.
+By timing the total time required to complete the loop, an estimate of the
+time needed to execute the function call is obtained.
+
+The results were obtained on an intel i7 CPU running at 2.7GHz,
+using gcc 4.5.3 (using +-O2+), glibc 2.13-r4 and kernel 3.2.5.
+
+There are a number of different test configurations:
+
+.Test Results
+[width="20%",cols="h,^,^,^,^,^,<,<",valign="middle",frame="topbot",options="header"]
+|=====
+1.2+<.^| Test   5+| Options                              2+^.^| seconds/call  
+          ^d| regular | blocking | malloc/free | mutex | opa   | malloc   | tcmalloc 
+| 1        |   X     |          |             |       |       | 2.24e-09 | 2.21e-09
+| 2        |         |    X     |             |       |       | 5.54e-08 | 3.62e-08
+| 3        |   X     |          |     X       |       |       | 2.34e-08 | 1.62e-08
+| 4        |   X     |          |     X       |   X   |       | 3.78e-08 | 2.96e-08
+| 5        |   X     |          |     X       |       |   X   | 2.95e-08 | 2.02e-08
+|=====
+
+For test 1, a simple regular C function (i.e. not using `__blocking`) taking 2
+arguments is used.
+Test 2 uses the same function, but this time the function is marked as
+`__blocking`.
+
+Tests 3-5 were added to provide a better context for understanding the
+magnitude of the blocking call overhead.  For test 3, the function from test 1
+was taken but in the function body a single call to +malloc+ and +free+ was
+added.  Test 4 is the same as test 3, but also adds a call to lock and unlock
+a mutex.  Test 5 replaces the mutex by a single atomic operation
+(compare-and-swap).
+
+As a way to study the effect of the malloc implementation, these tests were
+also executed using a +tcmalloc+, an alternative memory allocator library.
+The results for these are shown in the tcmalloc column.
+
+[TIP]
+The progam used to obtain these results is in the repository:
++tests/blocking-overhead.ae+.
+
+
+
+//=========================================================================
+== Case study: Implementing a small network server
+//=========================================================================
+
+While micro-benchmarks can be useful, they often fail to capture the
+complexity found in real applications.
+
+To provide a higher level evaluation, we compared the performance of a simple
+network server programmed in aesop to that of the same server implemented in
+C. We also quantified the code complexity of the aesop server, compared to the
+different C versions.
+
+=== Server Description
+
+The example server listens on a TCP socket for incoming client connections.
+Once a client connects, the server waits until a request is received or until
+the client closes the connection.
+
+The server recognizes four different request types:
+
+*READ and WRITE*:: The server reads or writes a file specified by the client.
+
+*READ-NULL and WRITE-NULL*:: The same as READ and WRITE respectively, except
+that the file read or write operations are omitted. The requested data
+is still transferred over the network.
+
+The read-null and write-null cases attempt to determine the maximum network
+bandwidth the server can sustain, by ensuring the disk operations are not a
+bottleneck.
+
+.Server Request Handling
+[graphviz]
+--------
+digraph G
+{
+   subgraph I {
+  rank = same;
+   incoming [label="client connects", shape="box"];
+   close [label="close connection"];
+   }
+
+   wait [label="receive request"];
+
+   incoming -> wait;
+   wait -> close [label="client closes connection"];
+   wait -> read_1 [label = "READ"];
+   wait -> readn_1 [label = "READ NULL"];
+   wait -> write_1 [label = "WRITE"];
+   wait -> writen_1 [label = "WRITE NULL"];
+
+   
+
+   subgraph R {
+   read_1 [label="read from file"];
+   read_2 [label="send data"];
+   read_1 -> read_2 -> wait;
+   }
+
+   subgraph W {
+   write_1 [label="receive data"];
+   write_2 [label="write to file"];
+   write_1 -> write_2 -> wait;
+   }
+
+   subgraph RN {
+   readn_1 [label="send data"];
+   readn_1 -> wait;
+   }
+   
+   subgraph WN {
+   writen_1 [label="receive data"];
+   writen_1 -> wait;
+   }
+
+
+}
+
+--------
+
+==== Implementation Details
+
+The server as described above was implemented in 5 different ways.
+
+===== Explicit Threading
+
+The threaded server uses manual thread management to explicitly created or
+destroy a thread in response to an incoming connection or request.
+We used the `pthread` threading library.
+For the threaded implementation, we distinguish between 4 different
+variations.
+
+
+[width="80%",cols=">.^1h,4",frame="none",grid="none"]
+|=========================================================
+| thread-per-client |
+A thread is created when a client connects, and this
+thread is dedicated to the connection. All requests from this connection will
+be handled by the same thread.
+
+| |
+
+
+| thread-per-client-nb |
+The same as above, but in this case the thread calls
+the _asynchronous_ versions of the `read` and `write` system calls. By
+including this option, performance differences related to the asynchronous
+nature of the system calls are highlighted.
+
+| |
+
+| thread-per-op |
+In this mode, a thread is created for every incoming
+request. After the request is completed, the thread is destroyed.
+
+| |
+
+|thread-pool | 
+As above, but when a thread has finished executing a request
+it is returned to a pool and reused when a new request arrives.
+
+|=============================================================
+
+===== Explicit Event Handling
+
+For this version, _libev_ is used to implement an event-driven server.
+At any given time, a number of different events can occur, the event loop
+waits for one of the following events to occur:
+
+[horizontal]
+*Accept*:: An new client connected to the server. The server will start an
+attempt to read a request from the connection.
+*Read*:: A read from a connection completed.
+*Write*:: A write operation (writing data to a client) completed.
+
+In response to one of these events, the next step in handling the connection
+will be started using an asynchronous call before going back to the main event
+loop to wait for another event to occur.
+
+Note that this server implementation does not use create any threads, and only
+utilizes a single core (though the operating system can still use multiple
+cores to drive the network and disk).
+
+==== Aesop
+
+The aesop version, from a code point of view, most closely resembles the
+_thread_per_client_ code. However, after translation, the resulting C code can
+support the event model as well as a threaded model.
+
+The actual result will depend on the actual resource implementation.
+(For more information about resources, see the aesop user guide).
+It is important to point out that the choice between an event driven or
+threaded approach is limited to the resource implementation, and that no
+changes to the actual server code are required.
+
+The aesop code uses a lonely pbranch when a client connects.
+The code within the lonely pbranch is a direct implementation of the flow
+chart provided with the server description.
+
+=== Code Complexity
+
+As a measure for productivity, we investigated the code of each server using a
+set of complexity metrics.
+
+.Implementation complexity analysis.
+[[table-complex]]
+[cols="3,1,1,1", options="header"]
+|============================
+| Server Implementation | CC | Mod. CC | SLOC 
+| aesop | 15 | 10 | 171 
+| thread | 17 | 12 | 179 
+| thread pool | 29 | 23 | 292 
+| event | 26 | 21 | 328 
+|============================
+
+// @TODO: Need to update the table with other forms of threading
+
+//////
+\begin{table}
+\small
+\begin{center}
+\caption{Complexity analysis for example servers}
+\begin{tabular}{lrrr}
+\hline
+& CC & mod. CC & SLOC \\
+\hline
+\hline
+\end{tabular}
+\label{tab:complexity}
+\end{center}
+\normalsize
+\vspace{-.2in}
+\end{table}
+/////
+
+<<table-complex>> compares the code complexity of each implementation using McCabe
+Cyclomatic Complexity (CC) <<McCabe>>, Modified McCabe Cyclomatic Complexity
+(Mod. CC), and Source Lines of Code (SLOC).
+
+//TODO: reference the
+//metrics and the tools that we used to collect them (pmccabe and sloccount).
+
+To simplify the comparison, error handling was excluded for all servers except
+for assertions on expected return codes.  The protocol definition (ie,
+request and acknowledgement structs) as well as helper functions to loop
+over send and receive were not counted in any of the implementations, as these
+were similar in all four.
+
+Aesop and thread are very similar in terms of complexity, with the slight
+increase in the thread model due to function calls needed to create and join
+threads.
+
+Thread pool and event model are both much more complex than the thread or
+aesop model.  An additional complexity of the event model which is not
+captured by these metrics is the fact that control flow is not preserved
+across the processing of a given request.  For example, servicing a write
+operation requires 5 disconnected event handlers.  So although the event
+model appears less complex according to CC and mod. CC, qualitatively it is
+significantly more challenging to develop.
+
+
+
+=== Performance Evaluation
+
+We evaluated the performance of our server implementation.
+The same client was used for all server implementations.
+
+.Performance writing to server memory.
+[[fig-write]]
+image::fig/write-hist.png["Write"]
+
+.Performance reading from server memory.
+[[fig-read]]
+image::fig/read-hist.png["Read"]
+
+.Performance writing to disk.
+[[fig-write-null]]
+image::fig/write-null-hist.png["Writing to disk"]
+
+.Performance reading from disk.
+[[fig-read-null]]
+image::fig/read-null-hist.png["Reading from disk"]
+
+.Memory usage during the write test
+[[fig-write-mem]]
+image::fig/write-mem.png["Write test server memory usage"]
+
+.Memory usage during the read test
+[[fig-read-mem]]
+image::fig/read-mem.png["Read test server memory usage"]
+
+.Memory usage during the write-null test
+[[fig-write-mem]]
+image::fig/write-null-mem.png["Write-null test server memory usage"]
+
+.Memory usage during the read-null test
+[[fig-read-mem]]
+image::fig/read-null-mem.png["Read-null test server memory usage"]
+
+
+== Bibliography
+
+[bibliography]
+- [[[McCabe]]] McCabe, T.J. A Complexity Measure. In IEEE Transactions on
+  Software Engineering, vol.SE-2, no.4, pp. 308- 320, Dec. 1976.
