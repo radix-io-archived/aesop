@@ -1,0 +1,263 @@
+
+The Aesop Standard Library
+==========================
+
+Aesop System Interfaces and Tools
+----------------------------------
+
+
+Configuration Interface
+~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+Debugging
+~~~~~~~~~~
+
+// TODO: talk about problem using gdb
+
+
+
+The code injected by the aesop translator supports writing tracing
+information to `stderr`.
+
+The following components can be traced:
+
+[horizontal]
+*blocking*:: Outputs when a blocking call is initiated and finished.
+
+*cancel*:: Outputs information regarding cancellation of blocking calls.
+
+*pbranch*:: Tracks the creation and completion of pbranches.
+
+To enable or disable tracing, use the following call:
+
+----
+int aesop_set_debugging (const char * component, int value);
+----
+
+Component can be either on of the following strings:
+
+* "ae_blocking"
+* "ae_pbranch"
+* "ae_cancel"
+
+Value should be 0 to disable, or 1 to enable tracing.
+
+
+Standard Aesop modules
+-----------------------
+
+The following functions are bundled with the aesop distribution.
+
+Timer
+~~~~~~
+
+Header: `triton.timer.hae`
+
+
+----
+int aesop_timer_init(void);
+void aesop_timer_finalize(void);
+-----
+
+Before using any other timer function, the application is responsible for
+calling `aesop_timer_init`. It is safe to call init more than once, as long
+as one call to `aesop_timer_finalize` is made for every call to
+`aesop_timer_init`.
+
+
+-----
+__blocking int aesop_timer(int millisecs);
+----
+
+The `aesop_timer` function will sleep for the given number of milliseconds.
+The functions returns 0 on success, `-ECANCELED` if canceled before the sleep
+time is over.
+
+Socket
+~~~~~~
+
+Header: `aesocket.hae`
+
+-----
+int aesocket_init (void);
+int aesocket_finalize (void);
+----
+
+Module initialization functions.
+
+
+----
+__blocking int aesocket_accept(
+    int sockfd,
+    struct sockaddr *addr,
+    socklen_t * addrlen,
+    int *newfd,
+    int * err);
+----
+
+The aesop version of the accept system call.
+Unlike the system call, the descriptor for the new connection is returned in
+`*newfd`, while an error, if any, is returned in `*err`.
+The function returns `AE_SUCCESS` when a new connection is accepted,
+`AE_ERR_CANCELED` if the call was canceled and `AE_ERR_OTHER` if a system call
+error occurred (returned in `*err`) occurred.
+
+
+
+-----
+__blocking int aesocket_read(
+    int fd,
+    void *buf,
+    size_t count,
+    int *ret,
+    int * err);
+----
+Read `count` bytes from the given socket. This call will not return
+until an error occurred or at `count` bytes were read from the socket.
+The function returns `AE_SUCCESS` if the requested number of bytes was read,
+`AE_ERR_CANCELED` if the call was canceled and `AE_ERR_OTHER` if another error
+occured, in which case `*err` is set to the POSIX error code. The number of
+bytes read into `buf` is returned in `*ret`.
+
+
+
+----
+__blocking int aesocket_write(
+    int fd,
+    const void *buf,
+    size_t count,
+    int *ret,
+    int * err);
+----
+As `aesocket_read`, but writes data to the socket instead.
+
+----
+__blocking int aesocket_ready (int fd, int flags, int * err);
+----
+
+The `aesocket_ready` call waits until the passed in descriptor is ready to
+perform the action specified in `flags`.
+`Flags` can be a combination of `AESOCKET_READ` or `AESOCKET_WRITE`.
+The function returns `AE_ERR_CANCELED` when canceled, `AE_ERR_OTHER` when an
+error was returned by the underlying system call, and `AE_SUCCESS` otherwise.
+In case of `AE_ERR_OTHER`, the error code is stored in `*err`.
+
+This function is used internally to implement the `aesocket_read`,
+`aesocket_write` and `aesocket_accept` functions.
+
+
+
+
+File
+~~~~
+
+Header: `aefile.hae`
+
+----
+int aefile_init(void);
+void aefile_finalize(void);
+----
+As with the other code modules, the init function needs to be called before
+calling any of the functions below. 
+
+
+
+----
+__blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t offset);
+__blocking ssize_t aefile_pread(int fd, void *buf, size_t count, off_t offset);
+__blocking int aefile_fsync(int fd);
+__blocking int aefile_fdatasync(int fd);
+__blocking int aefile_ftruncate(int fd, off_t length);
+__blocking int aefile_unlink(const char *pathname);
+----
+These are aesop versions of the regular `pwrite`, `pread`, `fsync`,
+`fdatasync`, `ftruncate` and `unlink` functions.
+
+[NOTE]
+====
+Currently, these functions are implemented using a thread which calls the
+regular I/O function. At this point, these functions cannot be cancelled.
+====
+
+
+ResourceBuilder
+~~~~~~~~~~~~~~~
+
+Header: `resourcebuilder.hae`
+
+----
+void rb_slot_initialize (rb_slot_t * slot);
+----
+
+`rb_slot_t` is an opaque datatype.
+Prepare a slot for using with the `rb_slot_capture` function.
+
+
+----
+__blocking int rb_slot_capture (rb_slot_t * slot);
+----
+
+This call will suspend execution until the call is cancelled or until
+`rb_slot_complete` is called on the slot. A slot only supports a single
+capture call (i.e. it is illegal to call capture on a slot that is already
+captured). When the call is completed by a call to `rb_slot_complete`, this
+function returns `AE_SUCCESS`, and `AE_ERR_CANCELED` when the call returns due
+to a cancellation request.
+
+After a call to this function, the slot needs to be destroyed (using
+`rb_slot_destroy` and reinitialized before it can be used again.
+
+----
+int rb_slot_complete (rb_slot_t * slot);
+----
+
+Release a captured slot. This call returns `AE_SUCCESS` if it successfully
+released a `rb_slot_capture` call on the slot. If the slot was not active (for
+example because it was already cancelled), an unspecified aesop error code is
+returned.
+
+----
+void rb_slot_destroy (rb_slot_t * slot);
+----
+
+Free resources associated with the slot. The slot must be inactive. It is
+illegal to call this function on a slot that is currently captured.
+
+
+[TIP]
+====
+The ResourceBuilder functions provide a low level toolkit used to build higher
+level code. For example, the ResourceBuilder is used to implement the aesop
+socket functions. ResourceBuilder is also a good basis for building
+synchronization primitives, such as mutexes and semaphores.
+====
+
+
+thread
+~~~~~~
+
+----
+int aethread_init(void);
+void aethread_finalize(void);
+----
+
+----
+struct aethread_group* aethread_create_group_pool(int size);
+void aethread_destroy_group(struct aethread_group* group);
+----
+
+
+----
+__blocking int aethread_hint(struct aethread_group* group);
+----
+
+
+[NOTE]
+====
+Like ResourceBuilder, the thread functionality is used as a tool to implement
+other functions. See <<ref-thread>> for an example.
+====
+
+

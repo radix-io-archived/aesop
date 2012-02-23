@@ -1,0 +1,329 @@
+
+Introduction
+============
+
+
+Installing Aesop
+----------------
+
+This section describes how to obtain, build and install the aesop
+source-to-source translator.
+
+
+Prerequisites
+~~~~~~~~~~~~~
+
+[NOTE]
+=====
+These are the requirements of the aesop source-to-source translator.
+Executables compiled from aesop source code do not require any additional
+packages, except for those required used by the program itself. For example,
+there is no need to have a haskell installed when running an executable
+created using the aesop source-to-source translator.
+====
+
+
+Aesop currently requires the following:
+
+* The Glasgow Haskell compiler, version 7.0 or later
+  (http://www.haskell.org/ghc/).
+* OpenPA (The Open Portable Atomics library,
+  http://trac.mcs.anl.gov/projects/openpa).
+* wget
+* A pthreads compatible system.
+
+* At least 2 GiB of memory
+
+
+Mac OS X
+^^^^^^^^^
+
+For Mac OS X, the following additional packages are required:
+
+* coreutils
+
+Make sure the coreutils installation directory is added to the search path
+(+$PATH+).
+
+A Mac OS haskell package can be downloaded from http://hackage.haskell.org/platform/mac.html.
+
+
+Developer Version
+^^^^^^^^^^^^^^^^^^
+
+When building aesop from the git source code repository, the following extra
+packages are required:
+
+* A git client. Git can be downloaded from http://git-scm.com/download.
+* autoconf (http://www.gnu.org/s/autoconf/)
+
+
+Installation of the aesop dependencies
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Glasgow Haskell Compiler
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+[TIP]
+ Many linux distributions, such
+as Ubuntu and Debian, contain this package. If your linux distribution has a
+pacakge for the Glasgow Haskell Compiler (typically named 'ghc'), we recommend
+installing ghc on your system using the distribution's package manager.
+If your distribution does not include a package, or you do not want to install
+the package system-wide, the compiler can be installed using the instructions
+below.
+
+
+Aesop requires the Glasgow Haskell Compiler (ghc).  If root
+access (required for many package managers) is not available,
+or system wide installation of ghc is not desired,
+it is possible to install the ghc binaries in a home
+directory.
+
+The binary builds can be found here:
+http://www.haskell.org/ghc/download_ghc_7_2_2#binaries
+
+Additional Haskell Modules
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Aesop requires some additional haskell modules:
+
+* transformers, version 0.2.2.0
+* mtl, version 2.0.1.0
+* happy, version 1.18.6
+* alex, version 2.3.5
+* regex-base, version 0.93.2
+* regex-posix, version 0.94.4
+* regex-pcre-builtin, version 0.94.2.1.7.7
+* syb, version 0.3
+
+To simplify installing these packages, the aesop distribution contains scripts
+to download and install these modules.  These scripts expect the +wget+
+utility to be in the default search path.  The +wget+ utility should be
+available as a package on your platform.
+
+To run these scripts, change to the +aesop/main/hs+ directory and execute
+the following commands (as a normal user, no root privileges required):
+
+------
+./setup-hs-local
+./setup-langc
+------
+
+[[ref-openpa]]
+The Open Portable Atomics Library
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+[TIP]
+=====
+Recent versions of the mpich MPI library include OpenPA.
+If mpich is installed, there is no need to install OpenPA.
+=====
+
+The Open Portable Atomic Library can be downloaded from the following
+location: http://trac.mcs.anl.gov/projects/openpa.
+Configure using the included `configure` script, optionally specifying where
+the library needs to be installed (using the `--prefix` option). If installing
+in a non-standard location, make sure to use the `--with-openpa`
+
+
+Obtaining the Aesop distribution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Right now, the only way to obtain the aesop distribution is directly from
+our source code repository.  For this, +git+ is required (http://git-scm.com).
+
+In the future, we will release stable aesop source archives through the aesop
+website.
+
+Obtaining Aesop from the source code repository
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+[NOTE]
+.The Aesop source code repository
+=======
+The aesop source code repository contains the latest aesop source code, which
+changes on a daily basis.  As such, from time to time, the code in the
+repository might contain bugs or fail to build.  If that is the case, please
+let us know by opening a ticket at http://trac.mcs.anl.gov/projects/aesop.
+=========
+
+In order to install Aesop is is necessary to first clone the repository.
+The aesop source code repository is public and can be cloned by
+anonymous users:
+
+------
+git clone git://git.mcs.anl.gov/aesop
+------
+
+[NOTE]
+.Read/write access
+========================
+We welcome all contributions and patches.
+
+Frequent contributors can request write access to the aesop repository by
+sending a a public key (in OpenSSH format) to Phil Carns
+(mailto:carns@mcs.anl.gov[carns@mcs.anl.gov]).
+
+To clone the repository with support for write access, use the following git
+command:
+
+------
+git clone git@git.mcs.anl.gov:aesop.git
+------
+=======================
+
+The aesop code is split into multiple submodules.
+Once the aesop repository is cloned, these submodules must be initialized.
+
+-----------
+cd aesop
+git submodule init
+git submodule update
+-----------
+
+[TIP]
+In git version 1.6.5 or later, the submodules can be automatically initialized
+and updated when cloning the aesop repository by using the +--recursive+
+parameter.
+
+The source code repository does not include the final configuration and build
+scripts. To generate these, please run the following command in the root
+directory of the aesop directory:
+
+----------
+./prepare
+----------
+
+Configuring Aesop
+^^^^^^^^^^^^^^^^^
+
+Now there should be a script named +configure+ in the aesop root directory.
+
+It is possible to compile aesop in the source directory, but we usually
+recommend doing an "out of tree build". To do this, create a build
+subdirectory inside the aesop directory and then run configure and make from
+there:
+
+----
+mkdir build
+cd build
+../configure
+----
+
+If the OpenPA installation is in a non-standard location (see <<ref-openpa>>)
+then the `--with-openpa=<path>` option can be used to tell configure where to
+find the openpa library.
+
+[NOTE]
+====
+When doing an out of tree build, it is important to be in the desired build
+directory when executing the configure script.
+====
+
+Building Aesop
+^^^^^^^^^^^^^^
+
+To build aesop, run `make` within the build-aesop directory:
+
+-----
+make -j 4 
+-----
+
+[NOTE]
+====
+Specifying +-j 4+ is optional, but the aesop build system does support
+parallel builds, reducing the build time on most systems.
+====
+
+Building and running the Aesop test suite
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The aesop distribution includes a large number of test programs,
+designed to exercise the language features and the translator.
+
+These test programs can be built using the following command (in the build
+directory).
+
+----
+make test
+----
+
+To run the tests, use the '++check++' target instead.
+
+----
+make check
+----
+
+[NOTE]
+=====
+At this time, some of the tests are not completing (successfully).
+This will be fixed soon.
+=====
+
+
+Installing Aesop
+^^^^^^^^^^^^^^^^
+
+To install aesop, use the following command:
+
+----
+make install
+----
+
+Unless specified otherwise (using the +--prefix+ option at configure time),
+aesop will be installed into the +/usr/local+ directory.
+
+The configure process produces two scripts in the maint/ directory.  aecc
+is a translator for .ae files, and aercc is a translator for .aer files.  Both
+are shell scripts that combine preprocessing, source translation, and
+compilation into one step. These wrappers will be during the
+installation process.
+
+
+Using the Aesop Source-To-Source Translator
+-------------------------------------------
+
+
+
+File Dependencies
+~~~~~~~~~~~~~~~~~~
+
+[graphviz]
+.Translation Dependencies
+---------------
+digraph G
+{
+    subgraph P
+    {
+      rank = "same";
+      ae [label="example.ae"];
+      hae [label="example.hae"];
+    };
+    subgraph P2
+    { 
+      rank="same";
+      ae_s [label="example.ae.s"];
+      h [label="example.h"];
+    }
+    o [label="example.o"];
+    ae_s -> o [label="C compiler"];
+    ae -> ae_s [label="Aesop translator"];
+    hae -> h [label="Aesop translator"];
+    ae -> hae [label="includes",style="dashed"];
+    ae_s -> h [label="includes",style="dashed"];
+}
+---------------
+
+
+[TIP]
+=====
+To see the intermediate C code generated by aesop (instead
+of going directly from .ae files to .o files), configure aesop with the
+`--enable-aesop-debug` configure option. Doing so will cause 
+additional ae.i and ae.s files to be created during the compilation of aesop code.
+These files contain the C translation of the aesop source code.
+=====
+
+
+

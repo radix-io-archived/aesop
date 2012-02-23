@@ -1,72 +1,23 @@
+Aesop User Guide
+=================
+author
+v0.1, 2012-01
+:doctype: book
 
-Aesop
-=====
+// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 
-== Source files
+include::aug_preface.txt[]
 
-Aesop source and header files are named *.ae and *.hae, respectively.  They
-are used exactly like c source and header files, except that they support
-additional constructs, such as the __blocking qualifier for functions and
-the pwait and pbranch constructs.
+include::aug_introduction.txt[]
 
-In addition, Aesop remote code (ie, RPC functions) can be found in .aer and
-.haer functions.  These source files support an additional __remote
-qualifier for functions to be invoked via RPC.
+include::aug_language.txt[]
 
-== Compilers
+include::aug_standard.txt[]
 
-The configure process produces two compilers in the maint/ directory.  aecc
-is a compiler for .ae files, and aercc is a compiler for .aer files.  Both
-are shell scripts that combine preprocessing, source translation, and
-compilation into one step.
+include::aug_external.txt[]
 
-[source,c]
-----
-sdafa
-sdfa
-sdfasdf
-----
 
-== Resources
 
-Resources are the lowest level aesop components that present Aesop
-compatible intefaces for managing concurrency.  The current list of 
-resources includes:
-
-* file resource
-** code/src/versioned-osd/prototype/file-resource
-** provides a mapping of open, close, read, write etc. functions.  It uses
-   a thread pool by default to implement nonblocking semantics.
-
-* Berkeley DB resource
-** code/src/versioned-osd/prototype/bdb-resource
-** provides a mapping of common Berkeley DB functions.  It uses a thread
-   pool by default to implement nonblocking semantics.
-
-* socket resource
-** code/src/common/resources/aesocket/
-** waits for a file descriptor to be ready for read or write operations.
-   It does not implement actual read or write calls; it is assumed that the
-   caller will use this resource in conjunction with nonblocking reads and 
-   writes.  It uses libev, which in turn uses epoll() on Linux.
-
-* timer resource
-** code/src/common/resources/timer/
-** implements timers with millisecond resolution.  The underlying
-   implementation uses libev.
-
-* scheduling resource
-** code/src/common/resource/scheduling/ 
-** Implements various synchronization primitives, for example Aesop
-   equivalents for condition variables.
-
-* branch threader resource
-** code/src/common/resource/branch-threader/
-** Proof of concept that allows the developer to manually allocate a thread
-   for particular aesop code blocks.
-
-== Test programs
-
-A variety of tests and/or examples for Aesop functionality can be found in
-the code/src/aesop/parser/tests/blocking directory.  These tests use a
-dummy resource to demonstrate various language features.  

@@ -1,0 +1,271 @@
+Interfacing with external C libraries
+=====================================
+
+Non-blocking functions
+----------------------
+
+Non-blocking functions can be called directly.
+
+If the library provides an asynchronous interface, even though 
+Currently, there are two ways to do this.
+
+The first one is to use the _ResourceBuilder_ module (described below).
+The second one is to write an aesop resource for the library.
+
+ResourceBuilder
+^^^^^^^^^^^^^^^
+
+
+
+
+Blocking functions
+-------------------
+
+
+
+
+
+[[ref-thread]]
+Using the `thread` module
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+[NOTE]
+=====
+The BranchThreader module relies on the internals of the current
+source-to-source translator.
+=====
+
+
+/////////////
+
+\subsection{Resources and Events}
+
+We treat asynchronous events as being produced by \emph{resources}.
+Resources are logical components of the system (on a single node) that perform
+operations for a period of time.  Examples include network cards, storage
+devices, scheduling, timing
+
+\begin{figure}
+  %\vskip -0.25in
+  \centering
+  \includegraphics[keepaspectratio,width=0.45\textwidth]{model.pdf}
+  \caption{Model of devices, server state, and server code.
+    \label{fig:model}
+  }
+\end{figure}
+
+% I don't think limited in capacity is a resource requisite.
+% From a usage point of view: maybe; From aesop language point of view: a
+% resource is a undivisable blocking function. (i.e. a blocking function which
+% itself doesn't call any aesop blocking functions)
+%
+Mention properties of resources:
+limited in capacity, capability
+often require or benefit from scheduling
+This should invoke the notion of queueing, delaying, waiting, etc.
+of operations that are given to resources.
+
+In practice, interfaces to a resource usually consist
+of a basic set of asynchronous or non-blocking function calls provided as
+a userspace library.
+
+\subsection{Serial Control Flow}
+
+\subsection{Misc. notes}
+
+\color{red}
+Somewhere (not sure where in the paper) we should address how aesop uses
+multiple cores.  Right now, normal c code may or may not be executed in a
+thread depending one what path is the lowest latency following a given
+resource event.  However, you can add advisory hints to tell aesop to run
+code branches in a thread?   See discussion on mailing list and go with
+whatever we end up settling on there.
+\color{black}
+
+
+Aesop has no such restriction on which
+thread executes non-async code.  Continuation of aesop functions can
+be driven by a single thread in the aesop poll engine, by threaded
+callbacks from resources, or (hypothetically, we haven't implemented
+this) by a thread pool in the aesop poll engine. \color{black}
+
+/////////
+
+
+
+Creating a new resource
+-----------------------
+
+In some cases, more advanced contro
+
+----
+struct ae_resource
+{
+    const char *resource_name;
+    int (*test)(ae_op_id_t id, int ms_timeout);
+    int (*poll_context)(ae_context_t context);
+    int (*cancel)(ae_context_t ctx, ae_op_id_t id);
+    int (*register_context)(ae_context_t context);
+    int (*unregister_context)(ae_context_t context);
+    struct ae_resource_config* config_array;  /* terminated by entry with NULL name */
+};
+----
+
+
+
+//////////
+
+\subsection{Resources and Events}
+
+We treat asynchronous events as being produced by \emph{resources}.
+Resources are logical components of the system (on a single node) that perform
+operations for a period of time.  Examples include network cards, storage
+devices, scheduling, timing
+
+\begin{figure}
+  %\vskip -0.25in
+  \centering
+  \includegraphics[keepaspectratio,width=0.45\textwidth]{model.pdf}
+  \caption{Model of devices, server state, and server code.
+    \label{fig:model}
+  }
+\end{figure}
+
+% I don't think limited in capacity is a resource requisite.
+% From a usage point of view: maybe; From aesop language point of view: a
+% resource is a undivisable blocking function. (i.e. a blocking function which
+% itself doesn't call any aesop blocking functions)
+%
+Mention properties of resources:
+limited in capacity, capability
+often require or benefit from scheduling
+This should invoke the notion of queueing, delaying, waiting, etc.
+of operations that are given to resources.
+
+In practice, interfaces to a resource usually consist
+of a basic set of asynchronous or non-blocking function calls provided as
+a userspace library.
+
+\subsection{Serial Control Flow}
+
+\subsection{Misc. notes}
+
+\color{red}
+Somewhere (not sure where in the paper) we should address how aesop uses
+multiple cores.  Right now, normal c code may or may not be executed in a
+thread depending one what path is the lowest latency following a given
+resource event.  However, you can add advisory hints to tell aesop to run
+code branches in a thread?   See discussion on mailing list and go with
+whatever we end up settling on there.
+\color{black}
+
+
+Aesop has no such restriction on which
+thread executes non-async code.  Continuation of aesop functions can
+be driven by a single thread in the aesop poll engine, by threaded
+callbacks from resources, or (hypothetically, we haven't implemented
+this) by a thread pool in the aesop poll engine. \color{black}
+//////////
+
+
+/////
+
+What is a resource?
+A resource is a very thin shim layer that converts aesop blocking calls into async calls to some system resource or system library (like mpi, file access, ssm, etc.)
+
+A resource API uses the same types and conventions as the underlying resource; we don't try to hide any of that. It just handles how to post and complete blocking operations.
+
+Aesop is re-entrant and uses threads.
+
+A resource can use a number of progress models:
+
+if the resource has its own threads or progress engine, then it can trigger callbacks that drive the next aesop execution state
+if the resource is passive, it can request polling from aesop and aesop will drive it with explicit poll calls
+Polling resources can "busy poll" or just indicate specific times when they would like to be polled
+Creating a new resource
+Look at resources/timer/timer.c as an example.
+
+The most important file that a resource will use to help define its interface is resource.h, which can be found in the top level directory.
+
+The ae_resource struct defines the interface to each resource. It includes the following pointers:
+
+resource_name
+test()
+poll_context()
+cancel()
+register_context()
+unregister_context()
+config_array()
+resource_name is the only mandatory field. The others are optional depending on what functionality your resource provides.
+
+SSM as an example
+In ssm, the user calls a function called ssm_wait() which will trigger callbacks. ssm_wait() takes a timeout argument to tell it how long to wait. The callbacks are executed in serial in the context of the wait() call. wait() does not spawn threads. The callback functions can do pretty much anything; they can even post new SSM operations.
+
+SSM init function returns a handle. A use case for calling init twice and getting two handles would be if you wanted to use two transports simultaneously.
+
+SSM makes progress on communication autonomously, even if you don't call wait(). So wait() does not drive communication progress, it only lets you find completion events.
+
+If the ssm_wait() function is sleeping in one thread, while another thread registers a callback and does a put/get, then the wait _will_ pick up the new completion event. You don't have to restart the wait() call. This simplifies the resource greatly.
+
+Kevin's example of an SSM resource
+
+General plan: Kevin will provide a basic, possibly poor performing ssm resource, UAB team will own it from there to test performance and tune it, change threading, etc. to match best practice for SSM performance.
+
+Issues: we have to decide (soon, not necessarily today) where to host resources. Should ssm be part of the aesop repo, or should there be separate repos so that not every aesop user gets ssm, etc.
+
+Code walkthrough
+
+There are some minor differences between "in tree" version of aesop within the triton repo, and the "stand alone" version of aesop that we are working with. Kevin's example is in tree, and will need some minor porting to go along with aesop.
+
+Error codes: functions that aesop actually uses directly (init and finalize are good examples) you must use pre-defined error codes. For functions that are specific to your resource (like put() and get()) you can do absolutely anything that you want.
+
+There is a call to register the initialization and finalization routines (triton_init_register()).
+
+The initialization function: register the resource with aesop, specify the ae_resource struct that fills in function pointers for various functionality. Then you create a default context.
+
+Right now the transport and address are hard coded (using tcp on localhost).
+
+ae_define_post(... triton_ssm_put ...)
+The ae_define_post lets you specify a blocking function and its arguments. It (behind the scenes) tacks on extra arguments that are needed by aesop.
+
+Blocking functions like this can support immediate completion. SSM does not do this yet, but it is something we can discuss later as an optimization. The idea is to avoid context switch to another thread if you post an operation that can be finished in place.
+
+The opcache is an aesop thing that lets you allocate a struct to represent an in-flight operation (an "op"). It has a user-definable field that you can use to tack on information specific to your resource.
+
+The following macro populates the op structure with fields to tell aesop what to do when the operation completes:
+
+ae_op_fill_with_params()
+General comment: this example needs one line comments explaining what's going on, and point out which things are optional.
+
+General comment: it might be a good idea for ANL to just implement some basic functions and then hand off to UAB to fill in remainder, would be a good exercise for everyone.
+
+This function can be used to track operations (put them in whatever queues you would like as a resource imlementor):
+
+ae_ops_enqueue()
+The caller of ae_ops_enqueue() is responsible for appropriate locking when modifying or moving op structures around. Until the resource completes an operation (and hands off control to aesop) it is the resource's responsibility to handle them until then.
+
+The following function handles polling:
+
+triton_ssm_poll()
+Right now the resource busy spins and expects aesop to call the poll function constantly. We know that this is not a final implementation. In the longer term we want this resource to have a thread that drives the wait() function. Once that is in place then the poll function is no longer needed.
+
+General issue: we need to discuss whether to keep wrappers for things like triton_mutex_lock(). If we do want to keep wrappers, we need to decide whether each component does its own wrappers or we all agree on a centralized implementation/wrapper across the project.
+
+Future work (not enough time in this session)
+Need to address semantics of ssm in relation to anl/triton work, independent of the resource implementation. Let's pick back up on that this afternoon after completing the agenda.
+
+UAB can also send visitors to ANL easily if we need more interaction later.
+
+////
+
+Resources are the lowest level aesop components that present Aesop
+compatible intefaces for managing concurrency.  The current list of 
+resources includes:
+
+. resourcebuilder
+. branchthreader
+. timer
+
+
+
+
