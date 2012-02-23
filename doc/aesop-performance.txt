@@ -87,8 +87,8 @@ __blocking int test (void)
 ----
 
 So, in the example above, even though the test will return without waiting for
-the pbranch to complete, it's stack variables (var in this case) will consume
-memory until the pbranch returns.
+the pbranch to complete, it's stack variables (`var` in this case) will
+consume memory until the pbranch returns.
 
 
 //=========================================================================
