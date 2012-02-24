@@ -26,6 +26,12 @@ void rb_slot_initialize (rb_slot_t * slot)
 #endif
 }
 
+void rb_slot_clear (rb_slot_t *slot)
+{
+    OPA_store_int (&slot->status, STATUS_UNINITIALIZED);
+    return;
+}
+
 /**
  * Complete the slot with the given error code.
  * Return AE_SUCCESS if successful, AE_ERR_INVALID if the slot was already

@@ -30,6 +30,12 @@ typedef struct rb_slot_t rb_slot_t;
 void rb_slot_initialize (rb_slot_t * slot);
 
 /**
+ * Clears the state of the slot and
+ * returns it to the uninitialized state
+ */
+void rb_slot_clear (rb_slot_t * slot);
+
+/**
  * Complete the callback stored in a slot.
  * Does not release the private data.
  * Returns AE_SUCCESS if the slot completed, error code if the slot was or
