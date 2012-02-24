@@ -365,10 +365,12 @@ set of complexity metrics.
 [cols="3,1,1,1", options="header"]
 |============================
 | Server Implementation | CC | Mod. CC | SLOC 
-| aesop | 15 | 10 | 171 
-| thread | 17 | 12 | 179 
-| thread pool | 29 | 23 | 292 
-| event | 26 | 21 | 328 
+| aesop | 16 | 11 | 179 
+| thread-per-client | 17 | 12 | 182
+| thread-per-client-nb | 17 | 12 | 184
+| thread-per-op | 22 | 17 | 249
+| thread-pool | 32 | 26 | 313
+| event | 28 | 23 | 341
 |============================
 
 // @TODO: Need to update the table with other forms of threading
