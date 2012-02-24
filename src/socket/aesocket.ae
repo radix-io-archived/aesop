@@ -111,7 +111,7 @@ int aesocket_init (void)
    return AE_SUCCESS;
 }
 
-int aesocket_done (void)
+int aesocket_finalize (void)
 {
    ae_mutex_lock (&mutex);
    if (0 == --refcount)

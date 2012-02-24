@@ -166,7 +166,7 @@ static __blocking int dotest (int argc, char ** args)
    aesocket_init ();
    test1 ();
    test2 ();
-   aesocket_done ();
+   aesocket_finalize ();
    return 0;
 }
 

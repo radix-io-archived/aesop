@@ -20,7 +20,7 @@ int aesocket_init (void);
 /**
  * Inform the socket module it is no longer needed.
  */
-int aesocket_done (void);
+int aesocket_finalize (void);
 
 
 /**
