@@ -15,7 +15,7 @@
             if (aesop_count_branches() < 2) { \
                 break; \
             } \
-            __ae_cancel_branches_wait_ret = triton_timer(2); \
+            __ae_cancel_branches_wait_ret = aesop_timer(2); \
         } while (__ae_cancel_branches_wait_ret == 0); \
     }
 

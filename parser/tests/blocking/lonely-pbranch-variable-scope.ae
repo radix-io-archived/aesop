@@ -28,7 +28,7 @@ static __blocking void lonely_pbranch(void)
                 /* start a timer to make sure that the pbranch is
                  * still active after this function returns
                  */
-                ret = triton_timer(2000);
+                ret = aesop_timer(2000);
                 if(ret != 0)
                 {
                      printf("Error in branch 1 while sleeping\n");
@@ -55,7 +55,7 @@ __blocking int aesop_main(int argc, char **argv)
     lonely_pbranch();
     /* start a timer to wait for the lonely pbranch to finish */
     printf("Sleeping 5 seconds to wait for pbranch to finish.\n");
-    triton_timer(5000);
+    aesop_timer(5000);
     printf("Test complete.\n");
     return 0;
 }

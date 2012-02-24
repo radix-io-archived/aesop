@@ -16,7 +16,7 @@ static __blocking int triton_dosleep(void)
         {
             pbranch
             {
-                triton_timer(1000);
+                aesop_timer(1000);
             }
         }
     }

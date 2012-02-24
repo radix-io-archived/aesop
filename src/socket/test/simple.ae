@@ -24,7 +24,7 @@ static __blocking int test1 ()
    {
      /* pbranch
       {
-         tret = triton_timer (100);
+         tret = aesop_timer (100);
          assert (tret != AE_SUCCESS && "File did not become read??");
         // aesop_cancel_branches_wait ();
       } */
@@ -141,7 +141,7 @@ static __blocking int test2 ()
       pbranch
       {
          int ret;
-         ret = triton_timer (10000);
+         ret = aesop_timer (10000);
          if (ret == AE_SUCCESS)
          {
             printf ("Cancelling!");

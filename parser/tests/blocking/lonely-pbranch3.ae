@@ -6,7 +6,7 @@
 
 static __blocking void noop(void)
 {
-    /* triton_timer(10); */
+    /* aesop_timer(10); */
     return;
 }
 

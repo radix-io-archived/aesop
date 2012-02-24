@@ -9,10 +9,10 @@
  * run a timer for the specified number of milliseconds
  * \return 0 on success, -ECANCELED if canceled
  */
-__blocking int triton_timer(int millisecs);
+__blocking int aesop_timer(int millisecs);
 
-int triton_timer_init(void);
-void triton_timer_finalize(void);
+int aesop_timer_init(void);
+void aesop_timer_finalize(void);
 
 #endif
 

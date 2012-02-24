@@ -15,7 +15,7 @@ static __blocking void run_test(void)
 
                 while(1)
                 {
-                    ret = triton_timer(4);
+                    ret = aesop_timer(4);
                     if(ret != 0)
                     {
                         break;
@@ -25,7 +25,7 @@ static __blocking void run_test(void)
 
 	    pbranch
 	    {
-                triton_timer(5);
+                aesop_timer(5);
 
                 /* cancel the other pbranch */
                 printf("pbranch2: calling aesop_cancel_branches_wait().\n");

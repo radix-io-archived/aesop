@@ -24,7 +24,7 @@
 #define TIMER_DEFAULT_SIZE 1024
 
 static ae_opcache_t timer_opcache = NULL;
-static int triton_timer_resource_id;
+static int aesop_timer_resource_id;
 static ev_timer timer_watcher;
 static struct ev_loop* timer_loop = NULL;
 static void timer_cb(EV_P_ ev_timer *w, int revents);
@@ -44,7 +44,7 @@ static triton_mutex_t timer_mutex = TRITON_MUTEX_INITIALIZER;
 static ae_ops_t timer_oplist;
 static ae_ops_t cancel_oplist;
 
-ae_define_post(int, triton_timer, int millisecs)
+ae_define_post(int, aesop_timer, int millisecs)
 {
     struct timeval adjust, now;
     int ret;
@@ -59,7 +59,7 @@ ae_define_post(int, triton_timer, int millisecs)
     ae_op_fill(op);
 
     top = ae_op_entry(op, struct timer_op, op);
-    top->op_id = ae_id_gen(triton_timer_resource_id, (uintptr_t) op);
+    top->op_id = ae_id_gen(aesop_timer_resource_id, (uintptr_t) op);
     top->ret = 0;
     top->milliseconds = millisecs;
 
@@ -99,12 +99,12 @@ ae_define_post(int, triton_timer, int millisecs)
 
     triton_mutex_unlock(&timer_mutex);
 
-    ae_resource_request_poll(op->ctx, triton_timer_resource_id); 
+    ae_resource_request_poll(op->ctx, aesop_timer_resource_id); 
 
     return AE_SUCCESS;
 }
 
-static int triton_timer_poll(ae_context_t context)
+static int aesop_timer_poll(ae_context_t context)
 {
     struct ae_op *op;
     struct ae_op *op_head;
@@ -163,7 +163,7 @@ static int triton_timer_poll(ae_context_t context)
     return AE_SUCCESS;
 }
 
-static int triton_timer_cancel(ae_context_t triton_ctx, ae_op_id_t op_id)
+static int aesop_timer_cancel(ae_context_t triton_ctx, ae_op_id_t op_id)
 {
     /* TODO: do we have to check for races here (trying to cancel an ae_op
      * that no longer exists) , or does aesop do that for us?
@@ -179,7 +179,7 @@ static int triton_timer_cancel(ae_context_t triton_ctx, ae_op_id_t op_id)
     triton_mutex_lock(&timer_mutex);
 
     op = intptr2op (ae_id_lookup(op_id, &resource_id));
-    assert(resource_id == triton_timer_resource_id);
+    assert(resource_id == aesop_timer_resource_id);
 
     /* should still be in an op list */
     if(!ae_ops_exists(&timer_oplist, &op->link))
@@ -207,27 +207,27 @@ static int triton_timer_cancel(ae_context_t triton_ctx, ae_op_id_t op_id)
     triton_mutex_unlock(&timer_mutex);
 
     /* request a poll for aesop to harvest the cancelled timer */
-    ae_resource_request_poll(ctx, triton_timer_resource_id); 
+    ae_resource_request_poll(ctx, aesop_timer_resource_id); 
 
     return AE_SUCCESS;
 }
 
-struct ae_resource triton_timer_resource =
+struct ae_resource aesop_timer_resource =
 {
     .resource_name = RESOURCE_NAME,
-    .poll_context = triton_timer_poll,
-    .cancel = triton_timer_cancel,
+    .poll_context = aesop_timer_poll,
+    .cancel = aesop_timer_cancel,
     .config_array = NULL
 };
 
-__attribute__((constructor)) void triton_timer_init_register(void);
+__attribute__((constructor)) void aesop_timer_init_register(void);
 
-__attribute__((constructor)) void triton_timer_init_register(void)
+__attribute__((constructor)) void aesop_timer_init_register(void)
 {
-    ae_resource_init_register("timer", triton_timer_init, triton_timer_finalize);
+    ae_resource_init_register("timer", aesop_timer_init, aesop_timer_finalize);
 }
 
-int triton_timer_init(void)
+int aesop_timer_init(void)
 {
     int ret;
 
@@ -242,12 +242,12 @@ int triton_timer_init(void)
         return AE_ERR_SYSTEM;
     }
 
-    return ae_resource_register(&triton_timer_resource, &triton_timer_resource_id);
+    return ae_resource_register(&aesop_timer_resource, &aesop_timer_resource_id);
 }
 
-void triton_timer_finalize(void)
+void aesop_timer_finalize(void)
 {
-    ae_resource_unregister(triton_timer_resource_id);
+    ae_resource_unregister(aesop_timer_resource_id);
 
     ae_opcache_destroy(timer_opcache);
 }

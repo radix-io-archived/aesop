@@ -14,9 +14,9 @@ static __blocking void run_test(void)
 	{
 	    pbranch
 	    {
-                printf("pbranch1: calling triton_timer().\n");
-                triton_timer(5);
-                printf("pbranch1: finished triton_timer().\n");
+                printf("pbranch1: calling aesop_timer().\n");
+                aesop_timer(5);
+                printf("pbranch1: finished aesop_timer().\n");
 
                 sleep(5);
 	    }

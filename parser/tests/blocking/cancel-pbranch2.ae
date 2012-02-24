@@ -33,7 +33,7 @@ static __blocking void run_test(void)
 	    {
                 /* wait 1 second to let the tctest1 call finish */
                 printf("pbranch2: setting timer for 1 second.\n");
-                triton_timer(1000);
+                aesop_timer(1000);
                 printf("pbranch2: timer done.\n");
                 /* cancel the other pbranch */
                 printf("pbranch2: calling aesop_cancel_branches_wait().\n");

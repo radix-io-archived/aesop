@@ -17,7 +17,7 @@ static __blocking int receiver()
             while(!exit_loop)
             {
                 printf("recving...\n");
-                triton_timer(100);
+                aesop_timer(100);
             }
         }
         pbranch
@@ -25,7 +25,7 @@ static __blocking int receiver()
             while(!exit_loop)
             {
                 printf("sleeping...\n");
-                triton_timer(100);
+                aesop_timer(100);
                 if (i++ == 10)
                 {
                     exit_loop = 1;

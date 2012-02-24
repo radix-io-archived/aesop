@@ -10,7 +10,7 @@ __blocking void do_blocking3(void)
     ret = aesop_hints_get("aesop.test.sleepy_time", sizeof(sleep), &sleep);
     assert(ret == 0);
 
-    triton_timer(sleep);
+    aesop_timer(sleep);
 }
 
 __blocking void do_blocking2(void)

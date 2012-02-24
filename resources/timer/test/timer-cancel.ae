@@ -11,14 +11,14 @@ static __blocking int dotimer(void)
         pbranch
         {
             printf("sleeping for 10 s\n");
-            triton_timer(10000);
+            aesop_timer(10000);
             printf("10 s done.\n");
         }
 
         pbranch
         {
             printf("sleeping for 1 s\n");
-            triton_timer(1000);
+            aesop_timer(1000);
             printf("1 s done.\n");
 
             /* shut down the other timer */
