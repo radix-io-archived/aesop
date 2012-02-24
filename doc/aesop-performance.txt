@@ -373,8 +373,6 @@ set of complexity metrics.
 | event | 28 | 23 | 341
 |============================
 
-// @TODO: Need to update the table with other forms of threading
-
 //////
 \begin{table}
 \small
@@ -393,32 +391,46 @@ set of complexity metrics.
 \end{table}
 /////
 
-<<table-complex>> compares the code complexity of each implementation using McCabe
-Cyclomatic Complexity (CC) <<McCabe>>, Modified McCabe Cyclomatic Complexity
-(Mod. CC), and Source Lines of Code (SLOC).
+<<table-complex>> compares the code complexity of each server
+implementation using McCabe Cyclomatic Complexity (CC) <<McCabe>>,
+Modified McCabe Cyclomatic Complexity (Mod. CC), and Source Lines of Code
+(SLOC).  The CC and Mod. CC metrics were measured using the pmccabe tool,
+version 2.6, created by Paul Bame <<Bame>>, while the SLOC metrics were
+measured using the sloccount tool, version 2.26,
+created by David A. Wheeler <<Wheeler>>.
 
-//TODO: reference the
-//metrics and the tools that we used to collect them (pmccabe and sloccount).
+To simplify the comparison, error handling was excluded for all servers
+except for assertions on expected return codes.  The protocol definition
+(ie, request and acknowledgement structs) as well as helper functions to
+loop over send and receive were not counted in any of the implementations,
+as these were similar in all four.  Also note that the Aesop version
+does not include the Aesop standard library, which 
+provides a binding between Aesop and the standard POSIX socket API as part
+of its default functionality.  The focus
+of this comparison is on the core logic defining the server implementation.
 
-To simplify the comparison, error handling was excluded for all servers except
-for assertions on expected return codes.  The protocol definition (ie,
-request and acknowledgement structs) as well as helper functions to loop
-over send and receive were not counted in any of the implementations, as these
-were similar in all four.
+The Aesop and thread-per-client servers are very similar in terms of complexity.  The
+slight increase in complexity for the thread-per-client server results from
+the additional function calls needed to create and join threads.  The
+nonblocking version of the thread-per-client server (thread-per-client-nb)
+uses two additional lines of code to place each socket into non-blocking
+mode.  The remaining code logic needed to manage the nonblocking socket
+calls is implemented in helper functions which are not included in the
+analysis.
 
-Aesop and thread are very similar in terms of complexity, with the slight
-increase in the thread model due to function calls needed to create and join
-threads.
-
-Thread pool and event model are both much more complex than the thread or
-aesop model.  An additional complexity of the event model which is not
-captured by these metrics is the fact that control flow is not preserved
-across the processing of a given request.  For example, servicing a write
-operation requires 5 disconnected event handlers.  So although the event
-model appears less complex according to CC and mod. CC, qualitatively it is
-significantly more challenging to develop.
-
-
+The thread-pool and event models are both much more complex than the
+thread-per-client or aesop model.  In the case of the thread-pool server,
+this additional complexity arises from not only the queueing and thread
+management logic, but also the event loop which is necessary to detect
+incoming requests and dispatch them to the queue.  The event server
+complexity arises from the necessity of dividing servicing routines into multiple
+sub-functions and manually tracking state between those functions.
+An additional complexity of the event
+model which is not captured by these metrics is the fact that control flow
+is not preserved across the processing of a given request.  For example,
+servicing a write operation requires 5 disconnected event handlers.
+Although the event model appears less complex than the thread-pool model according to CC and
+Mod. CC, qualitatively it is significantly more challenging to develop.
 
 === Performance Evaluation
 
@@ -463,3 +475,5 @@ image::fig/read-null-mem.png["Read-null test server memory usage"]
 [bibliography]
 - [[[McCabe]]] McCabe, T.J. A Complexity Measure. In IEEE Transactions on
   Software Engineering, vol.SE-2, no.4, pp. 308- 320, Dec. 1976.
+- [[[Bame]]] Paul Bame.  pmccabe.  http://parisc-linux.org/~bame/pmccabe/
+- [[[Wheeler]]] David A. Wheeler.  sloccount.  http://www.dwheeler.com/sloc/
