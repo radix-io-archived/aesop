@@ -1,99 +1,185 @@
-
-Aesop Performance Tuning Guide
-==============================
+= Aesop Performance Evaluation and Analysis
 
 == Introduction
 
-This document describes a number of tips and techniques to speed up code
-development using aesop. This includes the time required to execute the source
-to source translator as well as the runtime efficiency of the generated code.
+We examine the performance of Aesop based on several factors including
+runtime performance, memory effieceny, programmer productivity and 
+compile time performance. We evaluated aesop by building a simple TCP server
+which would recieve requests from clients and then either recieve or send
+data which was either generated, discarded, read from a file or written to
+a file. This server design was then implemented in aesop and then in generic
+C code using other concurrency models for comparison. The description of
+the test server and client are below and these serve as the basis for the
+evaluations in the rest of the text. We also explore some micro-benchmarks
+to analyze how core features of aesop impact performance.
 
-//=========================================================================
-== Translation Performance
-//=========================================================================
+=== Client Design
 
-=== Parallel Make
+The client is a basic C program that uses TCP sockets to send messages to
+the server. The client will run in a loop generating a specifed number of
+operations to the server. The general flow is that client send a request
+to the server that contains and optional payload. The client then waits for
+the server to send an acknowledgement that also contain an optional payload.
 
-It is possible to speed up the translation of aesop files by using the `-jn`
-option to make, replacing `n` by the desired number of concurrent jobs.
+[float]
+==== Request Types
 
-=== CCache
+The client supports the following request types.
 
-At this time, there are a number of issues blocking the use  of ccache in
-combination with the aesop source to source translator (either to cache the
-translation or to cache the compilation of the generated C source code).
+[float]
+===== Read
 
-A first issue is related to incorrect handling of compiler names in the build
-system, causing the build to fail if the compiler is set to `ccache gcc`.
+The client sends a request with a file name and a size. The server will then
+open the file, read the contents up to the size specified. The server returns
+the data with the acknowledgement of the operation.
 
-The second issue stems from the fact that aesop introduces additional
-dependencies which are not understood by ccache. Therefore, subtly failures
-would be introduced when aesop is updated and the cache is not manually
-cleared.
+[float]
+===== Write
 
-Given these issues, at this point it is not recommended to use ccache in
-combination with aesop. However, both issues can be resolved in a later
-aesop release (see ticket #137 and #200 in the triton repository).
+The client sends a request with a file name, size and payload. The server will
+then create the file and write the payload. The server then sends an
+acknowledgement to client.
 
+[float]
+===== Read-Null
 
-//=========================================================================
-== Runtime Memory Efficiency
-//=========================================================================
+The client sends a request with a size to the server. The server then allocates
+a buffer for the response based on the size the client requested. The server
+then sends an acknowledgement with this buffer as the payload.
 
-This section examines the memory efficiency of the translated aesop code.
+[float]
+===== Write-Null
 
-=== Function arguments and stack variables of blocking calls
+The client sends a request with a size and a payload. The server recieves 
+the request but then simply discards the payload. The server sends an 
+acknowledgement back to the client.
 
-Aesop, in order to implement the additional functionality provided by blocking
-calls, rewrites blocking calls when translating the aesop code to C code.
-This translation introduces a certain amount of overhead, both in memory usage
-and execution performance. This section focuses on memory overhead,
-deferring the discussion of execution overhead to <<ref-blocking-runtime>>.
+[float]
+==== Implementation
 
-The main memory overhead incurred by blocking functions originates from the
-need to protect the logical state of the function while temporarily switching
-to other functions.
+The client has a set of command line parameters which control selecting the
+test type, the number of requets and the size of the request. The client is
+also a MPI program. This allows starting an arbitray number of clients and
+then synchronizing startup. The clients all barrier until they are ready to
+connect to the server. Clients exit the barrier, connect to the server
+and begin sending requests in a loop. When the client completes it waits
+at another barrier and then reports statistics about the run.
 
-For example, stack variables are moved to the heap. As long as the blocking
-function does not complete, the memory for these variables is not released.
-Arguments to the function need to be relocated to the heap as well,
-and so does the type returned from the function (if not void).
+=== Server Design
 
-In a normal C program, the items listed above consume stack space. In blocking
-functions, these consume heap space instead.  In addition, aesop internally
-maintains a number of control structures. Pointers to these structures are
-passed as function arguments to the blocking function, and consequently
-consume stack space. Currently, aesop adds about 4 pointers and 2 integers to
-each blocking function call.
+The server supports the client request types listed above. Each server
+implementation accepts client connections and then waits for requests.
 
-
-
-
-=== Lonely pbranches
-
-A lonely pbranch will keep the enclosing scope alive (up to the function
-scope) until the pbranch exits.
-
-.lonely pbranch scope
-[source, C]
-----
-__blocking int test (void)
+.Server Request Handling
+[graphviz]
+--------
+digraph G
 {
-   int var[10000];
-   pbranch {
-      ...
+   subgraph I {
+  rank = same;
+   incoming [label="client connects", shape="box"];
+   close [label="close connection"];
+   }
+
+   wait [label="receive request"];
+
+   incoming -> wait;
+   wait -> close [label="client closes connection"];
+   wait -> read_1 [label = "READ"];
+   wait -> readn_1 [label = "READ NULL"];
+   wait -> write_1 [label = "WRITE"];
+   wait -> writen_1 [label = "WRITE NULL"];
+
+   subgraph R {
+   read_1 [label="read from file"];
+   read_2 [label="send data"];
+   read_1 -> read_2 -> wait;
+   }
+
+   subgraph W {
+   write_1 [label="receive data"];
+   write_2 [label="write to file"];
+   write_1 -> write_2 -> wait;
+   }
+
+   subgraph RN {
+   readn_1 [label="send data"];
+   readn_1 -> wait;
+   }
+   
+   subgraph WN {
+   writen_1 [label="receive data"];
+   writen_1 -> wait;
    }
 }
-----
+--------
 
-So, in the example above, even though the test will return without waiting for
-the pbranch to complete, it's stack variables (`var` in this case) will
-consume memory until the pbranch returns.
+The servers share a common base of code for handling the requests.
+This insures that the variation in performance is primarily due
+to concurrency within the server. There is one exception to this which is
+the use of blocking or non-blocking sockets. This will be ellaborated on
+more in the analysis. All event loops are implemented using libev. <<libev>>
 
+==== Server Implementations
 
-//=========================================================================
-== Runtime Execution Speed
-//=========================================================================
+We implemented six server types including Aesop. Each server type examines
+a different type of concurrency model.
+ 
+[float]
+===== Aesop
+
+The Aesop server is done using Aesop of course. The server uses a
+'lonely pbranch' to service each client. All operations for a client are
+handled within a single pbranch. The underlying socket resource uses
+non-blocking sockets with a thread pool of 16 threads. The file resource uses
+synchronous IO and a thread pool with 4 threads.
+
+[float]
+===== Thread-per-client
+
+The thread-per-client server spawns a thread for each client connection. All
+requests for the client are handled within the same thread. This model uses
+blocking sockets.
+
+[float]
+===== Thread-per-client-nb
+
+The thread-per-client-nb server is identical to the thread-per-client server
+except that is uses non-blocking sockets instead of blocking sockets.
+
+[float]
+===== Thread-per-operation
+The thread-per-operation server uses and event loop to watch all sockets for
+activity and when requests are available a thread is spawned and the request
+is handled completely from within that thread. Blocking sockets are used
+in this implementation.
+
+[float]
+===== Thead-pool
+The thread-pool server uses and event loop to watch all sockets for activity.
+When requests are available, the event loop puts the request on a queue and
+wakes up a thread from the thread pool. The request is handled completely
+from within a single thread of the thread pool. Blocking sockets are used
+in this implementation.
+
+[float]
+===== Event
+The event server uses a single thread to handle all clients and requests. The
+event loop watches all sockets and handles each request in a callback. The
+event server uses non-blocking sockets and asynchronous file I/O.
+
+== Runtime Performance Evaluation and Analysis
+
+The evaluation of runtime performance was done by executing a series of tests
+using each server implementation type with the same client as discussed above.
+We then compare the results for each of the server implementations against
+aesop determine the overall effiecency of aesop compared to hand-tuned 
+solutions.
+
+=== Experiment
+
+We ran our tests on the Argonne Fusion cluster which is a standard Linux HPC
+cluster. The experiment was done 
 
 [[ref-blocking-runtime]]
 === Performance Implications of Blocking Calls
@@ -226,56 +312,6 @@ is still transferred over the network.
 The read-null and write-null cases attempt to determine the maximum network
 bandwidth the server can sustain, by ensuring the disk operations are not a
 bottleneck.
-
-.Server Request Handling
-[graphviz]
---------
-digraph G
-{
-   subgraph I {
-  rank = same;
-   incoming [label="client connects", shape="box"];
-   close [label="close connection"];
-   }
-
-   wait [label="receive request"];
-
-   incoming -> wait;
-   wait -> close [label="client closes connection"];
-   wait -> read_1 [label = "READ"];
-   wait -> readn_1 [label = "READ NULL"];
-   wait -> write_1 [label = "WRITE"];
-   wait -> writen_1 [label = "WRITE NULL"];
-
-   
-
-   subgraph R {
-   read_1 [label="read from file"];
-   read_2 [label="send data"];
-   read_1 -> read_2 -> wait;
-   }
-
-   subgraph W {
-   write_1 [label="receive data"];
-   write_2 [label="write to file"];
-   write_1 -> write_2 -> wait;
-   }
-
-   subgraph RN {
-   readn_1 [label="send data"];
-   readn_1 -> wait;
-   }
-   
-   subgraph WN {
-   writen_1 [label="receive data"];
-   writen_1 -> wait;
-   }
-
-
-}
-
---------
-
 ==== Implementation Details
 
 The server as described above was implemented in 5 different ways.
@@ -469,6 +505,85 @@ image::fig/write-null-mem.png["Write-null test server memory usage"]
 [[fig-read-mem]]
 image::fig/read-null-mem.png["Read-null test server memory usage"]
 
+== Runtime Memory Efficiency
+
+This section examines the memory efficiency of the translated aesop code.
+
+=== Function arguments and stack variables of blocking calls
+
+Aesop, in order to implement the additional functionality provided by blocking
+calls, rewrites blocking calls when translating the aesop code to C code.
+This translation introduces a certain amount of overhead, both in memory usage
+and execution performance. This section focuses on memory overhead,
+deferring the discussion of execution overhead to <<ref-blocking-runtime>>.
+
+The main memory overhead incurred by blocking functions originates from the
+need to protect the logical state of the function while temporarily switching
+to other functions.
+
+For example, stack variables are moved to the heap. As long as the blocking
+function does not complete, the memory for these variables is not released.
+Arguments to the function need to be relocated to the heap as well,
+and so does the type returned from the function (if not void).
+
+In a normal C program, the items listed above consume stack space. In blocking
+functions, these consume heap space instead.  In addition, aesop internally
+maintains a number of control structures. Pointers to these structures are
+passed as function arguments to the blocking function, and consequently
+consume stack space. Currently, aesop adds about 4 pointers and 2 integers to
+each blocking function call.
+
+=== Lonely pbranches
+
+A lonely pbranch will keep the enclosing scope alive (up to the function
+scope) until the pbranch exits.
+
+.lonely pbranch scope
+[source, C]
+----
+__blocking int test (void)
+{
+   int var[10000];
+   pbranch {
+      ...
+   }
+}
+----
+
+So, in the example above, even though the test will return without waiting for
+the pbranch to complete, it's stack variables (`var` in this case) will
+consume memory until the pbranch returns.
+
+
+
+
+== Compile Time Performance
+
+=== Parallel Make
+
+It is possible to speed up the translation of aesop files by using the `-jn`
+option to make, replacing `n` by the desired number of concurrent jobs.
+
+=== CCache
+
+At this time, there are a number of issues blocking the use  of ccache in
+combination with the aesop source to source translator (either to cache the
+translation or to cache the compilation of the generated C source code).
+
+A first issue is related to incorrect handling of compiler names in the build
+system, causing the build to fail if the compiler is set to `ccache gcc`.
+
+The second issue stems from the fact that aesop introduces additional
+dependencies which are not understood by ccache. Therefore, subtly failures
+would be introduced when aesop is updated and the cache is not manually
+cleared.
+
+Given these issues, at this point it is not recommended to use ccache in
+combination with aesop. However, both issues can be resolved in a later
+aesop release (see ticket #137 and #200 in the triton repository).
+
+
+
 
 == Bibliography
 
@@ -477,3 +592,4 @@ image::fig/read-null-mem.png["Read-null test server memory usage"]
   Software Engineering, vol.SE-2, no.4, pp. 308- 320, Dec. 1976.
 - [[[Bame]]] Paul Bame.  pmccabe.  http://parisc-linux.org/~bame/pmccabe/
 - [[[Wheeler]]] David A. Wheeler.  sloccount.  http://www.dwheeler.com/sloc/
+- [[[libev]]] Marc Lehmann. http://software.schmorp.de/pkg/libev.html
