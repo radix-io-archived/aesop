@@ -73,8 +73,8 @@ not plan to provide a way to clear the flag.
 and return immediately with an appropriate error code if they detect the
 cancel flag is set.
 
-* cancel will return true if it succeeded in delivering the cancel request,
-  false if it detects that another pbranch *at the same scope or higher* 
+* cancel will return AE_SUCCESS if it succeeded in delivering the cancel request,
+  AE_ERR_EXIST if it detects that another pbranch *at the same scope or higher* 
   already issued a cancel
 ** it is Ok if a child pbranch already is already cancelled in its own 
    scope; just skip that one and return success anyway
