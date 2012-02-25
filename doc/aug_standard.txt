@@ -1,4 +1,5 @@
 
+[[ref-library]]
 The Aesop Standard Library
 ==========================
 
@@ -50,6 +51,7 @@ Standard Aesop modules
 
 The following functions are bundled with the aesop distribution.
 
+[[ref-timer]]
 Timer
 ~~~~~~
 

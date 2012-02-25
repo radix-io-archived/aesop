@@ -2,3 +2,476 @@
 The Aesop Programming Language
 ==============================
 
+
+Language Basics
+----------------
+
+Source files
+~~~~~~~~~~~~
+
+Aesop source and header files are named *.ae and *.hae, respectively.  They
+are used exactly like C source and header files, except that they support
+additional constructs, such as the `__blocking` qualifier for functions (and
+function pointers) and the `pwait` and `pbranch` keywords (See
+<<ref-blocking>>).
+
+/////
+In addition, Aesop remote code (ie, RPC functions) can be found in .aer and
+.haer functions.  These source files support an additional __remote
+qualifier for functions to be invoked via RPC.
+////
+
+C compatibility
+~~~~~~~~~~~~~
+
+Aesop is an extension to the ANSI C language. Therefore, valid ANSI C code is
+also valid aesop code.
+
+[NOTE]
+.Implementation Detail
+====
+The current implementation of the aesop translator, while supporting many C99
+features, does not yet support all of the C99 functionality , in particular
+those related to variable declarations in locations other than the beginning
+of the function. These issues will be fixed in later releases.
+====
+
+
+Threads and Aesop
+~~~~~~~~~~~~~~~~~
+
+Aesop is fully thread safe. Provided the function itself is thread safe,
+it is legal to call the same function (blocking and regular) concurrently
+from multiple threads.
+
+Aesop programs exposing concurrency through aesop's language features (see
+<<ref-pbranch>> have to be thread-safe, as the implementation may choose to
+use multiple threads to execute code when possible.
+
+
+//===================================================================
+//===================================================================
+[[ref-blocking]]
+Blocking Functions
+------------------
+//===================================================================
+//===================================================================
+
+Aesop extends the C language with a additional function type: blocking
+functions. Blocking functions support concurrent
+execution, and are used by aesop to introduce concurrency to
+the C language.
+
+
+The `__blocking` qualifyier
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All blocking functions must be marked as such. Below is an example of a
+blocking function.
+
+----
+__blocking int test (void);
+----
+
+It is also possible to declare a pointer to a blocking function, similar to
+declaring a pointer to a regular function.
+
+----
+__blocking int (*test) (void);
+----
+
+The `__blocking` qualifier is part of the type. Therefore, the following
+two function pointers have distinct types and cannot be assigned to each other.
+
+----
+void (*func1) (int);
+__blocking void (*func2) (int);
+----
+
+Cancellation
+~~~~~~~~~~~~
+
+Blocking functions also differ from regular functions in that blocking
+functions can be _cancelled_.  The exact results of cancelling a blocking
+function differs from function to function. For example, a blocking function
+implementing `read` or `write` might return `-EINTR` upon cancellation.  How
+blocking functions can be cancelled is described in  <<ref-cancel>>.
+
+[[ref-whenblocking]]
+When are functions blocking?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Functions can be made 'blocking' by choice, simply by adding the `__blocking`
+qualifier to the function declaration and definition.
+
+However, a function is required to be blocking if one of the following is
+true:
+
+* The function calls another function which is blocking, for example
+  `aesop_timer` (see <<ref-timer>>).
+* The function uses aesop specific functionality (i.e. is not plain C).
+
+Since every aesop program tends to call at least one blocking function, this
+means that the starting point of the program (see <<ref-main>>) is necessarily
+blocking.
+
+Calling a blocking function is more expensive than calling a regular function.
+In general, a function should not be made blocking unless there is a good
+reason to do so.
+
+[NOTE]
+.Implementation Detail
+In the current aesop implementation, only blocking functions are transformed
+by the aesop source to source translator. Regular C functions are emitted
+unmodified.
+
+When should functions be blocking?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Except in the cases listed in <<ref-whenblocking>>, aesop does not attempt to
+enforce if a function should be blocking or not. It is up to the programmer to
+decide which functions need to be blocking.
+
+In general, functions that are not cpu-bound and depend on external (to the
+cpu) events are best made blocking. This is done so that aesop can switch
+execution to code that is ready to execute while waiting for the external
+event to occur.
+
+For example, a function reading data from the network or a disk will typically
+be blocking, since the function I/O bound. If the function is blocking, as
+soon as the processor core would become idle, execution can continue
+elsewhere. If the function is not blocking, the processor core would become
+idle until the read completes.
+
+
+[[ref-pbranch]]
+Parallel Branches
+------------------
+
+This section explores the concept of parallel branches (or /pbranch/).
+
+
+Parallel Branches
+~~~~~~~~~~~~~~~~~
+
+
+The best way to introduce parallel branches is through an example:
+
+----
+1   __blocking void example (void)
+2   {
+3     pwait
+4     {
+5        pbranch
+6        {
+7           printf ("In branch 1\n");
+8           aesop_timer (10000);
+9        }
+10       pbranch
+11       {
+12         printf ("In branch 2\n");
+13         aesop_timer (10000);
+14       }
+15    }
+16    printf ("After pwait\n");
+17  }
+----
+
+The function `aesop_timer` (discussed in <<ref-timer>>) suspends execution for
+the given number of microseconds. In a way it is the aesop version of the
+POSIX `usleep` function.
+
+The output from calling `example` will be:
+----
+In branch 1
+In branch 2
+< ~10000 ms wait >
+After pwait
+----
+
+In this example, the second `printf` (line 12) executes without waiting for
+the first timer call (line 8) to complete. The `aesop_timer` call is a
+blocking call, so after starting the timer, execution continued in the next
+`pbranch` (line 10), as that branch was ready to execute. When the second
+branch reaches the timer call (line 13) and can no longer continue, the same
+thing happens. If any code in the program (even outside this function) is
+ready to execute, execution will continue there.
+
+
+The `pwait` (line 3) construct groups both branches. The `pwait` acts as a
+barrier, in that execution will not continue past the `pwait` until all the
+branches it encloses have completed.  Therefore, in this example, only after
+both timer calls completed, execution continues with the 3rd `printf` (line
+16).
+
+IMPORTANT: The aesop language does _not guarantee_ that multiple threads will
+be used to execute pbranches concurrently. However, it does guarantee that a
+blocking call will not prevent execution of other branches, by temporarily
+switching execution to another `pbranch`.
+
+
+[NOTE]
+.Implementation Detail
+=============
+Blocking functions act as preemption points. If a blocking function does not
+complete immediately, execution will continue where possible (for example with
+the next available `pbranch`).
+=============
+// not sure if we want to say the following
+//However, the language does guarantee that the pbranches will _start execution_
+//in lexical ordering, i.e. the second pbranch will not start execution before
+//the first one has been started.
+
+
+Branch Flow Control
+~~~~~~~~~~~~~~~~~
+
+A branch can exit by completing the last statement in the branch or by
+using the `pbreak` keyword. The effect of `pbreak` is similar to that of
+`break` in a `for` or `while` loop.
+
+.Example
+-----
+
+pbranch
+{
+   ...
+   pbreak;
+   printf ("will never get here... :(\n");
+}
+-----
+
+In the example above, `printf` will never execute as the branch will exit
+once the `pbreak` statement is reached.
+
+Branch Variables
+~~~~~~~~~~~~~~~~
+
+A pbranch can access the variables defined in the enclosing scope. However, in
+some cases, it is desirable to give each pbranch a private variable.
+To avoid having to declare a variable in each pbranch, and initialize that
+variable from the original upon entering the pbranch, the `pprivate` keyword
+is provided.
+
+The `pprivate` keyword applies to a variable declaration, and controls
+the scope of the variable with respect to pbranches in the same scope.
+Without `pprivate`, variables are shared between pbranches. Declaring a
+variable as `pprivate` gives each pbranch a private copy of the variable. At
+the start of a pbranch, the private copy is initialized using the current
+value of the shared variable.
+
+The `pprivate` keyword is especially relevant for pbranches created
+within `for` and `while` loops. The code below shows an example.
+
+----
+pwait 
+{
+  pprivate int i;
+  for (i=0; i<n; ++i) 
+  {
+    pbranch 
+    {
+        /* use i */
+    }
+  }
+}
+-----
+
+In the example above, each pbranch will get a private copy of the loop
+variable `i`. Since the next iteration of the loop does not depend on the
+completion of the pbranch, `pprivate` is required here to prevent changes to
+the value of `i` in a pbranch while the branch is still executing.
+In this case, `pprivate` required, as manually assigning `i` to a private copy
+would be prone to a race condition.
+
+
+[[ref-cancel]]
+Cancelling branches
+~~~~~~~~~~~~~~~~~~~~
+
+WARNING: This section describes the new cancel model, which significantly
+differs from the model in older aesop versions.
+
+It is possible for a pbranch to cancel the other branches in a `pwait`
+construct, by calling `ae_cancel_branches()`.
+This function will only attempt to cancel pbranches belonging to the same
+pwait as the branch of the caller.
+
+Though `ae_cancel_branches` can only be called from within a pbranch, *it is
+not a blocking function*. `ae_cancel_branches` will signal all other
+pbranches, but will not wait for them to exit. 
+The `ae_cancel_branches` function returns `AE_SUCCESS` if it was able to
+signal one or more branches, and returns `AE_ERR_EXIST` if all other
+branches in the pwait group already had an active cancel signal.
+
+As only blocking functions support cancellation, cancelling a pbranch that is
+not currently executing a blocking function will not have any immediate
+effect. However, the cancel signal is persistent, and will affect all
+subsequent blocking functions in the branch. This means that every branch will
+eventually learn of the cancellation request (because it calls a blocking
+function which will immediately return indicating cancel), or exit without
+further calling a blocking function.
+
+It is not possible to clear a cancel signal in a pbranch. The recommended
+practice is to exit a the pbranch as soon as a cancellation request is
+detected. Any blocking functions needed to restore a consistent internal state
+should be called after the `pwait` scope ends.
+
+A pbranch can check the status of the cancel signal using the `ae_is_cancelled
+()` function, which returns non-zero if the calling branch has the cancel
+signal set, and 0 otherwise.
+
+
+.Example
+----
+__blocking void cancel_example (void)
+{
+   pwait
+   {
+      pbranch
+      {
+         if (aesop_timer (10000) == 0)
+         {
+            // timer expired
+            ae_cancel_branches ();
+         }
+      }
+      pbranch
+      {
+         do_something ();
+         ae_cancel_branches ();
+      }
+   }
+}
+----
+
+Using pbranches and cancellation, it is reasonably straightforward to
+implement a time-out using aesop.  In the example above, `do_something` will
+be cancelled if it does not complete within 10000 ms. After 10000 ms,
+`aesop_timer` will return 0 (indicating success), causing the first pbranch to
+cancel the second branch. However, if `do_something` completes before the
+timer, the second branch will cancel the timer.
+
+Lonely pbranches
+~~~~~~~~~~~~~~~~~
+
+It is possible to use a `pbranch` outside of `pwait`. In this case, the
+pbranch executes as normal but it not possible to wait for the branch
+complete.
+
+
+----
+__blocking example_lonely (void)
+{
+   pbranch {
+      printf ("in pbranch");
+      aesop_timer (1000);
+   }
+   printf ("returning\n");
+}
+----
+
+In the example above, a call to the function `example_lonely` might return
+*before* the pbranch it contains completes.
+
+[TIP]
+Lonely pbranches most closely resemble detached threads. They execute
+independently of the main control flow, and can no longer be synchronized
+with. In addition, lonely pbranches cannot be cancelled.
+
+
+Miscellaneous & Hello World
+---------------------------
+
+
+
+Including aesop.h
+~~~~~~~~~~~~~~~~~
+
+All aesop source files must include `aesop.h`.
+Failing to do so will cause a compilation error.
+
+
+[[ref-main]]
+The aesop main function
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The `main` function for an aesop program is identified using `aesop_set_main`.
+The named function must be a blocking function, and must take the same
+arguments as the standard C `main` function.
+
+----
+int aesop_main (int argc, char ** args)
+{
+}
+
+aesop_main_set(aesop_main);
+----
+
+[TIP]
+====
+Sometimes it is useful to be able to execute some code _before_ aesop
+initializes. For this, `aesop_main_set_with_init` can be used instead of
+`aesop_main_set`. The former takes an additional parameter naming a _regular_
+C function which will be called _before_ initializing any aesop component.
+After initializing aesop, the blocking aesop main function will be called as
+usual.
+
+
+.Example:
+----
+aesop_main_set_with_init (pre_init, aesop_main);
+----
+====
+
+
+Hello World
+~~~~~~~~~~~
+
+Below is an example aesop program.
+
+----
+#include <aesop.h>
+#include <timer.hae>
+#include <stdio.h>
+#include <stdlib.h>
+
+__blocking int test_main(int argc, char** argv)
+{
+  printf ("Before pwait.\n");
+  pwait{
+     pbranch {
+        aesop_timer(10000);
+     }
+     pbranch {
+        printf("pbranch2");
+     }
+  }
+
+  printf("After pwait.\n");
+  return (EXIT_SUCCESS);
+}
+
+aesop_main_set (test_main);
+----
+
+Some observations:
+
+* All aesop programs have to include `aesop.h`.
+* The starting point of the program is indicated using `aesop_main_set`.
+* The starting function is `__blocking`.
+
+The output of this program should be:
+
+----
+Before pwait.
+pbranch2
+After pwait.
+----
+
+There will be approximately 10000 ms between outputting `pbranch2` and `After
+pwait.`, as execution will not continue past the `pwait` until all of its
+branches have completed. The first branch will take at least 10000 ms to
+complete, due to the `aesop_timer` call.
+
+
