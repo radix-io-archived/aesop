@@ -2,23 +2,46 @@
 
 == Introduction
 
-We examine the performance of Aesop based on several factors including
-runtime performance, memory effieceny, programmer productivity and 
-compile time performance. We evaluated aesop by building a simple TCP server
-which would recieve requests from clients and then either recieve or send
-data which was either generated, discarded, read from a file or written to
-a file. This server design was then implemented in aesop and then in generic
-C code using other concurrency models for comparison. The description of
-the test server and client are below and these serve as the basis for the
-evaluations in the rest of the text. We also explore some micro-benchmarks
-to analyze how core features of aesop impact performance.
+This document examines the performance of Aesop in terms of runtime
+performance, memory efficiency, programmer productivity, and compile time
+performance.  
+
+Aesop is a programming language and programming model designed
+to implement distributed system software with developer productivity and run
+time efficiency.
+Further details about the languange and development environment can be found
+in the Aesop User's Guide.
+
+The remainder of this document is organized as follows.
+<<sec-case-study>> and <<runtime-perf>> describe a network service
+case study and use it to evaluate the performance of Aesop
+relative to more traditonal server architectures. 
+<<sec-memory>> provides a more detailed analysis of memory efficiency in
+Aesop. <<sec-productivity>> evaluates the productivity of the Aesop
+language using the original case study as an example. 
+<<sec-compile>> concludes by discussing Aesop compile-time code translation
+performance.
+
+[[sec-case-study]]
+== Case study description
+
+We will use a simple network serivce case study for quantitative
+evaluation of the Aesop programming language.  The case study is a TCP
+server that can write or read data from local files.  It is expected to
+process requests from multiple clients simultaneously.  The description
+of the test server and client are given in the following subsections.
 
 === Client Design
 
-The client is a basic C program that uses TCP sockets to send messages to
-the server. The client will run in a loop generating a specifed number of
-operations to the server. The general flow is that client send a request
-to the server that contains and optional payload. The client then waits for
+Each of the example servers used for comparison in this document implement
+an identical request protocol and are therefore evaluated using the same
+client test harness.  The client is a basic C program that uses TCP sockets to send messages to
+the server.  It use MPI to coordinate processes and generate a highly
+concurrent workload.
+
+The client will execute in a loop generating a specifed number of
+operations to the server. The general flow is that each client process sends a request
+to the server that contains an optional payload. The client then waits for
 the server to send an acknowledgement that also contain an optional payload.
 
 ==== Request Types
@@ -39,12 +62,16 @@ acknowledgement to client.
 
 ===== Read-Null
 
+This request is identical to the *Read* request, except that the server
+sends uninitialized data rather than performing any file I/O.
 The client sends a request with a size to the server. The server then allocates
 a buffer for the response based on the size the client requested. The server
 then sends an acknowledgement with this buffer as the payload.
 
 ===== Write-Null
 
+This request is identical to the *Write* request, except that the server
+discards incoming data rather than performing any file I/O.
 The client sends a request with a size and a payload. The server recieves 
 the request but then simply discards the payload. The server sends an 
 acknowledgement back to the client.
@@ -52,18 +79,27 @@ acknowledgement back to the client.
 [float]
 ==== Implementation
 
-The client has a set of command line parameters which control selecting the
-test type, the number of requets and the size of the request. The client is
-also a MPI program. This allows starting an arbitray number of clients and
-then synchronizing startup. The clients all barrier until they are ready to
-connect to the server. Clients exit the barrier, connect to the server
-and begin sending requests in a loop. When the client completes it waits
-at another barrier and then reports statistics about the run.
+The client test harness provides command line parameters to control the
+request type, the number of requets, and the size of the request. Each
+process barriers until they are all ready to
+connect to the server. Clients then exit the barrier, connect to the server,
+and begin sending requests in a loop. Once each process completes its
+requests, it waits
+at another barrier and then reports statistics about the run.  Each process
+records the total amount of time taken to execute its workload (beginning
+before the initial connection and ending after receipt of the last
+acknowledgement).  The time taken by the slowest process is reported as the 
+aggregate run time.  Each process also records the time needed to service each
+individual request (from before the request is sent until after the
+acknowledgement is received) in order to calculate statistics about
+individual request latencies.  
 
 === Server Design
 
 The server supports the client request types listed above. Each server
-implementation accepts client connections and then waits for requests.
+implementation accepts client connections and then waits for requests on
+those connections.  The following diagram illustrates the steps performed by
+each request type.
 
 .Server Request Handling
 [graphviz]
@@ -109,12 +145,14 @@ digraph G
 }
 --------
 
-The servers share a common base of code for handling the requests.
-This insures that the variation in performance is primarily due
-to concurrency within the server. There is one exception to this which is
-the use of blocking or non-blocking sockets. This will be ellaborated on
-more in the analysis. All event loops are implemented using libev. <<libev>>
-The thread implementations all use `pthread` threading library.
+We implemented the same request protocol in multiple server daemons
+in order to contrast different approaches to concurrent
+request processing.  Each server uses the same fundamental coding style to 
+the degree possible.  One server is implemented using the Aesop language,
+while all other servers are implemented in C.  The `pthread` library was
+used in all cases that required explicit threading, while the `libev`
+library was used in all cases that required an explicit event loop
+<<libev>>.  
 
 ==== Server Implementations
 
@@ -123,43 +161,55 @@ a different type of concurrency model.
  
 ===== Aesop
 
-The Aesop server is done using Aesop of course. The server uses a
+The Aesop server is implemented in the Aesop programming language. The server uses a
 'lonely pbranch' to service each client. All operations for a client are
-handled within a single pbranch. The underlying socket resource uses
-non-blocking sockets with a thread pool of 16 threads. The file resource uses
+handled within a single pbranch.  The socket and file operations are
+performed with blocking Aesop functions that are provided by the Aesop
+standard library.  The underlying socket resource uses
+non-blocking sockets with a thread pool of 12 threads. The file resource uses
 synchronous IO and a thread pool with 4 threads.
 
 ===== Thread-per-client
 
 The thread-per-client server spawns a thread for each client connection. All
-requests for the client are handled within the same thread. This model uses
-blocking sockets. The thread remains alive until the client disconnects. 
+requests for a given client are handled within the same thread. This model uses
+blocking socket operations and standard file read and write operations.
+Each thread executes until the corresponding client disconnects. 
 
 ===== Thread-per-client-nb
 
-The thread-per-client-nb server is identical to the thread-per-client server
-except that is uses non-blocking sockets instead of blocking sockets. We
-implemented this version to investigate the possible performance difference
-between the synchronous and asynchronous socket calls.
+The thread-per-client-nb server is identical to the thread-per-client
+server, except that is uses non-blocking socket calls in place of blocking
+socket calls.  For example, in order to send a message, a thread will
+perform non-blocking sends until it encounters the EWOULDBLOCK error code.
+It then polls the socket until it is ready and continues sending data.
+We implemented this version to investigate the possible performance difference
+between the synchronous and asynchronous socket calls in a scenario where
+all other factors are held constant.
 
 ===== Thread-per-operation
-The thread-per-operation server uses and event loop to watch all sockets for
-activity and when requests are available a thread is spawned and the request
+The thread-per-operation server uses an event loop to watch all sockets for
+activity.  When a new request is available, a thread is spawned and the request
 is handled completely from within that thread. When the request is complete
-the thread is destroyed. Blocking sockets are used in this implementation.
+the thread is destroyed. Blocking socket operations and standard file read
+and write functions are used in this implementation.
 
 ===== Thead-pool
-The thread-pool server uses and event loop to watch all sockets for activity.
-When requests are available, the event loop puts the request on a queue and
+The thread-pool server uses an event loop to watch all sockets for activity.
+When a new request is available, the event loop puts the request on a queue and
 wakes up a thread from the thread pool. The request is handled completely
-from within a single thread of the thread pool. Blocking sockets are used
-in this implementation.
+from within a single thread of the thread pool. Blocking sockets and
+standard file read and write functions are used in this implementation.  The
+thread pool was implemented following best practices for scalable condition
+variable performance as described in <<hp-cond-variable>>.
 
 ===== Event
-The event server uses a execution context to handle all clients and requests.
-The event loop watches all sockets and handles each request in a callback. The
+The event server uses an event loop not only to detect incoming requests,
+but to service them as well.  Each request processing step is executed from
+an event loop callback function.  The
 event server uses non-blocking sockets and asynchronous file I/O. Note that
-the though the operating system can still use multiple cores to drive the
+although this implementation does not use any explicit threads, the
+operating system can still use multiple cores to drive both the
 network and disk.
 
 [[runtime-perf]]
@@ -495,6 +545,7 @@ The results for these are shown in the +tcmalloc+ column.
 The progam used to obtain these results is in the repository:
 +tests/blocking-overhead.ae+.
 
+[[sec-memory]]
 == Runtime Memory Efficiency
 
 Another aspect of the overall performance is the memory efficiency of each
@@ -588,7 +639,8 @@ So, in the example above, even though the test will return without waiting for
 the pbranch to complete, its stack variables (`var` in this case) will
 consume memory until the pbranch returns.
 
-== Productivity Performance
+[[sec-productivity]]
+== Productivity
 
 The core design element of aesop is to make programming of a concurrent
 server easier, so the trade off for memory and runtime performance should
@@ -650,6 +702,7 @@ servicing a write operation requires 5 disconnected event handlers.
 Although the event model appears less complex than the thread-pool model according to CC and
 Mod. CC, qualitatively it is significantly more challenging to develop.
 
+[[sec-compile]]
 == Compile Time Performance
 
 Currently aesop imposes some overhead when compiling aesop source. This is
@@ -681,6 +734,10 @@ can be mitigated by constructing a Makefile that supports parallel make.
 - [[[Bame]]] Paul Bame.  pmccabe.  http://parisc-linux.org/~bame/pmccabe/
 - [[[Wheeler]]] David A. Wheeler.  sloccount.  http://www.dwheeler.com/sloc/
 - [[[libev]]] Marc Lehmann. http://software.schmorp.de/pkg/libev.html
+- [[[hp-cond-variable]]] Hewlet Packard Development Company L.P..  "Techniques for
+  Improving the Scalability of Applications Using POSIX Thread
+  Condition Variables."
+  http://h21007.www2.hp.com/portal/download/files/unprot/hpux/MakingConditionVariablesPerform.pdf
 
 == Appendix A - Raw Data
 
