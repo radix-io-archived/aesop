@@ -1,4 +1,4 @@
-= Aesop Performance Evaluation and Analysis
+= Aesop Performance Analysis
 
 == Introduction
 
@@ -119,6 +119,7 @@ This insures that the variation in performance is primarily due
 to concurrency within the server. There is one exception to this which is
 the use of blocking or non-blocking sockets. This will be ellaborated on
 more in the analysis. All event loops are implemented using libev. <<libev>>
+The thread implementations all use `pthread` threading library.
 
 ==== Server Implementations
 
@@ -139,20 +140,22 @@ synchronous IO and a thread pool with 4 threads.
 
 The thread-per-client server spawns a thread for each client connection. All
 requests for the client are handled within the same thread. This model uses
-blocking sockets.
+blocking sockets. The thread remains alive until the client disconnects. 
 
 [float]
 ===== Thread-per-client-nb
 
 The thread-per-client-nb server is identical to the thread-per-client server
-except that is uses non-blocking sockets instead of blocking sockets.
+except that is uses non-blocking sockets instead of blocking sockets. We
+implemented this version to investigate the possible performance difference
+between the synchronous and asynchronous socket calls.
 
 [float]
 ===== Thread-per-operation
 The thread-per-operation server uses and event loop to watch all sockets for
 activity and when requests are available a thread is spawned and the request
-is handled completely from within that thread. Blocking sockets are used
-in this implementation.
+is handled completely from within that thread. When the request is complete
+the thread is destroyed. Blocking sockets are used in this implementation.
 
 [float]
 ===== Thead-pool
@@ -164,9 +167,11 @@ in this implementation.
 
 [float]
 ===== Event
-The event server uses a single thread to handle all clients and requests. The
-event loop watches all sockets and handles each request in a callback. The
-event server uses non-blocking sockets and asynchronous file I/O.
+The event server uses a execution context to handle all clients and requests.
+The event loop watches all sockets and handles each request in a callback. The
+event server uses non-blocking sockets and asynchronous file I/O. Note that
+the though the operating system can still use multiple cores to drive the
+network and disk.
 
 == Runtime Performance Evaluation and Analysis
 
@@ -174,23 +179,169 @@ The evaluation of runtime performance was done by executing a series of tests
 using each server implementation type with the same client as discussed above.
 We then compare the results for each of the server implementations against
 aesop determine the overall effiecency of aesop compared to hand-tuned 
-solutions.
+solutions. The four test types were selected to evaluate two models. The
+first two test types (read,write) examine real disk I/O. Aesop is inteneded
+for use in a storage server so we want to examine multiplexing of disk and
+network I/O. The second set (read-null,write-null) eliminates disk I/O and
+only has network I/O. This removes the storage bottleneck and examines how
+well the different server types handle concurrency.
 
 === Experiment
 
 We ran our tests on the Argonne Fusion cluster which is a standard Linux HPC
-cluster. The experiment was done 
+cluster. The experiment was done by running each client mode (read, write,
+read-null, write-null) against all six server types. 
 
-[[ref-blocking-runtime]]
-=== Performance Implications of Blocking Calls
+The testing was done by running a job on Fusion that executed one of the client
+test types against all six server implementations scaling the clients from
+16 to 1024. This kept the wall time of the job reasonable and allows a 
+consistent comparison between server types within a test type. The network
+is still a shared resource on the cluster or each individual test was run
+five times and the results below are the median from the five iterations,
+based on the maximum runtime.
+
+==== Experiment System
+
+Fusion is a cluster run by the Argonne Laboratory Computing Resource Center
+(LCRF). Fusion is a IBM iDataPlex dx360 M2 system. It features 320 compute
+nodes which consist of two Intel Nehalem 2.6 GH Xeon processors and 36 GB
+of RAM. The compute nodes have hyper threading disabled. The cluster has
+an Infiniband QDR interconnect. Each compute node also a single SATA 7200 RPM
+hard disk for local scratch storage.
+
+==== Experiment Details
+
+The experiment consisted of four separate jobs on Fusion. The top level unit
+is the test type: read, write, read-null, write-null. For each test type,
+the number of clients are scaled up from 16 to 1024. At each client scale,
+each server implementation is tested in sequence. The individual test is
+executed five times. On each iteration, the server is started then the MPI
+client program is started. The server is restarted for each iteration so
+that the memory statistics are not polluted by a previous run.
+
+On fusion we determined we could use 16 clients per physical node. Using
+more clients per node caused the bottleneck of the test to become the client
+nodes instead of the server. The clients were scaled up as follows: 16, 128, 256, 512 and 1024 clients.
+
+The clients connected to the server using the IB network with IPoIB.
+
+[float]
+===== Read
+
+The read test had clients each issue 16 requests asking for 4 KiB from
+disk. Each client specifies a unique file to be read on on each request. All
+clients specifiy unique files. The files are first generated by a script
+that runs before the read test starts. The script generates files for every
+client in the local storage of the server.
+
+.Execution Parameters
+*********************
+mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-requests 16 --size 4096 --type-r
+*********************
+
+[float]
+===== Write
+
+The write test had clients each issue 16 requests sending 4 KiB of data to
+be written to disk. Each client specifies a unique file name for each request
+and all clients specifiy unique files from each other. The directory
+containing all the files is deleted between each test iteration.
+
+.Execution Parameters
+*********************
+mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-requests 16 --size 4096 --type-w
+*********************
+
+[float]
+===== Read-Null
+
+The read-null test had clients each issue 4096 requests requesting 4 KiB of
+data to be returned from the server.
+
+.Execution Parameters
+*********************
+mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-requests 4096 --size 4096 --type-rn
+*********************
+
+[float]
+===== Write-Null
+
+The write-null test had clients each issue 4096 requests sending 4 KiB of 
+data to be discarded by the server.
+
+.Execution Parameters
+*********************
+mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-requests 4096 --size 4096 --type-wn
+*********************
+
+=== Evaluation
+
+Here the runtime results are presented from the experimentation. All graphs
+are shown in log scale.
+
+==== Disk I/O
+
+In <<fig-readhist>> and <<fig-writehist>>, we see that aesop fairs
+favorably to the other server implementations. In general the various
+servers show similar scaling.
+
+.Runtime Performance for Read Test
+[[fig-readhist]]
+image::fig/read-hist.png[]
+
+.Runtime Performance for Write Test
+[[fig-writehist]]
+image::fig/write-hist.png[]
+
+==== Network I/O
+
+In this set of tests, we had specifically developed the thread-per-client-nb 
+to evalute the performance difference between blocking and non-blocking sockets.It is clear that the non-blocking sockets do not perform as well blocking
+sockets. We did this test because aesop uses non-blocking sockets and were
+trying to determine the performance difference between aesop and
+the thread-per-client server. <<fig-readnull>> and <<fig-writenull>> cases show
+that aesop mirrors the thread-per-client-nb server as expected.
+
+.Runtime Performance for Read-Null Test
+[[fig-readnull]]
+image::fig/read-null-hist.png[]
+
+.Runtime Performance for Write-Null Test
+[[fig-writenull]]
+image::fig/write-null-hist.png[]
+
+==== Fairness
+
+Absolute performance is not the only metric that one might look at so here
+the fairness of the various server types is examined. The bars on the 
+graphs shows the total time for a client to complete all of its requests.
+The fastest client is the bottom of the bar and the slowest is the top of bar.
+
+//.Fastest and Slowest Total Client Runtime for Read Test
+//[[fig-readtime]]
+//image::fig/read-time.png[]
+
+//.Fastest and Slowest Total Client Runtime for Write Test
+//[[fig-writetime]]
+//image::fig/write-time.png[]
+
+=== Runtime Analysis
+
+Aesop compares favorably to other concurrency models but will of course lose
+some performance compared to best case hand tuned version. Here we examine
+the overheads associated with aesop. The first item to examine is the
+cost associated with an aesop blocking call.
+
+==== Performance Implications of Blocking Calls
 
 While this isn't immediately visible from looking at the aesop source code,
 blocking calls, when compared to a plain C function call, have extra overhead
 due to the way they are transformed by the aesop compiler. The following
 section highlights the sources of this overhead.
 
-==== Understanding Blocking Call Overhead
+===== Understanding Blocking Call Overhead
 
+[float]
 ===== State Management
 
 Most of the overhead is caused by the need to preserve the state
@@ -202,8 +353,7 @@ variables. As allocating heap memory is much more time consuming than
 allocating space on the stack, calling a blocking function is more expensive
 than calling a regular function.
 
-
-
+[float]
 ===== Synchronization Overhead
 
 A second source of overhead originates from the multi-threaded nature of aesop
@@ -230,15 +380,13 @@ pwait {
 }
 ----
 
-
 [NOTE]
 Currently, the aesop compiler uses a combination of atomic operations and
 mutexes to maintain thread-safety. There is an ongoing effort to convert to
 atomic operations where possible.
 
-
-==== Quantifying Blocking Call Overhead
-
+[float]
+===== Quantifying Blocking Call Overhead
 
 For this test, a regular and a blocking function are called in a loop.
 By timing the total time required to complete the loop, an estimate of the
@@ -281,115 +429,6 @@ The results for these are shown in the tcmalloc column.
 The progam used to obtain these results is in the repository:
 +tests/blocking-overhead.ae+.
 
-
-
-//=========================================================================
-== Case study: Implementing a small network server
-//=========================================================================
-
-While micro-benchmarks can be useful, they often fail to capture the
-complexity found in real applications.
-
-To provide a higher level evaluation, we compared the performance of a simple
-network server programmed in aesop to that of the same server implemented in
-C. We also quantified the code complexity of the aesop server, compared to the
-different C versions.
-
-=== Server Description
-
-The example server listens on a TCP socket for incoming client connections.
-Once a client connects, the server waits until a request is received or until
-the client closes the connection.
-
-The server recognizes four different request types:
-
-*READ and WRITE*:: The server reads or writes a file specified by the client.
-
-*READ-NULL and WRITE-NULL*:: The same as READ and WRITE respectively, except
-that the file read or write operations are omitted. The requested data
-is still transferred over the network.
-
-The read-null and write-null cases attempt to determine the maximum network
-bandwidth the server can sustain, by ensuring the disk operations are not a
-bottleneck.
-==== Implementation Details
-
-The server as described above was implemented in 5 different ways.
-
-===== Explicit Threading
-
-The threaded server uses manual thread management to explicitly created or
-destroy a thread in response to an incoming connection or request.
-We used the `pthread` threading library.
-For the threaded implementation, we distinguish between 4 different
-variations.
-
-
-[width="80%",cols=">.^1h,4",frame="none",grid="none"]
-|=========================================================
-| thread-per-client |
-A thread is created when a client connects, and this
-thread is dedicated to the connection. All requests from this connection will
-be handled by the same thread.
-
-| |
-
-
-| thread-per-client-nb |
-The same as above, but in this case the thread calls
-the _asynchronous_ versions of the `read` and `write` system calls. By
-including this option, performance differences related to the asynchronous
-nature of the system calls are highlighted.
-
-| |
-
-| thread-per-op |
-In this mode, a thread is created for every incoming
-request. After the request is completed, the thread is destroyed.
-
-| |
-
-|thread-pool | 
-As above, but when a thread has finished executing a request
-it is returned to a pool and reused when a new request arrives.
-
-|=============================================================
-
-===== Explicit Event Handling
-
-For this version, _libev_ is used to implement an event-driven server.
-At any given time, a number of different events can occur, the event loop
-waits for one of the following events to occur:
-
-[horizontal]
-*Accept*:: An new client connected to the server. The server will start an
-attempt to read a request from the connection.
-*Read*:: A read from a connection completed.
-*Write*:: A write operation (writing data to a client) completed.
-
-In response to one of these events, the next step in handling the connection
-will be started using an asynchronous call before going back to the main event
-loop to wait for another event to occur.
-
-Note that this server implementation does not use create any threads, and only
-utilizes a single core (though the operating system can still use multiple
-cores to drive the network and disk).
-
-==== Aesop
-
-The aesop version, from a code point of view, most closely resembles the
-_thread_per_client_ code. However, after translation, the resulting C code can
-support the event model as well as a threaded model.
-
-The actual result will depend on the actual resource implementation.
-(For more information about resources, see the aesop user guide).
-It is important to point out that the choice between an event driven or
-threaded approach is limited to the resource implementation, and that no
-changes to the actual server code are required.
-
-The aesop code uses a lonely pbranch when a client connects.
-The code within the lonely pbranch is a direct implementation of the flow
-chart provided with the server description.
 
 === Code Complexity
 
