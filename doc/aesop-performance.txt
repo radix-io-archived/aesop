@@ -21,33 +21,28 @@ operations to the server. The general flow is that client send a request
 to the server that contains and optional payload. The client then waits for
 the server to send an acknowledgement that also contain an optional payload.
 
-[float]
 ==== Request Types
 
 The client supports the following request types.
 
-[float]
 ===== Read
 
 The client sends a request with a file name and a size. The server will then
 open the file, read the contents up to the size specified. The server returns
 the data with the acknowledgement of the operation.
 
-[float]
 ===== Write
 
 The client sends a request with a file name, size and payload. The server will
 then create the file and write the payload. The server then sends an
 acknowledgement to client.
 
-[float]
 ===== Read-Null
 
 The client sends a request with a size to the server. The server then allocates
 a buffer for the response based on the size the client requested. The server
 then sends an acknowledgement with this buffer as the payload.
 
-[float]
 ===== Write-Null
 
 The client sends a request with a size and a payload. The server recieves 
@@ -126,7 +121,6 @@ The thread implementations all use `pthread` threading library.
 We implemented six server types including Aesop. Each server type examines
 a different type of concurrency model.
  
-[float]
 ===== Aesop
 
 The Aesop server is done using Aesop of course. The server uses a
@@ -135,14 +129,12 @@ handled within a single pbranch. The underlying socket resource uses
 non-blocking sockets with a thread pool of 16 threads. The file resource uses
 synchronous IO and a thread pool with 4 threads.
 
-[float]
 ===== Thread-per-client
 
 The thread-per-client server spawns a thread for each client connection. All
 requests for the client are handled within the same thread. This model uses
 blocking sockets. The thread remains alive until the client disconnects. 
 
-[float]
 ===== Thread-per-client-nb
 
 The thread-per-client-nb server is identical to the thread-per-client server
@@ -150,14 +142,12 @@ except that is uses non-blocking sockets instead of blocking sockets. We
 implemented this version to investigate the possible performance difference
 between the synchronous and asynchronous socket calls.
 
-[float]
 ===== Thread-per-operation
 The thread-per-operation server uses and event loop to watch all sockets for
 activity and when requests are available a thread is spawned and the request
 is handled completely from within that thread. When the request is complete
 the thread is destroyed. Blocking sockets are used in this implementation.
 
-[float]
 ===== Thead-pool
 The thread-pool server uses and event loop to watch all sockets for activity.
 When requests are available, the event loop puts the request on a queue and
@@ -165,7 +155,6 @@ wakes up a thread from the thread pool. The request is handled completely
 from within a single thread of the thread pool. Blocking sockets are used
 in this implementation.
 
-[float]
 ===== Event
 The event server uses a execution context to handle all clients and requests.
 The event loop watches all sockets and handles each request in a callback. The
@@ -173,6 +162,7 @@ event server uses non-blocking sockets and asynchronous file I/O. Note that
 the though the operating system can still use multiple cores to drive the
 network and disk.
 
+[[runtime-perf]]
 == Runtime Performance Evaluation and Analysis
 
 The evaluation of runtime performance was done by executing a series of tests
@@ -225,7 +215,6 @@ nodes instead of the server. The clients were scaled up as follows: 16, 128, 256
 
 The clients connected to the server using the IB network with IPoIB.
 
-[float]
 ===== Read
 
 The read test had clients each issue 16 requests asking for 4 KiB from
@@ -239,7 +228,6 @@ client in the local storage of the server.
 mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-requests 16 --size 4096 --type-r
 *********************
 
-[float]
 ===== Write
 
 The write test had clients each issue 16 requests sending 4 KiB of data to
@@ -252,7 +240,6 @@ containing all the files is deleted between each test iteration.
 mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-requests 16 --size 4096 --type-w
 *********************
 
-[float]
 ===== Read-Null
 
 The read-null test had clients each issue 4096 requests requesting 4 KiB of
@@ -263,7 +250,6 @@ data to be returned from the server.
 mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-requests 4096 --size 4096 --type-rn
 *********************
 
-[float]
 ===== Write-Null
 
 The write-null test had clients each issue 4096 requests sending 4 KiB of 
@@ -316,18 +302,104 @@ Absolute performance is not the only metric that one might look at so here
 the fairness of the various server types is examined. The bars on the 
 graphs shows the total time for a client to complete all of its requests.
 The fastest client is the bottom of the bar and the slowest is the top of bar.
+These results are from the 1024 client size using the same iteration that
+was selected for the maximum runtime performance above.
 
-//.Fastest and Slowest Total Client Runtime for Read Test
-//[[fig-readtime]]
-//image::fig/read-time.png[]
+In <<fig-readtime>> and <<fig-writetime>> we see that the event server is
+the only fair server. During our initial experimentation, aesop was configured
+to be a fair system, however this fairness degraded the overall total
+performance so we instead configured the file resource to be unfair by design.
+This is demostrated in the <<fig-readtime>> and <<fig-writetime>>, showing
+that aesop is extremely unfair. Thread-pool is also unfair because we applied
+the same change to this server implementation.
 
-//.Fastest and Slowest Total Client Runtime for Write Test
-//[[fig-writetime]]
-//image::fig/write-time.png[]
+.Fastest and Slowest Total Client Runtime for Read Test
+[[fig-readtime]]
+image::fig/read-time.png[]
 
-=== Runtime Analysis
+.Fastest and Slowest Total Client Runtime for Write Test
+[[fig-writetime]]
+image::fig/write-time.png[]
 
-Aesop compares favorably to other concurrency models but will of course lose
+The <<fig-readnulltime>> and <<fig-writenulltime>> show similar fairness between
+all server types except thread-pool in the case of the write-null test case.
+Here the aesop network resource is not using an unfair design and approximates
+the fairness of the other thread-per-* models. The thread-pool server does
+have the design such that is is unfair in how it services requests,
+<<fig-writenulltime>> shows this clearly.
+
+.Fastest and Slowest Total Client Runtime for Read-Null Test
+[[fig-readnulltime]]
+image::fig/read-null-time.png[]
+
+.Fastest and Slowest Total Client Runtime for Write-Null Test
+[[fig-writenulltime]]
+image::fig/write-null-time.png[]
+
+==== Latency
+
+The last client metric is an examination of per operation latency. The
+client collects all the operation latency and the computes the minimum and
+maximum latency, the first quartile latency and third quartile latency. These
+metrics are graphed using a box and whiskers plot. The box represents the
+first and thrid quartiles and the whiskers are the minimum and maximum
+values. The following results are for the 1024 client size selected from
+the same iteration as the maximum runtime graphs. <<fig-readlat>> and
+<<fig-writelat>> show the aesop offers vary comparitve latency performance
+as the other configurations and only noteably thread-per-op and event are
+signficantly worse.
+
+.Per Operation Latency Read Test (Min/Max/First Quartile/Third Quartile)
+[[fig-readlat]]
+image::fig/read-lat.png[]
+
+.Per Operation Latency Write Test (Min/Max/First Quartile/Third Quartile)
+[[fig-writelat]]
+image::fig/write-lat.png[]
+
+In <<fig-readnulllat>> and <<fig-writenulllat>> we see again that aesop has
+very good latency metrics compared to the other servers. In this case the
+thread-per-op and event are noticeably worse than the other server
+implementations.
+
+.Per Operation Latency Read-Null Test (Min/Max/First Quartile/Third Quartile)
+[[fig-readnulllat]]
+image::fig/read-null-lat.png[]
+
+.Per Operation Latency Write-Null Test (Min/Max/First Quartile/Third Quartile)
+[[fig-writenulllat]]
+image::fig/write-null-lat.png[]
+
+==== Summary
+
+The runtime analysis shows that aesop is very competitive with the most
+optimal alternate server implementations at the 1024 client size.
+In the _read_ test, aesop is 4.5% slower that the fastest implementation,
+threadpool. Aesop was the fastest implementation in the _write_ test.
+The thread-per-client implementation was fastest in the _read null_ and
+_write null_ tests.  Here aesop is significantly slower at around 25-30%,
+however, as we showed above, the difference in performance was due to the
+native performance difference in synchronous and asynchronous sockets.
+If we look at the performance comparison to the thread-per-client-nb, aesop
+was only 4.7% slower in the _read null_ test and was faster in the _write null_
+test. If aesop is using native asynchronous transport such as Infiniband verbs
+or SSM, it will perform as well as a thread-per-client implementation.
+
+Another interesting factor was that their was no one fastest server
+implementation. Each workload presents a different challenge and building
+a single tuned server is difficult. A key advantage of aesop is the ability
+to change the underyling implementation/turning for resources or the aesop
+runtime without changing the aesop server source. During our investigation
+we experimented with different underlying thread models for the network and
+file resources of aesop. The aesop resources can be configured at runtime
+to use the different thread models or tuning options. With the knowledge
+that building a specific server implementation that is optimal for a generic
+workload, aesop becomes powerful because these types of changes can be made
+without ever changing the server source.
+
+=== Analysis
+
+As we've seen aesop compares favorably to other concurrency models but loses
 some performance compared to best case hand tuned version. Here we examine
 the overheads associated with aesop. The first item to examine is the
 cost associated with an aesop blocking call.
@@ -339,9 +411,6 @@ blocking calls, when compared to a plain C function call, have extra overhead
 due to the way they are transformed by the aesop compiler. The following
 section highlights the sources of this overhead.
 
-===== Understanding Blocking Call Overhead
-
-[float]
 ===== State Management
 
 Most of the overhead is caused by the need to preserve the state
@@ -353,7 +422,6 @@ variables. As allocating heap memory is much more time consuming than
 allocating space on the stack, calling a blocking function is more expensive
 than calling a regular function.
 
-[float]
 ===== Synchronization Overhead
 
 A second source of overhead originates from the multi-threaded nature of aesop
@@ -385,12 +453,11 @@ Currently, the aesop compiler uses a combination of atomic operations and
 mutexes to maintain thread-safety. There is an ongoing effort to convert to
 atomic operations where possible.
 
-[float]
 ===== Quantifying Blocking Call Overhead
 
-For this test, a regular and a blocking function are called in a loop.
-By timing the total time required to complete the loop, an estimate of the
-time needed to execute the function call is obtained.
+For this test, a regular C function and a aesop blocking function are
+called in a loop.  By timing the total time required to complete the loop,
+an estimate of the time needed to execute the function call is obtained.
 
 The results were obtained on an intel i7 CPU running at 2.7GHz,
 using gcc 4.5.3 (using +-O2+), glibc 2.13-r4 and kernel 3.2.5.
@@ -398,7 +465,7 @@ using gcc 4.5.3 (using +-O2+), glibc 2.13-r4 and kernel 3.2.5.
 There are a number of different test configurations:
 
 .Test Results
-[width="20%",cols="h,^,^,^,^,^,<,<",valign="middle",frame="topbot",options="header"]
+[cols="h,^,^,^,^,^,<,<",valign="middle",frame="topbot",options="header"]
 |=====
 1.2+<.^| Test   5+| Options                              2+^.^| seconds/call  
           ^d| regular | blocking | malloc/free | mutex | opa   | malloc   | tcmalloc 
@@ -410,9 +477,8 @@ There are a number of different test configurations:
 |=====
 
 For test 1, a simple regular C function (i.e. not using `__blocking`) taking 2
-arguments is used.
-Test 2 uses the same function, but this time the function is marked as
-`__blocking`.
+arguments is used.  Test 2 uses the same function, but this time the
+function is marked as `__blocking`.
 
 Tests 3-5 were added to provide a better context for understanding the
 magnitude of the blocking call overhead.  For test 3, the function from test 1
@@ -423,138 +489,67 @@ a mutex.  Test 5 replaces the mutex by a single atomic operation
 
 As a way to study the effect of the malloc implementation, these tests were
 also executed using a +tcmalloc+, an alternative memory allocator library.
-The results for these are shown in the tcmalloc column.
+The results for these are shown in the +tcmalloc+ column.
 
-[TIP]
+[NOTE]
 The progam used to obtain these results is in the repository:
 +tests/blocking-overhead.ae+.
 
-
-=== Code Complexity
-
-As a measure for productivity, we investigated the code of each server using a
-set of complexity metrics.
-
-.Implementation complexity analysis.
-[[table-complex]]
-[cols="3,1,1,1", options="header"]
-|============================
-| Server Implementation | CC | Mod. CC | SLOC 
-| aesop | 16 | 11 | 179 
-| thread-per-client | 17 | 12 | 182
-| thread-per-client-nb | 17 | 12 | 184
-| thread-per-op | 22 | 17 | 249
-| thread-pool | 32 | 26 | 313
-| event | 28 | 23 | 341
-|============================
-
-//////
-\begin{table}
-\small
-\begin{center}
-\caption{Complexity analysis for example servers}
-\begin{tabular}{lrrr}
-\hline
-& CC & mod. CC & SLOC \\
-\hline
-\hline
-\end{tabular}
-\label{tab:complexity}
-\end{center}
-\normalsize
-\vspace{-.2in}
-\end{table}
-/////
-
-<<table-complex>> compares the code complexity of each server
-implementation using McCabe Cyclomatic Complexity (CC) <<McCabe>>,
-Modified McCabe Cyclomatic Complexity (Mod. CC), and Source Lines of Code
-(SLOC).  The CC and Mod. CC metrics were measured using the pmccabe tool,
-version 2.6, created by Paul Bame <<Bame>>, while the SLOC metrics were
-measured using the sloccount tool, version 2.26,
-created by David A. Wheeler <<Wheeler>>.
-
-To simplify the comparison, error handling was excluded for all servers
-except for assertions on expected return codes.  The protocol definition
-(ie, request and acknowledgement structs) as well as helper functions to
-loop over send and receive were not counted in any of the implementations,
-as these were similar in all four.  Also note that the Aesop version
-does not include the Aesop standard library, which 
-provides a binding between Aesop and the standard POSIX socket API as part
-of its default functionality.  The focus
-of this comparison is on the core logic defining the server implementation.
-
-The Aesop and thread-per-client servers are very similar in terms of complexity.  The
-slight increase in complexity for the thread-per-client server results from
-the additional function calls needed to create and join threads.  The
-nonblocking version of the thread-per-client server (thread-per-client-nb)
-uses two additional lines of code to place each socket into non-blocking
-mode.  The remaining code logic needed to manage the nonblocking socket
-calls is implemented in helper functions which are not included in the
-analysis.
-
-The thread-pool and event models are both much more complex than the
-thread-per-client or aesop model.  In the case of the thread-pool server,
-this additional complexity arises from not only the queueing and thread
-management logic, but also the event loop which is necessary to detect
-incoming requests and dispatch them to the queue.  The event server
-complexity arises from the necessity of dividing servicing routines into multiple
-sub-functions and manually tracking state between those functions.
-An additional complexity of the event
-model which is not captured by these metrics is the fact that control flow
-is not preserved across the processing of a given request.  For example,
-servicing a write operation requires 5 disconnected event handlers.
-Although the event model appears less complex than the thread-pool model according to CC and
-Mod. CC, qualitatively it is significantly more challenging to develop.
-
-=== Performance Evaluation
-
-We evaluated the performance of our server implementation.
-The same client was used for all server implementations.
-
-.Performance writing to server memory.
-[[fig-write]]
-image::fig/write-hist.png["Write"]
-
-.Performance reading from server memory.
-[[fig-read]]
-image::fig/read-hist.png["Read"]
-
-.Performance writing to disk.
-[[fig-write-null]]
-image::fig/write-null-hist.png["Writing to disk"]
-
-.Performance reading from disk.
-[[fig-read-null]]
-image::fig/read-null-hist.png["Reading from disk"]
-
-.Memory usage during the write test
-[[fig-write-mem]]
-image::fig/write-mem.png["Write test server memory usage"]
-
-.Memory usage during the read test
-[[fig-read-mem]]
-image::fig/read-mem.png["Read test server memory usage"]
-
-.Memory usage during the write-null test
-[[fig-write-mem]]
-image::fig/write-null-mem.png["Write-null test server memory usage"]
-
-.Memory usage during the read-null test
-[[fig-read-mem]]
-image::fig/read-null-mem.png["Read-null test server memory usage"]
-
 == Runtime Memory Efficiency
 
-This section examines the memory efficiency of the translated aesop code.
+Another aspect of the overall performance is the memory efficiency of each
+server implementation. We compare aesop to the other server implementations
+as we did for the runtime performance.
+
+=== Experiment
+
+During the experiment detailed in the <<runtime-perf>> section. We recorded
+the VmHWM stat from the server when the client test was completed. The VmHWM
+stat is recorded by Linux during an applications runtime and represents the
+peak resident set size (RSS). RSS represents the amount of paged-in memory.
+If we looked at the VmPeak which is the total required virtual memory, this
+would punish the models which use numerous threads.
+
+=== Evaluation
+
+The following graphs show the memory usage in KiB in log scale. In
+<<fig-readmem>> and <<fig-writemem>> we see that thread-pool limits the
+memory usage as the client work load increases because the thread-pool 
+by design limits the number of requests that can be in progress at once. The
+other server implementations scale as the number of clients increase.
+
+<<fig-readnullmem>> and <<fig-writenullmem>> show a similar result as the
+disk I/O tests. Aesop demonstrates that it is no worse then any of the thread
+models.
+
+.Memory Usage Read Test 
+[[fig-readmem]]
+image::fig/read-mem.png[]
+
+.Memory Usage Write Test 
+[[fig-writemem]]
+image::fig/write-mem.png[]
+
+.Memory Usage Read-Null Test 
+[[fig-readnullmem]]
+image::fig/read-null-mem.png[]
+
+.Memory Usage Write-Null Test 
+[[fig-writenullmem]]
+image::fig/write-null-mem.png[]
+
+=== Analysis
+
+Aesop does not exhibit worse scaling in terms of memory usage than any of
+the other thread-per models but it does add a cost in memory overhead for
+each blocking call.
 
 === Function arguments and stack variables of blocking calls
 
 Aesop, in order to implement the additional functionality provided by blocking
 calls, rewrites blocking calls when translating the aesop code to C code.
 This translation introduces a certain amount of overhead, both in memory usage
-and execution performance. This section focuses on memory overhead,
-deferring the discussion of execution overhead to <<ref-blocking-runtime>>.
+and execution performance. 
 
 The main memory overhead incurred by blocking functions originates from the
 need to protect the logical state of the function while temporarily switching
@@ -590,39 +585,93 @@ __blocking int test (void)
 ----
 
 So, in the example above, even though the test will return without waiting for
-the pbranch to complete, it's stack variables (`var` in this case) will
+the pbranch to complete, its stack variables (`var` in this case) will
 consume memory until the pbranch returns.
 
+== Productivity Performance
 
+The core design element of aesop is to make programming of a concurrent
+server easier, so the trade off for memory and runtime performance should
+be worth it. To evaluate this we examine the code complexity of each of
+server implementations. 
 
+.Implementation complexity analysis.
+[[table-complex]]
+[cols="3,1,1,1", options="header"]
+|============================
+| Server Implementation | CC | Mod. CC | SLOC 
+| aesop | 16 | 11 | 179 
+| thread-per-client | 17 | 12 | 182
+| thread-per-client-nb | 17 | 12 | 184
+| thread-per-op | 22 | 17 | 249
+| thread-pool | 32 | 26 | 313
+| event | 28 | 23 | 341
+|============================
+
+<<table-complex>> compares the code complexity of each server
+implementation using McCabe Cyclomatic Complexity (CC) <<McCabe>>,
+Modified McCabe Cyclomatic Complexity (Mod. CC), and Source Lines of Code
+(SLOC).  The CC and Mod. CC metrics were measured using the pmccabe tool,
+version 2.6, created by Paul Bame <<Bame>>, while the SLOC metrics were
+measured using the sloccount tool, version 2.26,
+created by David A. Wheeler <<Wheeler>>.
+
+To simplify the comparison, error handling was excluded for all servers
+except for assertions on expected return codes.  The protocol definition
+(ie, request and acknowledgement structs) as well as helper functions to
+loop over send and receive were not counted in any of the implementations,
+as these were similar in all four.  Also note that the Aesop version
+does not include the Aesop standard library, which 
+provides a binding between Aesop and the standard POSIX socket API as part
+of its default functionality.  The focus
+of this comparison is on the core logic defining the server implementation.
+
+The Aesop and thread-per-client servers are very similar in terms of
+complexity. The slight increase in complexity for the thread-per-client
+server results from
+the additional function calls needed to create and join threads.  The
+nonblocking version of the thread-per-client server (thread-per-client-nb)
+uses two additional lines of code to place each socket into non-blocking
+mode.  The remaining code logic needed to manage the nonblocking socket
+calls is implemented in helper functions which are not included in the
+analysis.
+
+The thread-pool and event models are both much more complex than the
+thread-per-client or aesop model.  In the case of the thread-pool server,
+this additional complexity arises from not only the queueing and thread
+management logic, but also the event loop which is necessary to detect
+incoming requests and dispatch them to the queue.  The event server
+complexity arises from the necessity of dividing servicing routines
+into multiple sub-functions and manually tracking state between
+those functions.  An additional complexity of the event
+model which is not captured by these metrics is the fact that control flow
+is not preserved across the processing of a given request.  For example,
+servicing a write operation requires 5 disconnected event handlers.
+Although the event model appears less complex than the thread-pool model according to CC and
+Mod. CC, qualitatively it is significantly more challenging to develop.
 
 == Compile Time Performance
 
-=== Parallel Make
+Currently aesop imposes some overhead when compiling aesop source. This is
+demomnstrated in a simple micro-benchmark. The test takes an existing aesop
+source fill with 4200 lines or source and is about 116 KB in size and compiles
+it to an object file. The same source file is then renamed to a .c file and
+four +#define+ are added which redefine the aesop keywords to nothing.
 
-It is possible to speed up the translation of aesop files by using the `-jn`
-option to make, replacing `n` by the desired number of concurrent jobs.
+The test is executed on a dual processor Intel Xeon E5620 running at 2.4 GHz
+with 24 GB of RAM.
 
-=== CCache
+.Compile Time Comparison
+[[table-compile]]
+[width="50%",cols="1,1>", options="header"]
+|============================
+| Type | Time (seconds)
+| aesop | 112.02
+| C | 1.22
+|============================
 
-At this time, there are a number of issues blocking the use  of ccache in
-combination with the aesop source to source translator (either to cache the
-translation or to cache the compilation of the generated C source code).
-
-A first issue is related to incorrect handling of compiler names in the build
-system, causing the build to fail if the compiler is set to `ccache gcc`.
-
-The second issue stems from the fact that aesop introduces additional
-dependencies which are not understood by ccache. Therefore, subtly failures
-would be introduced when aesop is updated and the cache is not manually
-cleared.
-
-Given these issues, at this point it is not recommended to use ccache in
-combination with aesop. However, both issues can be resolved in a later
-aesop release (see ticket #137 and #200 in the triton repository).
-
-
-
+The performance penalty is significant but this only effects development. It
+can be mitigated by constructing a Makefile that supports parallel make.
 
 == Bibliography
 
@@ -632,3 +681,206 @@ aesop release (see ticket #137 and #200 in the triton repository).
 - [[[Bame]]] Paul Bame.  pmccabe.  http://parisc-linux.org/~bame/pmccabe/
 - [[[Wheeler]]] David A. Wheeler.  sloccount.  http://www.dwheeler.com/sloc/
 - [[[libev]]] Marc Lehmann. http://software.schmorp.de/pkg/libev.html
+
+== Appendix A - Raw Data
+
+.Read Runtime Data
+[[table-readhist]]
+[cols="1>,1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| clients | aesop | thread | thread-nb | thread-per-op | thread-pool | event
+|   16 |  0.794610 |  0.706736 |  0.775575 |  2.135912 |  0.861456 |  1.284919 
+|  128 |  6.740836 |  3.755610 |  3.865248 |  3.395985 |  5.688868 |  9.602547 
+|  256 | 12.352416 | 12.936459 | 13.051936 | 12.383918 | 11.434637 | 19.542018 
+|  512 | 23.641337 | 27.395763 | 26.318174 | 24.776392 | 22.944439 | 39.058706 
+| 1024 | 48.309275 | 54.852327 | 55.658511 | 47.564368 | 46.179671 | 77.216961 
+|============================
+
+.Write Runtime Data
+[[table-writehist]]
+[cols="1>,1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+|clients | aesop | thread | thread-nb | thread-per-op | thread-pool | event
+|   16 |   3.200944 |   2.306964 |   2.157996 |   1.934971 |   2.684861 |   2.512977 
+|  128 |  18.213375 |  14.991499 |  15.802083 |  16.594684 |  18.065047 |  17.075809 
+|  256 |  33.515213 |  32.899976 |  32.548540 |  32.662463 |  35.354696 |  33.900419 
+|  512 |  67.640246 |  66.168558 |  66.324414 |  67.188763 |  71.184339 |  69.184007 
+| 1024 | 119.799388 | 130.895169 | 130.829158 | 140.270790 | 141.208043 | 140.464092 
+|============================
+
+
+.Read-Null Runtime Data
+[[table-readnull]]
+[cols="1>,1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| clients | aesop | thread | thread-nb | thread-per-op | thread-pool | event
+|   16 |  1.122259 |  1.688565 |  1.845739 |  1.511863 |  1.220004 |  1.225304 
+|  128 |  3.640566 |  4.558670 |  5.159914 |  9.884832 |  4.002515 |  7.252784 
+|  256 |  7.087344 |  5.400444 |  6.604424 | 19.875843 |  7.448785 | 14.500385 
+|  512 | 13.661447 | 10.603367 | 12.862459 | 40.884105 | 14.549549 | 28.967834 
+| 1024 | 27.013576 | 21.625077 | 25.814349 | 82.675118 | 29.376645 | 50.822263 
+|============================
+
+.Write-Null Runtime Data
+[[table-writenull]]
+[cols="1>,1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| clients | aesop | thread | thread-nb | thread-per-op | thread-pool | event
+|   16 |  1.007547 |  0.932891 |  1.012248 |  1.561492 |   1.368119 |  1.372057 
+|  128 |  4.844869 |  3.680892 |  4.771543 | 10.240339 |  16.074748 |  7.923767 
+|  256 |  9.263294 |  6.997207 |  9.135328 | 20.342675 |  29.219365 | 15.994714 
+|  512 | 18.293856 | 14.069904 | 18.382822 | 41.136291 |  59.712499 | 32.640966 
+| 1024 | 37.081757 | 28.534744 | 39.618136 | 83.716303 | 116.833184 | 58.592679 
+|============================
+
+.Read Time Data
+[[table-readtime]]
+[cols="1>,1>,1>,1>", options="header"]
+|============================
+| server | min | max | x
+| aesop | 0.041914 | 48.309275 | 1.0
+| thread-per-client | 0.055891 | 54.852327 | 2.0
+| thread-per-client-nb | 0.067599 | 55.658511 | 3.0
+| thread-per-op | 0.667692 | 47.564368 | 4.0
+| thread-pool | 0.073988 | 46.179671 | 5.0
+| event | 63.155711 | 77.216961 | 6.0
+|============================
+
+.Write Time Data
+[[table-writetime]]
+[cols="1>,1>,1>,1>", options="header"]
+|============================
+| server | min | max | x
+| aesop | 0.415026 | 119.799388 | 1.0
+| thread-per-client | 67.926019 | 130.895169 | 2.0
+| thread-per-client-nb | 77.042924 | 130.829158 | 3.0
+| thread-per-op | 77.181582 | 140.270790 | 4.0
+| thread-pool | 0.915993 | 141.208043 | 5.0
+| event | 119.316831 | 140.464092 | 6.0
+|============================
+
+.Read-Null Time Data
+[[table-readnulltime]]
+[cols="1>,1>,1>,1>", options="header"]
+|============================
+| server | min | max | x
+| aesop | 16.165011 | 27.013576 | 1.0
+| thread-per-client | 9.041217 | 21.625077 | 2.0
+| thread-per-client-nb | 15.326102 | 25.814349 | 3.0
+| thread-per-op | 63.169438 | 82.675118 | 4.0
+| thread-pool | 20.796985 | 29.376645 | 5.0
+| event | 35.460415 | 50.154710 | 6.0
+|============================
+
+.Write-Null Time Data
+[[table-writenulltime]]
+[cols="1>,1>,1>,1>", options="header"]
+|============================
+| server | min | max | x
+| aesop | 26.075373 | 37.081757 | 1.0
+| thread-per-client | 20.131762 | 28.534744 | 2.0
+| thread-per-client-nb | 29.589322 | 39.618136 | 3.0
+| thread-per-op | 69.875107 | 83.716303 | 4.0
+| thread-pool | 11.849568 | 116.833184 | 5.0
+| event | 51.039087 | 58.592679 | 6.0
+|============================
+
+.Read Latency Data
+[[table-readlat]]
+[cols="1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| server | first | min | max | third | x
+| aesop | 0.000257 | 0.000251 | 0.000268 | 0.000266 | 1.0
+| thread-per-client | 0.000250 | 0.000242 | 0.000267 | 0.000265 | 2.0
+| thread-per-client-nb | 0.000249 | 0.000242 | 0.000265 | 0.000264 | 3.0
+| thread-per-op | 0.000462 | 0.000340 | 0.000495 | 0.000489 | 4.0
+| thread-pool | 0.000256 | 0.000239 | 0.000278 | 0.000275 | 5.0
+| event | 0.016989 | 0.006868 | 0.034917 | 0.028945 | 6.0
+|============================
+
+.Write Latency Data
+[[table-writelat]]
+[cols="1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| server | first | min | max | third | x
+| aesop | 0.003235 | 0.002687 | 0.004293 | 0.003931 | 1.0
+| thread-per-client | 0.005229 | 0.002843 | 0.008247 | 0.008217 | 2.0
+| thread-per-client-nb | 0.004103 | 0.001798 | 0.008219 | 0.008124 | 3.0
+| thread-per-op | 0.017350 | 0.011734 | 0.037548 | 0.030839 | 4.0
+| thread-pool | 0.003174 | 0.002525 | 0.004169 | 0.003877 | 5.0
+| event | 0.045139 | 0.011745 | 0.103348 | 0.103275 | 6.0
+|============================
+
+.Read-Null Latency Data
+[[table-readnulllat]]
+[cols="1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| server | first | min | max | third | x
+| aesop | 0.000066 | 0.000041 | 0.000083 | 0.000077 | 1.0
+| thread-per-client | 0.000062 | 0.000041 | 0.000074 | 0.000070 | 2.0
+| thread-per-client-nb | 0.000067 | 0.000044 | 0.000086 | 0.000082 | 3.0
+| thread-per-op | 0.000117 | 0.000062 | 0.000331 | 0.000257 | 4.0
+| thread-pool | 0.000078 | 0.000048 | 0.000102 | 0.000096 | 5.0
+| event | 0.000077 | 0.000044 | 0.000135 | 0.000116 | 6.0
+|============================
+
+.Write-Null Latency Data
+[[table-writenulllat]]
+[cols="1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| server | first | min | max | third | x
+| aesop | 0.000070 | 0.000040 | 0.000101 | 0.000091 | 1.0
+| thread-per-client | 0.000065 | 0.000042 | 0.000079 | 0.000076 | 2.0
+| thread-per-client-nb | 0.000064 | 0.000042 | 0.000081 | 0.000077 | 3.0
+| thread-per-op | 0.000110 | 0.000062 | 0.000379 | 0.000302 | 4.0
+| thread-pool | 0.000049 | 0.000036 | 0.000053 | 0.000052 | 5.0
+| event | 0.000074 | 0.000046 | 0.000184 | 0.000133 | 6.0
+|============================
+
+.Read Memory Data
+[[table-readmem]]
+[cols="1>,1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| clients | aesop | thread | thread-nb | thread-per-op | thread-pool | event
+|   16 |  1720 |   840 |   864 |   928 |  860 |   984 
+|  128 |  2720 |  2748 |  2600 |  2832 | 1040 |  2988 
+|  256 |  4700 |  5256 |  5064 |  5076 | 1160 |  5520 
+|  512 |  5284 |  9316 |  9564 |  9352 | 1344 |  8428 
+| 1024 | 10276 | 18216 | 18668 | 18288 | 1656 | 19248 
+|============================
+
+.Write Memory Data
+[[table-writemem]]
+[cols="1>,1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| clients | aesop | thread | thread-nb | thread-per-op | thread-pool | event
+|   16 |  1692 |   844 |   864 |   944 |  876 |   956 
+|  128 |  3152 |  2912 |  2852 |  2932 | 1044 |  2080 
+|  256 |  3912 |  5436 |  5152 |  5104 | 1192 |  3292 
+|  512 |  6764 |  9844 |  9960 |  9760 | 1316 |  5604 
+| 1024 | 14700 | 18648 | 18940 | 18920 | 1652 | 19284 
+|============================
+
+.Read-Null Memory Data
+[[table-readnullmem]]
+[cols="1>,1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| clients | aesop | thread | thread-nb | thread-per-op | thread-pool | event
+|   16 | 1580 |  836 |  844 |  864 |  920 |  640 
+|  128 | 2060 | 1972 | 1788 | 1000 | 1104 |  696 
+|  256 | 2244 | 2992 | 2868 | 1000 | 1212 |  768 
+|  512 | 2868 | 5200 | 5004 | 1124 | 1388 |  904 
+| 1024 | 3900 | 9752 | 9292 | 4948 | 1744 | 1128 
+|============================
+
+.Write-Null Memory Data
+[[table-writenullmem]]
+[cols="1>,1>,1>,1>,1>,1>,1>", options="header"]
+|============================
+| clients | aesop | thread | thread-nb | thread-per-op | thread-pool | event
+|   16 |  1600 |   856 |   816 |   852 |  916 |  680 
+|  128 |  2876 |  2632 |  2652 |  1728 | 1144 |  744 
+|  256 |  4588 |  5176 |  4904 |  1036 | 1248 |  808 
+|  512 |  8036 |  9728 |  9604 |  7184 | 1436 | 1336 
+| 1024 | 14084 | 19060 | 18764 | 11068 | 1808 | 5632 
+|============================
