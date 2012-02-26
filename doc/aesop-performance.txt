@@ -31,6 +31,7 @@ server that can write or read data from local files.  It is expected to
 process requests from multiple clients simultaneously.  The description
 of the test server and client are given in the following subsections.
 
+[[sec-client-design]]
 === Client Design
 
 Each of the example servers used for comparison in this document implement
@@ -215,55 +216,64 @@ network and disk.
 [[runtime-perf]]
 == Runtime Performance Evaluation and Analysis
 
-The evaluation of runtime performance was done by executing a series of tests
-using each server implementation type with the same client as discussed above.
-We then compare the results for each of the server implementations against
-aesop determine the overall effiecency of aesop compared to hand-tuned 
-solutions. The four test types were selected to evaluate two models. The
-first two test types (read,write) examine real disk I/O. Aesop is inteneded
-for use in a storage server so we want to examine multiplexing of disk and
-network I/O. The second set (read-null,write-null) eliminates disk I/O and
-only has network I/O. This removes the storage bottleneck and examines how
-well the different server types handle concurrency.
+The evaluation of runtime performance was performed by executing a series
+of tests using an identical client test harness (described in
+<<sec-client-design>>) for each server implementation.  We used small
+request sizes in order to stress concurrent, latency-bound requests in an
+effort to highlight the ability of each server to quickly multiplex between
+small operations.  The read and write tests used the O_DIRECT file access
+mode in order to bypass the Linux buffer cache and insure that the disk is
+involved in each I/O transfer.   The read-null and write-null tests are
+included to stress the pure network performance of each server and insure
+that disk I/O is _not_ involved in those cases.
 
 === Experiment
 
-We ran our tests on the Argonne Fusion cluster which is a standard Linux HPC
-cluster. The experiment was done by running each client mode (read, write,
-read-null, write-null) against all six server types. 
-
-The testing was done by running a job on Fusion that executed one of the client
-test types against all six server implementations scaling the clients from
-16 to 1024. This kept the wall time of the job reasonable and allows a 
-consistent comparison between server types within a test type. The network
-is still a shared resource on the cluster or each individual test was run
-five times and the results below are the median from the five iterations,
-based on the maximum runtime.
-
 ==== Experiment System
 
-Fusion is a cluster run by the Argonne Laboratory Computing Resource Center
+All experiments were executed on the Fusion cluster managed by 
+the Argonne Laboratory Computing Resource Center
 (LCRF). Fusion is a IBM iDataPlex dx360 M2 system. It features 320 compute
-nodes which consist of two Intel Nehalem 2.6 GH Xeon processors and 36 GB
+nodes which each consist of two Intel Nehalem 2.6 GH Xeon processors and 36 GB
 of RAM. The compute nodes have hyper threading disabled. The cluster has
 an Infiniband QDR interconnect. Each compute node also a single SATA 7200 RPM
 hard disk for local scratch storage.
 
 ==== Experiment Details
 
-The experiment consisted of four separate jobs on Fusion. The top level unit
-is the test type: read, write, read-null, write-null. For each test type,
-the number of clients are scaled up from 16 to 1024. At each client scale,
-each server implementation is tested in sequence. The individual test is
-executed five times. On each iteration, the server is started then the MPI
-client program is started. The server is restarted for each iteration so
-that the memory statistics are not polluted by a previous run.
+The tests were performed by
+submitting one job for each request type (read, write, read-null, or
+write-null).  Each job executed a series of scripts that launched each
+server implementation in turn to service workloads that scaled 
+the number of clients from
+16 to 1024.  This methodology insured that exactly the same clients and
+server nodes were used used when making comparisons across implementations
+for a given workload.   Fusion is a shared resource and may experience
+increased network contention at times.  We therefore executed each
+test case five times and cycled between server implementations in a
+round-robin fashion to minimize the possibility of any given server
+execution being unfairly penalized by external contention.  We show the
+median result in all graphs unless
+otherwise noted.  The server daemon was restarted on each
+iteration for two reasons.  First, this approach allowed us to capture memory statistics independently for each
+run and insure that results were not affected by resources left over from
+previous runs.  Secondly, it allowed us to cycle between servers as
+described above without any risk of one daemon interfering with the
+performance of another daemon.
 
-On fusion we determined we could use 16 clients per physical node. Using
+On fusion we determined we could use 16 client processes per physical node. Using
 more clients per node caused the bottleneck of the test to become the client
-nodes instead of the server. The clients were scaled up as follows: 16, 128, 256, 512 and 1024 clients.
+nodes instead of the server.  Therefore, for the largest scale tests shown
+in this study we utilized 65 total nodes.  One node acted as the server,
+while 64 nodes executed up to 1024 client processes.  When scaling the
+number of client processes, we also scaled the number of physical client
+nodes in the same manner.  Thus the 16 process case used one physical client
+node, the 128 process case used 8 physical client nodes, and so on.
 
-The clients connected to the server using the IB network with IPoIB.
+The clients connected to the server using the IB network with IPoIB.  Note
+that MPI is only used in the client test harness for coordination and timing
+among client processes.  All communication between clients and servers is
+performed with TCP/IP sockets.
 
 ===== Read
 
@@ -310,6 +320,17 @@ data to be discarded by the server.
 mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-requests 4096 --size 4096 --type-wn
 *********************
 
+=== Expectations
+
+Aesop is intended to improve developer productivity while preserving
+scalable performance for system software workloads.  The goal of the raw
+performance comparison therefore is not to show that Aesop offers superior
+performance to traditional approaches in all scenarios.  Instead, we intend
+to show that Aesop offers competitive performance that is sufficient to
+consider Aesop as a viable programming model based on its productivity
+merits.  We will elaborate on the productivity aspect of the comparison later in
+<<sec-productivity>>.
+
 === Evaluation
 
 Here the runtime results are presented from the experimentation. All graphs
@@ -317,17 +338,35 @@ are shown in log scale.
 
 ==== Disk I/O
 
-In <<fig-readhist>> and <<fig-writehist>>, we see that aesop fairs
-favorably to the other server implementations. In general the various
-servers show similar scaling.
+.Runtime Performance for Write Test
+[[fig-writehist]]
+image::fig/write-hist.png[]
+
+<<fig-writehist>> shows the overall run time of the concurrent write
+workload for each server implementation as the number of client processes
+is scaled from 16 to 1024.  In this graph we see that Aesop does not
+perform as well as the other servers for small workloads (taking 3.2
+seconds at the smallest scale, verses 1.9 seconds for the thread-per-op
+server).  However, Aesop is the fastest server at the largest scale
+(taking 119.8 seconds verses 130.8 seconds for the nearest competitors
+in thread-per-client and threhad-per-client-nb).  
 
 .Runtime Performance for Read Test
 [[fig-readhist]]
 image::fig/read-hist.png[]
 
-.Runtime Performance for Write Test
-[[fig-writehist]]
-image::fig/write-hist.png[]
+<<fig-readhist>> shows the results of the read experiment.  Aesop performs
+more favorably at small scale for this workload than in the previously shown
+write workload.  At the largest scale,
+Aesop completes the test in 48.3 seconds verses 46.1 seconds for the fastest
+server (thread-pool).  The event server performs particularly poorly in all
+cases, ultimately running the largest scale test in 77.2 seconds.
+
+The small scale results for Aesop may indicate that additional tuning
+is needed to improve latency for small test runs.  The issue is likely
+isolated to the write path of the file I/O resource in the Aesop standard
+library, as we see assymetric results in the read and write tests for Aesop
+in terms of its relative performance.
 
 ==== Network I/O
 
