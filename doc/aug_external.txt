@@ -1,6 +1,7 @@
 Interfacing with external C libraries
 =====================================
 
+[[ref-interface-non-blocking]]
 Non-blocking functions
 ----------------------
 
@@ -18,6 +19,7 @@ ResourceBuilder
 
 
 
+[[ref-interface-blocking]]
 Blocking functions
 -------------------
 
@@ -36,67 +38,24 @@ source-to-source translator.
 =====
 
 
-/////////////
 
-\subsection{Resources and Events}
+//========================================================================
+//========================================================================
+Resources
+---------
+//========================================================================
+//========================================================================
 
-We treat asynchronous events as being produced by \emph{resources}.
-Resources are logical components of the system (on a single node) that perform
-operations for a period of time.  Examples include network cards, storage
-devices, scheduling, timing
+In some cases, the techniques outlined in <<ref-interface-non-blocking>> and
+<<ref-interface-blocking>> cannot be used or do not offer sufficient control.
+This section provides details on how to write the low level glue code to
+directly integrate an external library into aesop.
 
-\begin{figure}
-  %\vskip -0.25in
-  \centering
-  \includegraphics[keepaspectratio,width=0.45\textwidth]{model.pdf}
-  \caption{Model of devices, server state, and server code.
-    \label{fig:model}
-  }
-\end{figure}
+Resources?
+~~~~~~~~~~
 
-% I don't think limited in capacity is a resource requisite.
-% From a usage point of view: maybe; From aesop language point of view: a
-% resource is a undivisable blocking function. (i.e. a blocking function which
-% itself doesn't call any aesop blocking functions)
-%
-Mention properties of resources:
-limited in capacity, capability
-often require or benefit from scheduling
-This should invoke the notion of queueing, delaying, waiting, etc.
-of operations that are given to resources.
-
-In practice, interfaces to a resource usually consist
-of a basic set of asynchronous or non-blocking function calls provided as
-a userspace library.
-
-\subsection{Serial Control Flow}
-
-\subsection{Misc. notes}
-
-\color{red}
-Somewhere (not sure where in the paper) we should address how aesop uses
-multiple cores.  Right now, normal c code may or may not be executed in a
-thread depending one what path is the lowest latency following a given
-resource event.  However, you can add advisory hints to tell aesop to run
-code branches in a thread?   See discussion on mailing list and go with
-whatever we end up settling on there.
-\color{black}
-
-
-Aesop has no such restriction on which
-thread executes non-async code.  Continuation of aesop functions can
-be driven by a single thread in the aesop poll engine, by threaded
-callbacks from resources, or (hypothetically, we haven't implemented
-this) by a thread pool in the aesop poll engine. \color{black}
-
-/////////
-
-
-
-Creating a new resource
------------------------
-
-In some cases, more advanced contro
+Defining a new resource
+~~~~~~~~~~~~~~~~~~~~~~~
 
 ----
 struct ae_resource
@@ -111,61 +70,31 @@ struct ae_resource
 };
 ----
 
+A resource is responsible for indicating it has work to do, by calling the
+`ae_resource_request_poll` function. After calling this function, aesop will
+schedule a call to the resource's `poll_context` function.
+The `ae_resource_request_poll` function is thread-safe and can safely be
+called from within a signal handler.
+
+[NOTE]
+====
+The _context_ concept is deprecated and will be removed in a future version.
+The `register_context` and `unregister_context` functions should be set to
+`NULL`. The `poll_context` function can safely ignore the `context` parameter.
+====
+
+The `resource_name` member is the only mandatory field in this structure.
 
 
-//////////
-
-\subsection{Resources and Events}
-
-We treat asynchronous events as being produced by \emph{resources}.
-Resources are logical components of the system (on a single node) that perform
-operations for a period of time.  Examples include network cards, storage
-devices, scheduling, timing
-
-\begin{figure}
-  %\vskip -0.25in
-  \centering
-  \includegraphics[keepaspectratio,width=0.45\textwidth]{model.pdf}
-  \caption{Model of devices, server state, and server code.
-    \label{fig:model}
-  }
-\end{figure}
-
-% I don't think limited in capacity is a resource requisite.
-% From a usage point of view: maybe; From aesop language point of view: a
-% resource is a undivisable blocking function. (i.e. a blocking function which
-% itself doesn't call any aesop blocking functions)
-%
-Mention properties of resources:
-limited in capacity, capability
-often require or benefit from scheduling
-This should invoke the notion of queueing, delaying, waiting, etc.
-of operations that are given to resources.
-
-In practice, interfaces to a resource usually consist
-of a basic set of asynchronous or non-blocking function calls provided as
-a userspace library.
-
-\subsection{Serial Control Flow}
-
-\subsection{Misc. notes}
-
-\color{red}
-Somewhere (not sure where in the paper) we should address how aesop uses
-multiple cores.  Right now, normal c code may or may not be executed in a
-thread depending one what path is the lowest latency following a given
-resource event.  However, you can add advisory hints to tell aesop to run
-code branches in a thread?   See discussion on mailing list and go with
-whatever we end up settling on there.
-\color{black}
 
 
-Aesop has no such restriction on which
-thread executes non-async code.  Continuation of aesop functions can
-be driven by a single thread in the aesop poll engine, by threaded
-callbacks from resources, or (hypothetically, we haven't implemented
-this) by a thread pool in the aesop poll engine. \color{black}
-//////////
+The new resource should be registered with aesop using the `ae_resource_register`
+function.
+
+----
+int ae_resource_register (struct ae_resource *resource, int *newid);
+void ae_resource_unregister (int resource_id);
+----
 
 
 /////
@@ -258,14 +187,32 @@ UAB can also send visitors to ANL easily if we need more interaction later.
 
 ////
 
-Resources are the lowest level aesop components that present Aesop
-compatible intefaces for managing concurrency.  The current list of 
-resources includes:
 
-. resourcebuilder
-. branchthreader
-. timer
+When to write a resource
+~~~~~~~~~~~~~~~~~~~~~~~~
 
+In the current aesop distribution, there are only 3 resources, listed below.
 
+* ResourceBuilder
+* Thread
+* Timer
+
+[NOTE]
+====
+In a future release, the timer module will be reimplemented using
+the ResourceBuilder resource. This change will not affect the timer API.
+====
+
+Whever possible, instead of writing a resource, it is recommended to use
+`ResourceBuilder` or `Thread` to interface with external components.  Using
+these resources instead of writing a new resource has a number of advantages.
+First, there is no need to write C glue code as `Thread` and `ResourceBuilder`
+expose aesop functions. This makes it possible to write the interface using
+aesop features such as concurrent branches.  Second, resources are exposed to
+low level interface details of the aesop runtime system and are consequently
+more likely to require updating when moving to a new version of aesop.  In
+addition, writing an interface using `Thread` or `ResourceBuilder` typically
+requires less code, these modules already take care of dealing with low level
+details such as generating operation id's and cancellation.
 
 
