@@ -50,7 +50,7 @@ enable or disable tracing.
 Standard Aesop modules
 -----------------------
 
-The following functions are bundled with the aesop distribution.
+The following modules are bundled with the aesop distribution.
 
 [[ref-timer]]
 Timer
@@ -180,8 +180,9 @@ These are aesop versions of the regular `pwrite`, `pread`, `fsync`,
 
 [NOTE]
 ====
-Currently, these functions are implemented using a thread which calls the
-regular I/O function. At this point, these functions cannot be cancelled.
+These functions are currently implemented using a thread which calls the
+regular POSIX I/O function. These functions cannot be cancelled once the
+operation started.
 ====
 
 
@@ -241,26 +242,58 @@ synchronization primitives, such as mutexes and semaphores.
 thread
 ~~~~~~
 
+WARNING: The thread module relies on internal details of the current aesop
+implementation. Its use and interface might change in future versions.
+
+
+The following functions are used to intialize and shut down the thread module.
+
 ----
 int aethread_init(void);
 void aethread_finalize(void);
 ----
 
+The thread module provides the concept of a thread group. Groups are created
+with a certain size, and cannot grow beyond this size.
+
 ----
-struct aethread_group* aethread_create_group_pool(int size);
-void aethread_destroy_group(struct aethread_group* group);
+struct aethread_group * aethread_create_group_pool(int size);
+void aethread_destroy_group(struct aethread_group * group);
 ----
 
 
 ----
-__blocking int aethread_hint(struct aethread_group* group);
+__blocking int aethread_hint(struct aethread_group * group);
 ----
 
+The `aethread_hint` function is a blocking function which will complete when a
+free thread can be found in the specified group. If all threads in the group
+are in use, this function will wait until one becomes available.  When
+returning from this call, *one of the threads of the specified group will be
+used to continue execution*. With the current aesop translator, this means
+that the code following the `aethread_hint` call will execute using one of the
+threads of the group, until the thread becomes idle. 
 
 [NOTE]
+.Implementation Detail
 ====
-Like ResourceBuilder, the thread functionality is used as a tool to implement
-other functions. See <<ref-thread>> for an example.
+In the current aesop implementation, a thread becomes idle when one of the
+following happens:
+
+* Entering a blocking call which cannot complete immediately.
+* Finishing execution of a lonely pbranch.
+* Waiting for other pbranches to complete in a `pwait`. The last thread to
+  arrive at a `pwait` does _not_ become idle but will continue execution with
+  the first statement following the `pwait` construct.
 ====
+
+The `aethread_hint` function supports cancellation while waiting for a group
+thread to become available. The function returns `AE_ERR_CANCELLED` when the
+search was cancelled, or `AE_SUCCESS` in when execution successfully switched
+to one of the group threads.
+
+The thread module is mainly used to provide a blocking version of a regular C
+function. See <<ref-thread>> for more details and an example.
+
 
 
