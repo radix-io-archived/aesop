@@ -9,13 +9,13 @@ performance.
 Aesop is a programming language and programming model designed
 to implement distributed system software with high development productivity and run
 time efficiency.
-Further details about the languange and development environment can be found
+Further details about the language and development environment can be found
 in the Aesop User's Guide.
 
 The remainder of this document is organized as follows.
 <<sec-case-study>> describe a network service
 case study which is then used to evaluate the performance of Aesop
-relative to more traditonal server architectures in terms of performance
+relative to more traditional server architectures in terms of performance
 (<<runtime-perf>>), memory usage (<<sec-memory>>), and productivity
 (<<sec-productivity>>).  <<sec-overhead-analyis>> provides a more detailed
 breakdown of specific sources of Aesop overhead, while 
@@ -25,7 +25,7 @@ performance.
 [[sec-case-study]]
 == Case study description
 
-We will use a simple network serivce case study for quantitative
+We will use a simple network service case study for quantitative
 evaluation of the Aesop programming language.  The case study is a TCP
 server that can write or read data from local files.  It is expected to
 process requests from multiple clients simultaneously.  The description
@@ -40,10 +40,10 @@ client test harness.  The client is a basic C program that uses TCP sockets to s
 the server.  It use MPI to coordinate processes and generate a highly
 concurrent workload.
 
-The client will execute in a loop generating a specifed number of
+The client will execute in a loop generating a specified number of
 operations to the server. The general flow is that each client process sends a request
 to the server that contains an optional payload. The client then waits for
-the server to send an acknowledgement that also contain an optional payload.
+the server to send an acknowledgment that also contain an optional payload.
 
 ==== Request Types
 
@@ -53,13 +53,13 @@ The client supports the following request types.
 
 The client sends a request with a file name and a size. The server will then
 open the file, read the contents up to the size specified. The server returns
-the data with the acknowledgement of the operation.
+the data with the acknowledgment of the operation.
 
 ===== Write
 
 The client sends a request with a file name, size and payload. The server will
 then create the file and write the payload. The server then sends an
-acknowledgement to client.
+acknowledgment to client.
 
 ===== Read-Null
 
@@ -67,21 +67,21 @@ This request is identical to the *Read* request, except that the server
 sends uninitialized data rather than performing any file I/O.
 The client sends a request with a size to the server. The server then allocates
 a buffer for the response based on the size the client requested. The server
-then sends an acknowledgement with this buffer as the payload.
+then sends an acknowledgment with this buffer as the payload.
 
 ===== Write-Null
 
 This request is identical to the *Write* request, except that the server
 discards incoming data rather than performing any file I/O.
-The client sends a request with a size and a payload. The server recieves 
+The client sends a request with a size and a payload. The server receives 
 the request but then simply discards the payload. The server sends an 
-acknowledgement back to the client.
+acknowledgment back to the client.
 
 [float]
 ==== Implementation
 
 The client test harness provides command line parameters to control the
-request type, the number of requets, and the size of the request. Each
+request type, the number of requests, and the size of the request. Each
 process barriers until they are all ready to
 connect to the server. Clients then exit the barrier, connect to the server,
 and begin sending requests in a loop. Once each process completes its
@@ -89,10 +89,10 @@ requests, it waits
 at another barrier and then reports statistics about the run.  Each process
 records the total amount of time taken to execute its workload (beginning
 before the initial connection and ending after receipt of the last
-acknowledgement).  The time taken by the slowest process is reported as the 
+acknowledgment).  The time taken by the slowest process is reported as the 
 aggregate run time.  Each process also records the time needed to service each
 individual request (from before the request is sent until after the
-acknowledgement is received) in order to calculate statistics about
+acknowledgment is received) in order to calculate statistics about
 individual request latencies.  
 
 === Server Design
@@ -195,7 +195,7 @@ is handled completely from within that thread. When the request is complete
 the thread is destroyed. Blocking socket operations and standard file read
 and write functions are used in this implementation.
 
-===== Thead-pool
+===== Thread-pool
 The thread-pool server uses an event loop to watch all sockets for activity.
 When a new request is available, the event loop puts the request on a queue and
 wakes up a thread from the thread pool. The request is handled completely
@@ -233,10 +233,10 @@ that disk I/O is _not_ involved in those cases.
 
 All experiments were executed on the Fusion cluster managed by 
 the Argonne Laboratory Computing Resource Center
-(LCRF). Fusion is a IBM iDataPlex dx360 M2 system. It features 320 compute
-nodes which each consist of two Intel Nehalem 2.6 GH Xeon processors and 36 GB
+(LCRC). Fusion is a IBM iDataPlex dx360 M2 system. It features 320 compute
+nodes which each consist of two Intel Nehalem 2.6 GHz Xeon processors and 36 GB
 of RAM. The compute nodes have hyper threading disabled. The cluster has
-an Infiniband QDR interconnect. Each compute node also a single SATA 7200 RPM
+an InfiniBand QDR interconnect. Each compute node also a single SATA 7200 RPM
 hard disk for local scratch storage.
 
 ==== Experiment Details
@@ -279,7 +279,7 @@ performed with TCP/IP sockets.
 
 The read test had clients each issue 16 requests asking for 4 KiB from
 disk. Each client specifies a unique file to be read on on each request. All
-clients specifiy unique files. The files are first generated by a script
+clients specify unique files. The files are first generated by a script
 that runs before the read test starts. The script generates files for every
 client in the local storage of the server.
 
@@ -292,7 +292,7 @@ mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-request
 
 The write test had clients each issue 16 requests sending 4 KiB of data to
 be written to disk. Each client specifies a unique file name for each request
-and all clients specifiy unique files from each other. The directory
+and all clients specify unique files from each other. The directory
 containing all the files is deleted between each test iteration.
 
 .Execution Parameters
@@ -349,7 +349,7 @@ perform as well as the other servers for small workloads (taking 3.2
 seconds at the smallest scale, verses 1.9 seconds for the thread-per-op
 server).  However, Aesop is the fastest server at the largest scale
 (taking 119.8 seconds verses 130.8 seconds for the nearest competitors
-in thread-per-client and threhad-per-client-nb).  
+in thread-per-client and thread-per-client-nb).  
 
 .Runtime Performance for Read Test
 [[fig-readhist]]
@@ -365,14 +365,14 @@ cases, ultimately running the largest scale test in 77.2 seconds.
 The small scale results for Aesop may indicate that additional tuning
 is needed to improve latency for small test runs.  The issue is likely
 isolated to the write path of the file I/O resource in the Aesop standard
-library, as we see assymetric results in the read and write tests for Aesop
+library, as we see asymmetric results in the read and write tests for Aesop
 in terms of its relative performance.
 
 ==== Network I/O
 
 The write-null and read-null experiments were conducted in the same manner
 as the write and read tests.  The difference in this case is that no disk
-access was perfomed.  In the write case, incoming data was discarded by the
+access was performed.  In the write case, incoming data was discarded by the
 server.  In the read case, the server transmitted uninitialized data.
 
 .Runtime Performance for Write-Null Test
@@ -399,7 +399,7 @@ thread-per-client server to the point that it is practically equivalent to
 the Aesop server at scale.
 
 Another notable observation in these graphs is that the Aesop server is
-competative at small scale, and in fact is the fastest implementation in the
+competitive at small scale, and in fact is the fastest implementation in the
 16 client process read-null test and nearly the fastest in the 16 client
 process write-null test.  This supports the observation from the previous
 section that poor Aesop performance at small scale is likely a tuning flaw
@@ -468,9 +468,9 @@ metrics are graphed using a box and whiskers plot. The box represents the
 first and third quartiles and the whiskers are the minimum and maximum
 values. The following results are for the 1024 client size selected from
 the same iteration as the maximum runtime graphs. <<fig-readlat>> and
-<<fig-writelat>> show the aesop offers vary comparitve latency performance
-as the other configurations and only noteably thread-per-op and event are
-signficantly worse.  An interesting observation is that the overall fairness
+<<fig-writelat>> show the aesop offers vary comparative latency performance
+as the other configurations and only notably thread-per-op and event are
+significantly worse.  An interesting observation is that the overall fairness
 across clients shown in the previous section does not appear to correlate in
 any way with individual request latency.
 
@@ -492,20 +492,20 @@ implementations.
 The runtime analysis shows that aesop is competitive with the most
 optimal alternate server implementations at the 1024 client size.
 In the _read_ test, aesop is 4.5% slower that the fastest implementation,
-threadpool. Aesop was the fastest implementation in the _write_ test.
+thread-pool. Aesop was the fastest implementation in the _write_ test.
 The thread-per-client implementation was fastest in the _read null_ and
 _write null_ tests.  Here aesop is significantly slower at around 25-30%,
 however, as we showed above, the difference in performance was due to the
 native performance difference in synchronous and asynchronous sockets.
 If we look at the performance comparison to the thread-per-client-nb, aesop
 was only 4.7% slower in the _read null_ test and was faster in the _write null_
-test. If aesop were using a native asynchronous transport such as Infiniband verbs
+test. If aesop were using a native asynchronous transport such as InfiniBand verbs
 or SSM, we believe that it would perform as well as a thread-per-client implementation.
 
 Another interesting factor was that there was no one fastest server
 implementation. Each workload presents a different challenge and building
 a single tuned server is difficult. A key advantage of aesop is the ability
-to change the underyling implementation/turning for resources or the aesop
+to change the underlying implementation/turning for resources or the aesop
 runtime without changing the aesop server source. During our investigation
 we experimented with different underlying thread models for the network and
 file resources of aesop. The aesop resources can be configured at runtime
@@ -527,7 +527,7 @@ The memory utilization of each server implementation was captured during
 the performance experiments detailed in <<runtime-perf>>.  We recorded
 the VmHWM stat from the server when the client test was completed. The
 VmHWM stat is a Linux-specific metric that represents the peak resident
-set size (RSS) of an executable, where RSS correspondes to the amouhnt
+set size (RSS) of an executable, where RSS corresponds to the amount
 of paged-in memory used by the executable.
 
 === Evaluation
@@ -557,7 +557,7 @@ image::fig/read-null-mem.png[]
 
 <<fig-readnullmem>> and <<fig-writenullmem>> show a similar result as the
 disk I/O tests.  In this case the event server also produces favorable
-results (in additon to the thread pool server) because it is the only
+results (in addition to the thread pool server) because it is the only
 implementation which does not spawn any additional threads to handle
 increasing numbers of network connections.
 
@@ -603,7 +603,7 @@ created by David A. Wheeler <<Wheeler>>.
 
 To simplify the comparison, error handling was excluded for all servers
 except for assertions on expected return codes.  The protocol definition
-(ie, request and acknowledgement structs) as well as helper functions to
+(ie, request and acknowledgment structs) as well as helper functions to
 loop over send and receive were not counted in any of the implementations,
 as these were similar in all four.  Also note that the Aesop version
 does not include the Aesop standard library, which 
@@ -615,15 +615,15 @@ The Aesop and thread-per-client servers are very similar in terms of
 complexity. The slight increase in complexity for the thread-per-client
 server results from
 the additional function calls needed to create and join threads.  The
-nonblocking version of the thread-per-client server (thread-per-client-nb)
+non-blocking version of the thread-per-client server (thread-per-client-nb)
 uses two additional lines of code to place each socket into non-blocking
-mode.  The remaining code logic needed to manage the nonblocking socket
+mode.  The remaining code logic needed to manage the non-blocking socket
 calls is implemented in helper functions which are not included in the
 analysis.
 
 The thread-pool and event models are both much more complex than the
 thread-per-client or aesop model.  In the case of the thread-pool server,
-this additional complexity arises from not only the queueing and thread
+this additional complexity arises from not only the queuing and thread
 management logic, but also the event loop which is necessary to detect
 incoming requests and dispatch them to the queue.  The event server
 complexity arises from the necessity of dividing servicing routines
@@ -698,7 +698,7 @@ For this test, a regular C function and a aesop blocking function are
 called in a loop.  By timing the total time required to complete the loop,
 an estimate of the time needed to execute the function call is obtained.
 
-The results were obtained on an intel i7 CPU running at 2.7GHz,
+The results were obtained on an Intel i7 CPU running at 2.7 GHz,
 using gcc 4.5.3 (using +-O2+), glibc 2.13-r4 and kernel 3.2.5.
 
 There are a number of different test configurations:
@@ -731,7 +731,7 @@ also executed using a +tcmalloc+, an alternative memory allocator library.
 The results for these are shown in the +tcmalloc+ column.
 
 [NOTE]
-The progam used to obtain these results is in the repository:
+The program used to obtain these results is in the repository:
 +tests/blocking-overhead.ae+.
 
 From these results we see that an Aesop __blocking function is significantly
@@ -782,7 +782,7 @@ consume memory until the pbranch returns.
 == Compile Time Performance
 
 Currently aesop imposes some overhead when compiling aesop source. This is
-demomnstrated in a simple micro-benchmark. The test takes an existing aesop
+demonstrated in a simple micro-benchmark. The test takes an existing aesop
 source fill with 4200 lines or source and is about 116 KB in size and compiles
 it to an object file. The same source file is then renamed to a .c file and
 four +#define+ are added which redefine the aesop keywords to nothing.
