@@ -41,12 +41,12 @@ Threads and Aesop
 ~~~~~~~~~~~~~~~~~
 
 Aesop is fully thread safe. Provided the function itself is thread safe,
-it is legal to call the same function (blocking and regular) concurrently
+it is legal to call that function (whether blocking or not) concurrently
 from multiple threads.
 
 Aesop programs exposing concurrency through aesop's language features (see
 <<ref-pbranch>> have to be thread-safe, as the implementation may choose to
-use multiple threads to execute code when possible.
+use multiple threads to execute code whenever possible.
 
 
 //===================================================================
@@ -403,6 +403,7 @@ arguments as the standard C `main` function.
 ----
 int aesop_main (int argc, char ** args)
 {
+   return EXIT_SUCCESS;
 }
 
 aesop_main_set(aesop_main);
@@ -469,9 +470,9 @@ pbranch2
 After pwait.
 ----
 
-There will be approximately 10000 ms between outputting `pbranch2` and `After
-pwait.`, as execution will not continue past the `pwait` until all of its
-branches have completed. The first branch will take at least 10000 ms to
+There will be approximately 10000 ms between outputting "`pbranch2`" and
+"`After pwait.`", as execution will not continue past the `pwait` until all of
+its branches have completed. The first branch will take at least 10000 ms to
 complete, due to the `aesop_timer` call.
 
 

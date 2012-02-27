@@ -31,19 +31,20 @@ The following components can be traced:
 
 *pbranch*:: Tracks the creation and completion of pbranches.
 
-To enable or disable tracing, use the following call:
+The following call can be used to enable or disable tracing for a component.
 
 ----
-int aesop_set_debugging (const char * component, int value);
+int aesop_set_debugging (const char * what, int value);
 ----
 
-Component can be either on of the following strings:
+The `what` argument can be either one of the following strings:
 
-* "ae_blocking"
-* "ae_pbranch"
-* "ae_cancel"
+* `"ae_blocking"`
+* `"ae_pbranch"`
+* `"ae_cancel"`
 
-Value should be 0 to disable, or 1 to enable tracing.
+The `value` parameter can be set to `1` or `0`, in order to respectively
+enable or disable tracing.
 
 
 Standard Aesop modules
