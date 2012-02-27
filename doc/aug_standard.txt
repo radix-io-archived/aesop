@@ -10,7 +10,71 @@ Aesop System Interfaces and Tools
 Configuration Interface
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+Aesop provides a unified interface to advertise and set configuration
+parameters across all registered resources.  This section describes both
+the Aesop user interface to this functionality as well as the Aesop library
+author's interface to this functionality.
 
+Querying and setting configuration parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following function can be used to set arbitrary configuration
+parameters:
+
+----
+int aesop_set_config(const char* key, const char* value);
+----
+
+The `key` argument is the name of the configuration parameter to be set,
+while the `value` argument is the new value for that configuration
+parameter.  All values must be provided as strings.  The function returns 0
+on success, `AE_ERR_NOT_FOUND` if the key is not known to Aesop, or
+`AE_ERR_INVAL` if the key is valid but the value is not. 
+
+There is currently no corresponding function to query a configuration
+parameter or list available keys (as of February 2012), although this will be 
+added in future versions of Aesop.
+
+Registering new configuration parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When a resource is registered with the Triton library using the
+`ae_resource_register()` function, the resource author has the option of
+specifying configuration parameters for that resource using the
+`config_array` field of the required `ae_resource` struct.  The 
+`config_array` field is a `NULL` terminated array of structs of type `struct
+ae_resource_config`, which is defined as follows:
+
+----
+struct ae_resource_config
+{
+    const char* name;
+    const char* default_value;
+    const char* description;
+    int (*updater)(const char* key, const char* value);
+};
+----
+
+The `name` field is the name of the configuration parameter (which
+corresponds to the `key` argument of the `aesop_set_config()` function).
+The `default_value` field specifies the starting value of the configuration
+parameter.  The `description` is a free form text field, though standard
+practice is to limit this to a single line of text describing the
+configuration parameter.  The `updater` field is a pointer to a function
+that will be invoked when the configuration parameter is updated.  The
+resource must provide this function and handle configuration updates in a
+manner appropriate for the resource.  For example, this function may
+perform an `sscanf()` to read an integer value, and then check its values
+against the legal ranges for the parameter before accepting it.  The
+resource should return 0 on success or `AE_ERR_INVALID` if the configuration
+value is not valid.
+
+The `config_array` field can be set to `NULL` at resource registration time
+if the resource does not support any configuration parameters.
+
+As of February 2012 this functionality is only avaialable to resources, but
+in future work we will extend this concept to allow arbitrary Aesop
+components to register configuration parameters in a similar manner.
 
 Debugging
 ~~~~~~~~~~
