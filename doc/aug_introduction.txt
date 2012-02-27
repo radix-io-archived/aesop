@@ -325,6 +325,26 @@ additional ae.i and ae.s files to be created during the compilation of aesop cod
 These files contain the C translation of the aesop source code.
 =====
 
+Invoking the Aesop translator (aecc) 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following example shows the command line used to translate a .ae file
+into an object file.  The resulting object file can be linked using `ld` or
+`gcc` just as you would link an object produced by the standard gcc compiler.
+
+----
+aecc -o file.o file.ae -c gcc -- -g
+----
+
+The `-c` argument specifies the C compiler to use, which must be a version
+of gcc.  The `--` argument is a delimiter indicating that all following
+arguments (`-g` in this case) will be passed directly to the C compiler.
+
+As of February 2012 there are some known bugs in using the aecc translator
+outside of the Aesop repository.   More details can be found in trac
+tickets #21 and #7.  Until these are resolved we recommend using the test
+programs in the Aesop tree as an example of how to best set the `-I` include
+path arguments and `-L` library path arguments when compiling external code.
 
 
 // @TODO Explain problem using gdb
