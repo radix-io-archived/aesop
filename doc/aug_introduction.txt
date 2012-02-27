@@ -327,3 +327,8 @@ These files contain the C translation of the aesop source code.
 
 
 
+// @TODO Explain problem using gdb
+//Using code debuggers
+//~~~~~~~~~~~~~~~~~~~~
+
+
