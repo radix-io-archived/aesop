@@ -7,7 +7,7 @@ performance, memory efficiency, programmer productivity, and compile time
 performance.  
 
 Aesop is a programming language and programming model designed
-to implement distributed system software with developer productivity and run
+to implement distributed system software with high development productivity and run
 time efficiency.
 Further details about the languange and development environment can be found
 in the Aesop User's Guide.
@@ -261,11 +261,11 @@ previous runs.  Secondly, it allowed us to cycle between servers as
 described above without any risk of one daemon interfering with the
 performance of another daemon.
 
-On fusion we determined we could use 16 client processes per physical node. Using
+On fusion we determined that we could use 16 client processes per physical node. Using
 more clients per node caused the bottleneck of the test to become the client
 nodes instead of the server.  Therefore, for the largest scale tests shown
 in this study we utilized 65 total nodes.  One node acted as the server,
-while 64 nodes executed up to 1024 client processes.  When scaling the
+while 64 nodes executed up to a total of 1024 client processes.  When scaling the
 number of client processes, we also scaled the number of physical client
 nodes in the same manner.  Thus the 16 process case used one physical client
 node, the 128 process case used 8 physical client nodes, and so on.
@@ -325,9 +325,9 @@ mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-request
 Aesop is intended to improve developer productivity while preserving
 scalable performance for system software workloads.  The goal of the raw
 performance comparison therefore is not to show that Aesop offers superior
-performance to traditional approaches in all scenarios.  Instead, we intend
-to show that Aesop offers competitive performance that is sufficient to
-consider Aesop as a viable programming model based on its productivity
+performance to traditional approaches in all scenarios.  Instead, we want to
+determine if Aesop offers sufficient performance for consideration
+as a viable programming model based on its productivity
 merits.  We will elaborate on the productivity aspect of the comparison later in
 <<sec-productivity>>.
 
@@ -370,52 +370,73 @@ in terms of its relative performance.
 
 ==== Network I/O
 
-In this set of tests, we had specifically developed the thread-per-client-nb 
-to evalute the performance difference between blocking and non-blocking sockets.It is clear that the non-blocking sockets do not perform as well blocking
-sockets. We did this test because aesop uses non-blocking sockets and were
-trying to determine the performance difference between aesop and
-the thread-per-client server. <<fig-readnull>> and <<fig-writenull>> cases show
-that aesop mirrors the thread-per-client-nb server as expected.
-
-.Runtime Performance for Read-Null Test
-[[fig-readnull]]
-image::fig/read-null-hist.png[]
+The write-null and read-null experiments were conducted in the same manner
+as the write and read tests.  The difference in this case is that no disk
+access was perfomed.  In the write case, incoming data was discarded by the
+server.  In the read case, the server transmitted uninitialized data.
 
 .Runtime Performance for Write-Null Test
 [[fig-writenull]]
 image::fig/write-null-hist.png[]
 
+.Runtime Performance for Read-Null Test
+[[fig-readnull]]
+image::fig/read-null-hist.png[]
+
+Aesop is competitive with (and in most cases better than) the other
+implementations except for the thread-per-client server in both the
+write-null (<<fig-writenull>>) and read-null (<<fig-readnull>>) evaluation.  We were unable to
+isolate a concrete reason for this discrepancy in profiling.  One notable
+difference in the two implementations, however, is that the
+thread-per-client server uses blocking socket operations, while the aesop
+socket resource uses non-blocking operations.  Based on this observation, we implemented the
+thread-per-client-nb server to isolate the impact of non-blocking socket
+operations on performance.  The thread-per-client-nb implementation is
+identical to the thread-per-client implementation except that each socket
+uses non-blocking operations and polling to transmit and receive data.  As
+seen in these tests, the use of non-blocking operations slows down the
+thread-per-client server to the point that it is practically equivalent to
+the Aesop server at scale.
+
+Another notable observation in these graphs is that the Aesop server is
+competative at small scale, and in fact is the fastest implementation in the
+16 client process read-null test and nearly the fastest in the 16 client
+process write-null test.  This supports the observation from the previous
+section that poor Aesop performance at small scale is likely a tuning flaw
+in the file resource used in the Aesop standard library, rather than a
+fundamental programming language problem.
+
 ==== Fairness
 
-Absolute performance is not the only metric that one might look at so here
-the fairness of the various server types is examined. The bars on the 
-graphs shows the total time for a client to complete all of its requests.
+This section evaluates the fairness of the various server implementations in
+terms of service times across clients.  We illustrate the fairness of each
+server by plotting the difference between the fastest and slowest total time
+for a client to complete all of its requests.
 The fastest client is the bottom of the bar and the slowest is the top of bar.
 These results are from the 1024 client size using the same iteration that
 was selected for the maximum runtime performance above.
-
-In <<fig-readtime>> and <<fig-writetime>> we see that the event server is
-the only fair server. During our initial experimentation, aesop was configured
-to be a fair system, however this fairness degraded the overall total
-performance so we instead configured the file resource to be unfair by design.
-This is demostrated in the <<fig-readtime>> and <<fig-writetime>>, showing
-that aesop is extremely unfair. Thread-pool is also unfair because we applied
-the same change to this server implementation.
-
-.Fastest and Slowest Total Client Runtime for Read Test
-[[fig-readtime]]
-image::fig/read-time.png[]
 
 .Fastest and Slowest Total Client Runtime for Write Test
 [[fig-writetime]]
 image::fig/write-time.png[]
 
-The <<fig-readnulltime>> and <<fig-writenulltime>> show similar fairness between
-all server types except thread-pool in the case of the write-null test case.
-Here the aesop network resource is not using an unfair design and approximates
-the fairness of the other thread-per-* models. The thread-pool server does
-have the design such that is is unfair in how it services requests,
-<<fig-writenulltime>> shows this clearly.
+.Fastest and Slowest Total Client Runtime for Read Test
+[[fig-readtime]]
+image::fig/read-time.png[]
+
+In <<fig-readtime>> and <<fig-writetime>> we see that the event server is
+the only fair server. However, it achieves this fairness by sacrificing
+overall throughput.  During our initial experimentation, aesop was configured
+to be a fair system as it favored executing all disk and network operations
+in FIFO order if possible.  We discovered that this behavior was detrimental
+to throughput in practice; the server performed better if it made progress
+on requests that had most recently completed a network or disk operation
+rather than requests that had been waiting the longest.  We observed the
+same behavior in the thread-pool server as well and made the same adjustment
+for it to favor "hot" requests as opposed to FIFO ordering.
+
+Interestingly, we see that the thread-per-client, thread-per-client-nb, and
+thread-per-op servers are more fair on the write test than on the read test.
 
 .Fastest and Slowest Total Client Runtime for Read-Null Test
 [[fig-readnulltime]]
@@ -425,43 +446,50 @@ image::fig/read-null-time.png[]
 [[fig-writenulltime]]
 image::fig/write-null-time.png[]
 
+The <<fig-readnulltime>> and <<fig-writenulltime>> show similar fairness between
+all server types except thread-pool in the case of the write-null test case.
+The thread-pool server is the only one that shows a notable difference in
+fairness due to its scheduling approach.
+
 ==== Latency
 
-The last client metric is an examination of per operation latency. The
-client collects all the operation latency and the computes the minimum and
-maximum latency, the first quartile latency and third quartile latency. These
-metrics are graphed using a box and whiskers plot. The box represents the
-first and thrid quartiles and the whiskers are the minimum and maximum
-values. The following results are for the 1024 client size selected from
-the same iteration as the maximum runtime graphs. <<fig-readlat>> and
-<<fig-writelat>> show the aesop offers vary comparitve latency performance
-as the other configurations and only noteably thread-per-op and event are
-signficantly worse.
+.Per Operation Latency Write Test (Min/Max/First Quartile/Third Quartile)
+[[fig-writelat]]
+image::fig/write-lat.png[]
 
 .Per Operation Latency Read Test (Min/Max/First Quartile/Third Quartile)
 [[fig-readlat]]
 image::fig/read-lat.png[]
 
-.Per Operation Latency Write Test (Min/Max/First Quartile/Third Quartile)
-[[fig-writelat]]
-image::fig/write-lat.png[]
+The last client metric is an examination of per operation latency. The
+client measures the latency of each individual request and the computes the minimum and
+maximum latency, the first quartile latency and third quartile latency. These
+metrics are graphed using a box and whiskers plot. The box represents the
+first and third quartiles and the whiskers are the minimum and maximum
+values. The following results are for the 1024 client size selected from
+the same iteration as the maximum runtime graphs. <<fig-readlat>> and
+<<fig-writelat>> show the aesop offers vary comparitve latency performance
+as the other configurations and only noteably thread-per-op and event are
+signficantly worse.  An interesting observation is that the overall fairness
+across clients shown in the previous section does not appear to correlate in
+any way with individual request latency.
+
+.Per Operation Latency Write-Null Test (Min/Max/First Quartile/Third Quartile)
+[[fig-writenulllat]]
+image::fig/write-null-lat.png[]
+
+.Per Operation Latency Read-Null Test (Min/Max/First Quartile/Third Quartile)
+[[fig-readnulllat]]
+image::fig/read-null-lat.png[]
 
 In <<fig-readnulllat>> and <<fig-writenulllat>> we see again that aesop has
 very good latency metrics compared to the other servers. In this case the
 thread-per-op and event are noticeably worse than the other server
 implementations.
 
-.Per Operation Latency Read-Null Test (Min/Max/First Quartile/Third Quartile)
-[[fig-readnulllat]]
-image::fig/read-null-lat.png[]
-
-.Per Operation Latency Write-Null Test (Min/Max/First Quartile/Third Quartile)
-[[fig-writenulllat]]
-image::fig/write-null-lat.png[]
-
 ==== Summary
 
-The runtime analysis shows that aesop is very competitive with the most
+The runtime analysis shows that aesop is competitive with the most
 optimal alternate server implementations at the 1024 client size.
 In the _read_ test, aesop is 4.5% slower that the fastest implementation,
 threadpool. Aesop was the fastest implementation in the _write_ test.
@@ -471,10 +499,10 @@ however, as we showed above, the difference in performance was due to the
 native performance difference in synchronous and asynchronous sockets.
 If we look at the performance comparison to the thread-per-client-nb, aesop
 was only 4.7% slower in the _read null_ test and was faster in the _write null_
-test. If aesop is using native asynchronous transport such as Infiniband verbs
-or SSM, it will perform as well as a thread-per-client implementation.
+test. If aesop were using a native asynchronous transport such as Infiniband verbs
+or SSM, we believe that it would perform as well as a thread-per-client implementation.
 
-Another interesting factor was that their was no one fastest server
+Another interesting factor was that there was no one fastest server
 implementation. Each workload presents a different challenge and building
 a single tuned server is difficult. A key advantage of aesop is the ability
 to change the underyling implementation/turning for resources or the aesop
