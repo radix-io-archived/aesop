@@ -523,46 +523,54 @@ as we did for the runtime performance.
 
 === Experiment
 
-During the experiment detailed in the <<runtime-perf>> section. We recorded
-the VmHWM stat from the server when the client test was completed. The VmHWM
-stat is recorded by Linux during an applications runtime and represents the
-peak resident set size (RSS). RSS represents the amount of paged-in memory.
-If we looked at the VmPeak which is the total required virtual memory, this
-would punish the models which use numerous threads.
+The memory utilization of each server implementation was captured during
+the performance experiments detailed in <<runtime-perf>>.  We recorded
+the VmHWM stat from the server when the client test was completed. The
+VmHWM stat is a Linux-specific metric that represents the peak resident
+set size (RSS) of an executable, where RSS correspondes to the amouhnt
+of paged-in memory used by the executable.
 
 === Evaluation
 
-The following graphs show the memory usage in KiB in log scale. In
-<<fig-readmem>> and <<fig-writemem>> we see that thread-pool limits the
-memory usage as the client work load increases because the thread-pool 
-by design limits the number of requests that can be in progress at once. The
-other server implementations scale as the number of clients increase.
-
-<<fig-readnullmem>> and <<fig-writenullmem>> show a similar result as the
-disk I/O tests. Aesop demonstrates that it is no worse then any of the thread
-models.
-
-.Memory Usage Read Test 
-[[fig-readmem]]
-image::fig/read-mem.png[]
+The following graphs show the memory usage in KiB in log scale.
 
 .Memory Usage Write Test 
 [[fig-writemem]]
 image::fig/write-mem.png[]
 
-.Memory Usage Read-Null Test 
-[[fig-readnullmem]]
-image::fig/read-null-mem.png[]
+.Memory Usage Read Test 
+[[fig-readmem]]
+image::fig/read-mem.png[]
+
+In <<fig-readmem>> and <<fig-writemem>> we see that thread-pool limits the
+memory usage as the client work load increases because the thread-pool 
+by design limits the number of requests that can be in progress at once. The
+other server implementations scale as the number of clients increase.
 
 .Memory Usage Write-Null Test 
 [[fig-writenullmem]]
 image::fig/write-null-mem.png[]
 
-=== Analysis
+.Memory Usage Read-Null Test 
+[[fig-readnullmem]]
+image::fig/read-null-mem.png[]
 
-Aesop does not exhibit worse scaling in terms of memory usage than any of
-the other thread-per models but it does add a cost in memory overhead for
-each blocking call.
+<<fig-readnullmem>> and <<fig-writenullmem>> show a similar result as the
+disk I/O tests.  In this case the event server also produces favorable
+results (in additon to the thread pool server) because it is the only
+implementation which does not spawn any additional threads to handle
+increasing numbers of network connections.
+
+Although the Aesop server cannot match the thread-pool server in terms of
+memory usage, it does compare favorably to the thread-per-client and
+thread-per op servers.  In the read test, for example, Aesop consumes
+roughly 10 MiB of paged in memory verses almost 18 MiB of paged in memory
+for the thread-per-client server at scale.
+
+Note that the thread-per-client and thread-per-op models consume virtual
+memory at a much larger rate due to the number of thread stacks allocated.
+We chose not to evaluate this metric, however, as the resident memory seems
+to be a more relevant metric in practice.
 
 [[sec-productivity]]
 == Productivity
@@ -712,9 +720,9 @@ arguments is used.  Test 2 uses the same function, but this time the
 function is marked as `__blocking`.
 
 Tests 3-5 were added to provide a better context for understanding the
-magnitude of the blocking call overhead.  For test 3, the function from test 1
-was taken but in the function body a single call to +malloc+ and +free+ was
-added.  Test 4 is the same as test 3, but also adds a call to lock and unlock
+magnitude of the blocking call overhead.  For test 3, the normal C function from test 1
+was used as a basis, but a single call to +malloc+ and +free+ was
+added within the test function.  Test 4 is the same as test 3, but also adds a call to lock and unlock
 a mutex.  Test 5 replaces the mutex by a single atomic operation
 (compare-and-swap).
 
@@ -726,30 +734,30 @@ The results for these are shown in the +tcmalloc+ column.
 The progam used to obtain these results is in the repository:
 +tests/blocking-overhead.ae+.
 
-=== Function arguments and stack variables of blocking calls
+From these results we see that an Aesop __blocking function is significantly
+slower than a basic C function.  Test case 4 illustrates that almost all of
+this overhead is a result of the memory management and synchronization
+performed by Aesop in order to enable efficient concurrency.
 
-Aesop, in order to implement the additional functionality provided by blocking
-calls, rewrites blocking calls when translating the aesop code to C code.
-This translation introduces a certain amount of overhead, both in memory usage
-and execution performance. 
+It is also important to note that Aesop is a superset of the C language, and
+normal C functions (with the associated low overhead) can still be used in
+an Aesop program.  The __blocking functions are most appropriate for
+functions that perform blocking device or resource operations, while
+standard C functions are better suited for computationally intense inner-loop routines.
 
-The main memory overhead incurred by blocking functions originates from the
-need to protect the logical state of the function while temporarily switching
-to other functions.
+=== Memory usage implications of blocking calls
 
-For example, stack variables are moved to the heap. As long as the blocking
-function does not complete, the memory for these variables is not released.
-Arguments to the function need to be relocated to the heap as well,
-and so does the type returned from the function (if not void).
+The main memory overhead incurred by blocking functions originates
+from the need to protect the logical state of the function while
+temporarily switching to other functions.  Stack variables, function
+arguments, and return values must all be moved to the heap by the
+aesop source translator.  In a normal C program, those items consume
+stack space. In addition, aesop internally maintains a number of control
+structures. Pointers to these structures are passed as function arguments
+to the blocking function, and consequently consume stack space. Currently,
+aesop adds about 4 pointers and 2 integers to each blocking function call.
 
-In a normal C program, the items listed above consume stack space. In blocking
-functions, these consume heap space instead.  In addition, aesop internally
-maintains a number of control structures. Pointers to these structures are
-passed as function arguments to the blocking function, and consequently
-consume stack space. Currently, aesop adds about 4 pointers and 2 integers to
-each blocking function call.
-
-=== Lonely pbranches
+==== Lonely pbranches
 
 A lonely pbranch will keep the enclosing scope alive (up to the function
 scope) until the pbranch exits.
