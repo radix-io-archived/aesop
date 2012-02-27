@@ -13,12 +13,12 @@ Further details about the languange and development environment can be found
 in the Aesop User's Guide.
 
 The remainder of this document is organized as follows.
-<<sec-case-study>> and <<runtime-perf>> describe a network service
-case study and use it to evaluate the performance of Aesop
-relative to more traditonal server architectures. 
-<<sec-memory>> provides a more detailed analysis of memory efficiency in
-Aesop. <<sec-productivity>> evaluates the productivity of the Aesop
-language using the original case study as an example. 
+<<sec-case-study>> describe a network service
+case study which is then used to evaluate the performance of Aesop
+relative to more traditonal server architectures in terms of performance
+(<<runtime-perf>>), memory usage (<<sec-memory>>), and productivity
+(<<sec-productivity>>).  <<sec-overhead-analyis>> provides a more detailed
+breakdown of specific sources of Aesop overhead, while 
 <<sec-compile>> concludes by discussing Aesop compile-time code translation
 performance.
 
@@ -514,109 +514,11 @@ that building a specific server implementation that is optimal for a generic
 workload, aesop becomes powerful because these types of changes can be made
 without ever changing the server source.
 
-=== Analysis
-
-As we've seen aesop compares favorably to other concurrency models but loses
-some performance compared to best case hand tuned version. Here we examine
-the overheads associated with aesop. The first item to examine is the
-cost associated with an aesop blocking call.
-
-==== Performance Implications of Blocking Calls
-
-While this isn't immediately visible from looking at the aesop source code,
-blocking calls, when compared to a plain C function call, have extra overhead
-due to the way they are transformed by the aesop compiler. The following
-section highlights the sources of this overhead.
-
-===== State Management
-
-Most of the overhead is caused by the need to preserve the state
-of the blocking call while execution (temporarily) switches to another
-function. In order to preserve this state, the aesop compiler relocates all
-function-scoped variables from the stack to the heap.
-When entering a blocking function, heap memory needs to be allocated for these
-variables. As allocating heap memory is much more time consuming than
-allocating space on the stack, calling a blocking function is more expensive
-than calling a regular function.
-
-===== Synchronization Overhead
-
-A second source of overhead originates from the multi-threaded nature of aesop
-code. While aesop does not create any threads, many of the aesop resources
-internally use threads.  Therefore, the aesop compiler has to ensure that the
-emitted code is multi-thread safe. For example, in the following code,
-two pbranches might be executing concurrently using different threads.
-Since these threads could both by modifying the pwait state simultaneously,
-aesop
-uses locks to serialize their access. Locks, and other synchronization
-primitives account for most of the remaining performance difference between
-blocking and regular function calls.
-
-.pwait synchronization
-[source,C]
-----
-pwait {
-  pbranch {
-     ...
-  }
-  pbranch {
-     ...
-  }
-}
-----
-
-[NOTE]
-Currently, the aesop compiler uses a combination of atomic operations and
-mutexes to maintain thread-safety. There is an ongoing effort to convert to
-atomic operations where possible.
-
-===== Quantifying Blocking Call Overhead
-
-For this test, a regular C function and a aesop blocking function are
-called in a loop.  By timing the total time required to complete the loop,
-an estimate of the time needed to execute the function call is obtained.
-
-The results were obtained on an intel i7 CPU running at 2.7GHz,
-using gcc 4.5.3 (using +-O2+), glibc 2.13-r4 and kernel 3.2.5.
-
-There are a number of different test configurations:
-
-.Test Results
-[cols="h,^,^,^,^,^,<,<",valign="middle",frame="topbot",options="header"]
-|=====
-1.2+<.^| Test   5+| Options                              2+^.^| seconds/call  
-          ^d| regular | blocking | malloc/free | mutex | opa   | malloc   | tcmalloc 
-| 1        |   X     |          |             |       |       | 2.24e-09 | 2.21e-09
-| 2        |         |    X     |             |       |       | 5.54e-08 | 3.62e-08
-| 3        |   X     |          |     X       |       |       | 2.34e-08 | 1.62e-08
-| 4        |   X     |          |     X       |   X   |       | 3.78e-08 | 2.96e-08
-| 5        |   X     |          |     X       |       |   X   | 2.95e-08 | 2.02e-08
-|=====
-
-For test 1, a simple regular C function (i.e. not using `__blocking`) taking 2
-arguments is used.  Test 2 uses the same function, but this time the
-function is marked as `__blocking`.
-
-Tests 3-5 were added to provide a better context for understanding the
-magnitude of the blocking call overhead.  For test 3, the function from test 1
-was taken but in the function body a single call to +malloc+ and +free+ was
-added.  Test 4 is the same as test 3, but also adds a call to lock and unlock
-a mutex.  Test 5 replaces the mutex by a single atomic operation
-(compare-and-swap).
-
-As a way to study the effect of the malloc implementation, these tests were
-also executed using a +tcmalloc+, an alternative memory allocator library.
-The results for these are shown in the +tcmalloc+ column.
-
-[NOTE]
-The progam used to obtain these results is in the repository:
-+tests/blocking-overhead.ae+.
-
 [[sec-memory]]
 == Runtime Memory Efficiency
 
 Another aspect of the overall performance is the memory efficiency of each
-server implementation. We compare aesop to the other server implementations
+server implementation.  In this section we compare aesop to the other server implementations
 as we did for the runtime performance.
 
 === Experiment
@@ -661,50 +563,6 @@ image::fig/write-null-mem.png[]
 Aesop does not exhibit worse scaling in terms of memory usage than any of
 the other thread-per models but it does add a cost in memory overhead for
 each blocking call.
-
-=== Function arguments and stack variables of blocking calls
-
-Aesop, in order to implement the additional functionality provided by blocking
-calls, rewrites blocking calls when translating the aesop code to C code.
-This translation introduces a certain amount of overhead, both in memory usage
-and execution performance. 
-
-The main memory overhead incurred by blocking functions originates from the
-need to protect the logical state of the function while temporarily switching
-to other functions.
-
-For example, stack variables are moved to the heap. As long as the blocking
-function does not complete, the memory for these variables is not released.
-Arguments to the function need to be relocated to the heap as well,
-and so does the type returned from the function (if not void).
-
-In a normal C program, the items listed above consume stack space. In blocking
-functions, these consume heap space instead.  In addition, aesop internally
-maintains a number of control structures. Pointers to these structures are
-passed as function arguments to the blocking function, and consequently
-consume stack space. Currently, aesop adds about 4 pointers and 2 integers to
-each blocking function call.
-
-=== Lonely pbranches
-
-A lonely pbranch will keep the enclosing scope alive (up to the function
-scope) until the pbranch exits.
-
-.lonely pbranch scope
-[source, C]
-----
-__blocking int test (void)
-{
-   int var[10000];
-   pbranch {
-      ...
-   }
-}
-----
-
-So, in the example above, even though the test will return without waiting for
-the pbranch to complete, its stack variables (`var` in this case) will
-consume memory until the pbranch returns.
 
 [[sec-productivity]]
 == Productivity
@@ -768,6 +626,149 @@ is not preserved across the processing of a given request.  For example,
 servicing a write operation requires 5 disconnected event handlers.
 Although the event model appears less complex than the thread-pool model according to CC and
 Mod. CC, qualitatively it is significantly more challenging to develop.
+
+[[sec-overhead-analysis]]
+== Sources of Aesop overhead
+
+As we've seen aesop compares favorably to other concurrency models but loses
+some performance compared to best case hand tuned version. Here we examine
+the overheads associated with aesop. The first item to examine is the
+cost associated with an aesop blocking call.
+
+=== Performance Implications of Blocking Calls
+
+While this isn't immediately visible from looking at the aesop source code,
+blocking calls, when compared to a plain C function call, have extra overhead
+due to the way they are transformed by the aesop compiler. The following
+section highlights the sources of this overhead.
+
+==== State Management
+
+Most of the overhead is caused by the need to preserve the state
+of the blocking call while execution (temporarily) switches to another
+function. In order to preserve this state, the aesop compiler relocates all
+function-scoped variables from the stack to the heap.
+When entering a blocking function, heap memory needs to be allocated for these
+variables. As allocating heap memory is much more time consuming than
+allocating space on the stack, calling a blocking function is more expensive
+than calling a regular function.
+
+==== Synchronization Overhead
+
+A second source of overhead originates from the multi-threaded nature of aesop
+code. While aesop does not create any threads, many of the aesop resources
+internally use threads.  Therefore, the aesop compiler has to ensure that the
+emitted code is multi-thread safe. For example, in the following code,
+two pbranches might be executing concurrently using different threads.
+Since these threads could both by modifying the pwait state simultaneously,
+aesop
+uses locks to serialize their access. Locks, and other synchronization
+primitives account for most of the remaining performance difference between
+blocking and regular function calls.
+
+.pwait synchronization
+[source,C]
+----
+pwait {
+  pbranch {
+     ...
+  }
+  pbranch {
+     ...
+  }
+}
+----
+
+[NOTE]
+Currently, the aesop compiler uses a combination of atomic operations and
+mutexes to maintain thread-safety. There is an ongoing effort to convert to
+atomic operations where possible.
+
+==== Quantifying Blocking Call Overhead
+
+For this test, a regular C function and a aesop blocking function are
+called in a loop.  By timing the total time required to complete the loop,
+an estimate of the time needed to execute the function call is obtained.
+
+The results were obtained on an intel i7 CPU running at 2.7GHz,
+using gcc 4.5.3 (using +-O2+), glibc 2.13-r4 and kernel 3.2.5.
+
+There are a number of different test configurations:
+
+.Test Results
+[cols="h,^,^,^,^,^,<,<",valign="middle",frame="topbot",options="header"]
+|=====
+1.2+<.^| Test   5+| Options                              2+^.^| seconds/call  
+          ^d| regular | blocking | malloc/free | mutex | opa   | malloc   | tcmalloc 
+| 1        |   X     |          |             |       |       | 2.24e-09 | 2.21e-09
+| 2        |         |    X     |             |       |       | 5.54e-08 | 3.62e-08
+| 3        |   X     |          |     X       |       |       | 2.34e-08 | 1.62e-08
+| 4        |   X     |          |     X       |   X   |       | 3.78e-08 | 2.96e-08
+| 5        |   X     |          |     X       |       |   X   | 2.95e-08 | 2.02e-08
+|=====
+
+For test 1, a simple regular C function (i.e. not using `__blocking`) taking 2
+arguments is used.  Test 2 uses the same function, but this time the
+function is marked as `__blocking`.
+
+Tests 3-5 were added to provide a better context for understanding the
+magnitude of the blocking call overhead.  For test 3, the function from test 1
+was taken but in the function body a single call to +malloc+ and +free+ was
+added.  Test 4 is the same as test 3, but also adds a call to lock and unlock
+a mutex.  Test 5 replaces the mutex by a single atomic operation
+(compare-and-swap).
+
+As a way to study the effect of the malloc implementation, these tests were
+also executed using a +tcmalloc+, an alternative memory allocator library.
+The results for these are shown in the +tcmalloc+ column.
+
+[NOTE]
+The progam used to obtain these results is in the repository:
++tests/blocking-overhead.ae+.
+
+=== Function arguments and stack variables of blocking calls
+
+Aesop, in order to implement the additional functionality provided by blocking
+calls, rewrites blocking calls when translating the aesop code to C code.
+This translation introduces a certain amount of overhead, both in memory usage
+and execution performance. 
+
+The main memory overhead incurred by blocking functions originates from the
+need to protect the logical state of the function while temporarily switching
+to other functions.
+
+For example, stack variables are moved to the heap. As long as the blocking
+function does not complete, the memory for these variables is not released.
+Arguments to the function need to be relocated to the heap as well,
+and so does the type returned from the function (if not void).
+
+In a normal C program, the items listed above consume stack space. In blocking
+functions, these consume heap space instead.  In addition, aesop internally
+maintains a number of control structures. Pointers to these structures are
+passed as function arguments to the blocking function, and consequently
+consume stack space. Currently, aesop adds about 4 pointers and 2 integers to
+each blocking function call.
+
+=== Lonely pbranches
+
+A lonely pbranch will keep the enclosing scope alive (up to the function
+scope) until the pbranch exits.
+
+.lonely pbranch scope
+[source, C]
+----
+__blocking int test (void)
+{
+   int var[10000];
+   pbranch {
+      ...
+   }
+}
+----
+
+So, in the example above, even though the test will return without waiting for
+the pbranch to complete, its stack variables (`var` in this case) will
+consume memory until the pbranch returns.
 
 [[sec-compile]]
 == Compile Time Performance
