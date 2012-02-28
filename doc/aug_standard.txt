@@ -91,7 +91,7 @@ The following modules are bundled with the aesop distribution.
 Timer
 ~~~~~~
 
-Header: `triton.timer.hae`
+Header: `timer.hae`
 
 
 ----
@@ -110,7 +110,7 @@ __blocking int aesop_timer(int millisecs);
 ----
 
 The `aesop_timer` function will sleep for the given number of milliseconds.
-The functions returns 0 on success, `-ECANCELED` if canceled before the sleep
+The functions returns 0 on success, `-ECANCELED` if cancelled before the sleep
 time is over.
 
 Socket
@@ -144,11 +144,11 @@ __blocking int aesocket_accept(
     int * err);
 ----
 
-The aesop version of the accept system call.
-Unlike the system call, the descriptor for the new connection is returned in
+In the aesop version of the accept system call,
+unlike the system call, the descriptor for the new connection is returned in
 `*newfd`, while an error, if any, is returned in `*err`.
 The function returns `AE_SUCCESS` when a new connection is accepted,
-`AE_ERR_CANCELED` if the call was canceled and `AE_ERR_OTHER` if a system call
+`AE_ERR_CANCELED` if the call was cancelled and `AE_ERR_OTHER` if a system call
 error occurred (returned in `*err`) occurred.
 
 NOTE: It is not necessary to call `aesocket_prepare` on the descriptors
@@ -163,9 +163,9 @@ __blocking int aesocket_read(
     int * err);
 ----
 Read `count` bytes from the given socket. This call will not return
-until an error occurred or at `count` bytes were read from the socket.
+until an error occurred or `count` bytes were read from the socket.
 The function returns `AE_SUCCESS` if the requested number of bytes was read,
-`AE_ERR_CANCELED` if the call was canceled and `AE_ERR_OTHER` if another error
+`AE_ERR_CANCELED` if the call was cancelled and `AE_ERR_OTHER` if another error
 occured, in which case `*err` is set to the POSIX error code. The number of
 bytes read into `buf` is returned in `*ret`.
 
@@ -179,7 +179,7 @@ __blocking int aesocket_write(
     int *ret,
     int * err);
 ----
-As `aesocket_read`, but writes data to the socket instead.
+Similar to `aesocket_read`, but writes data to the socket instead.
 
 ----
 __blocking int aesocket_ready (int fd, int flags, int * err);
@@ -188,7 +188,7 @@ __blocking int aesocket_ready (int fd, int flags, int * err);
 The `aesocket_ready` call waits until the passed in descriptor is ready to
 perform the action specified in `flags`.
 `Flags` can be a combination of `AESOCKET_READ` or `AESOCKET_WRITE`.
-The function returns `AE_ERR_CANCELED` when canceled, `AE_ERR_OTHER` when an
+The function returns `AE_ERR_CANCELED` when cancelled, `AE_ERR_OTHER` when an
 error was returned by the underlying system call, and `AE_SUCCESS` otherwise.
 In case of `AE_ERR_OTHER`, the error code is stored in `*err`.
 
@@ -241,7 +241,7 @@ void rb_slot_initialize (rb_slot_t * slot);
 ----
 
 `rb_slot_t` is an opaque datatype.
-Prepare a slot for using with the `rb_slot_capture` function.
+Prepare a slot for use by the `rb_slot_capture` function.
 
 
 ----
