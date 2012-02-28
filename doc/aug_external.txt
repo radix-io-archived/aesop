@@ -107,7 +107,7 @@ the `aio_write_complete` callback and complete the slot.
 Since the `rb_slot_capture` function is blocking, aesop can switch execution
 elsewhere until the slot is either completed (by the completion of the write
 operation) or until the call is cancelled (by a call to `ae_cancel_branches`),
-in which case the capture function will return with an error.
+in which case the `rb_slot_capture` function will return with an error.
 
 
 
@@ -302,7 +302,7 @@ completed. The first parameter (`void *`) needs to be set to the `user_ptr`
 when calling the function.
 
 Completing a blocking function can then be done by calling the callback
-provided by the stored in the `ae_op` structure (and filled in by the
+provided by the `ae_op` structure (and filled in by the
 `ae_op_fill` macro).
 
 WARNING: The `ae_op` structure can be modified by the callback in certain
