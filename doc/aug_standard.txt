@@ -49,14 +49,22 @@ information to `stderr`.
 
 The following components can be traced:
 
-[horizontal]
-*blocking*:: Outputs when a blocking call is initiated and finished.
+[cols=">1,6", frame="none", grid="none"]
+|=====
 
-*cancel*:: Outputs information regarding cancellation of blocking calls.
+| *blocking* | Outputs when a blocking call is initiated and finished.
 
-*pbranch*:: Tracks the creation and completion of pbranches.
+| |
 
-The following call can be used to enable or disable tracing for a component.
+| *cancel*  |  Outputs information regarding cancellation of blocking calls.
+
+| |
+
+| *pbranch* | Tracks the creation and completion of pbranches.
+
+|=====
+
+The `aesop_set_debugging` call can be used to enable or disable tracing for a component.
 
 ----
 int aesop_set_debugging (const char * what, int value);
@@ -119,6 +127,15 @@ Module initialization functions.
 
 
 ----
+int aesocket_prepare (int fd);
+----
+
+Before a socket can be used with the aesocket functions, it needs some tuning
+(for example switching it to non-blocking mode).  The `aesocket_prepare`
+function takes care of this.  This function might change the
+blocking/non-blocking nature of the given descriptor.
+
+----
 __blocking int aesocket_accept(
     int sockfd,
     struct sockaddr *addr,
@@ -134,7 +151,8 @@ The function returns `AE_SUCCESS` when a new connection is accepted,
 `AE_ERR_CANCELED` if the call was canceled and `AE_ERR_OTHER` if a system call
 error occurred (returned in `*err`) occurred.
 
-
+NOTE: It is not necessary to call `aesocket_prepare` on the descriptors
+returned by this function.
 
 -----
 __blocking int aesocket_read(
@@ -209,7 +227,7 @@ These are aesop versions of the regular `pwrite`, `pread`, `fsync`,
 ====
 These functions are currently implemented using a thread which calls the
 regular POSIX I/O function. These functions cannot be cancelled once the
-operation started.
+operation has started.
 ====
 
 
@@ -320,8 +338,10 @@ thread to become available. The function returns `AE_ERR_CANCELLED` when the
 search was cancelled, or `AE_SUCCESS` in when execution successfully switched
 to one of the group threads.
 
-The thread module is mainly used to provide a blocking version of a regular C
-function. See <<ref-thread>> for more details and an example.
+The thread module is mainly used to create an aesop blocking function (which
+supports concurrent execution) from a long lived C function which would
+otherwise force the calling thread to become idle.
+See <<ref-thread>> for more details and an example.
 
 
 

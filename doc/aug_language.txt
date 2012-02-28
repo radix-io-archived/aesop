@@ -31,7 +31,7 @@ also valid aesop code.
 .Implementation Detail
 ====
 The current implementation of the aesop translator, while supporting many C99
-features, does not yet support all of the C99 functionality , in particular
+features, does not yet support all of the C99 functionality, in particular
 those related to variable declarations in locations other than the beginning
 of the function. These issues will be fixed in later releases.
 ====
@@ -45,7 +45,7 @@ it is legal to call that function (whether blocking or not) concurrently
 from multiple threads.
 
 Aesop programs exposing concurrency through aesop's language features (see
-<<ref-pbranch>> have to be thread-safe, as the implementation may choose to
+<<ref-pbranch>>) have to be thread-safe, as the implementation may choose to
 use multiple threads to execute code whenever possible.
 
 
@@ -57,7 +57,7 @@ Blocking Functions
 //===================================================================
 //===================================================================
 
-Aesop extends the C language with a additional function type: blocking
+Aesop extends the C language with an additional function type: blocking
 functions. Blocking functions support concurrent
 execution, and are used by aesop to introduce concurrency to
 the C language.
@@ -148,7 +148,7 @@ idle until the read completes.
 Parallel Branches
 ------------------
 
-This section explores the concept of parallel branches (or /pbranch/).
+This section explores the concept of parallel branches (or _pbranch_).
 
 
 Parallel Branches
@@ -188,6 +188,10 @@ In branch 2
 < ~10000 ms wait >
 After pwait
 ----
+
+NOTE: This is one possible output from the program. Since there is no
+synchronization between both branches, the output of line 7 and line 12 could
+appear in any order, including intertwined.
 
 In this example, the second `printf` (line 12) executes without waiting for
 the first timer call (line 8) to complete. The `aesop_timer` call is a
@@ -396,7 +400,7 @@ Failing to do so will cause a compilation error.
 The aesop main function
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The `main` function for an aesop program is identified using `aesop_set_main`.
+The `main` function for an aesop program is identified using `aesop_main_set`.
 The named function must be a blocking function, and must take the same
 arguments as the standard C `main` function.
 

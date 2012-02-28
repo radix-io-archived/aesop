@@ -14,7 +14,7 @@ function should be blocking or not.
 Non-blocking functions
 ~~~~~~~~~~~~~~~~~~~~~~
 
-If the the external library function does not need to be blocking,
+If the external library function does not need to be blocking,
 the function can be called directly. No special considerations need to be
 made.
 
@@ -26,7 +26,7 @@ call them as in a regular C program.
 Asynchronous Interfaces
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-However, in some cases, the external library provides an explicit asynchronous
+In some cases, the external library provides an explicit asynchronous
 interface. Consider the POSIX aio functions.  The POSIX aio library supports
 starting a non-blocking operation through `aio_read` or `aio_write`, with
 notification either through a signal or by calling a user-specified callback
@@ -34,7 +34,7 @@ function.
 
 While it is possible to directly use the asynchronous interface to the
 library, doing so does not take advantage of the extra features aesop
-provides.  For example, overlap (concurrency) has to be managed manually and
+provides.  For example, overlap (concurrency) has to be managed manually, and
 aesop will not be able to cancel ongoing operations.
 
 In addition, in aesop, the functionality offered by the library would
@@ -190,17 +190,18 @@ directly integrate an external library into aesop.
 Resources?
 ~~~~~~~~~~
 
-<<ref-whenblocking>> describes how to construct an aesop blocking function.
-However, it is also possible to create a blocking function _directly in C_.
-This is done by creating a new aesop _resource_.
+<<ref-whenblocking>> describes how to construct a blocking function in aesop.
+However, it is also possible for a pure C library to export an aesop blocking
+function, fully supporting features such as concurrent execution and
+cancellation. This is done by creating a new aesop _resource_.
 
 In short, a resource integrates with aesop to export a number of regular and
 _blocking_ functions, together with hooks aesop can call to cancel the
 blocking calls issued by the resource, and to enable the resource to make
 progress.
 
-Note that resources are implemented in C, and do not have access to any of the
-aesop extensions.
+NOTE: Resources are implemented entirely in C, and therefore cannot use any
+of the aesop extenions.
 
 Defining Blocking Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

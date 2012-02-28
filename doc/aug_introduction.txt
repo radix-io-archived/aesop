@@ -18,7 +18,7 @@ Prerequisites
 These are the requirements of the aesop source-to-source translator.
 Executables compiled from aesop source code do not require any additional
 packages, except for those required used by the program itself. For example,
-there is no need to have a haskell installed when running an executable
+there is no need to have haskell installed when running an executable
 created using the aesop source-to-source translator.
 ====
 
@@ -67,7 +67,7 @@ Glasgow Haskell Compiler
 [TIP]
  Many linux distributions, such
 as Ubuntu and Debian, contain this package. If your linux distribution has a
-pacakge for the Glasgow Haskell Compiler (typically named 'ghc'), we recommend
+package for the Glasgow Haskell Compiler (typically named 'ghc'), we recommend
 installing ghc on your system using the distribution's package manager.
 If your distribution does not include a package, or you do not want to install
 the package system-wide, the compiler can be installed using the instructions
