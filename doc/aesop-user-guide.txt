@@ -1,4 +1,5 @@
-Aesop User Guide
+:aesop: Aesop
+{aesop} User Guide
 =================
 author
 v0.1, 2012-01

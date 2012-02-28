@@ -1,18 +1,18 @@
 
 [[ref-library]]
-The Aesop Standard Library
+The {aesop} Standard Library
 ==========================
 
-Aesop System Interfaces and Tools
+{aesop} System Interfaces and Tools
 ----------------------------------
 
 Configuration Interface
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Aesop provides a unified interface to advertise and set configuration
+{aesop} provides a unified interface to advertise and set configuration
 parameters across code modules.
 
-This section describes the Aesop user interface to this functionality; The low
+This section describes the {aesop} user interface to this functionality; The low
 level C interface used for system components is described in
 <<ref-resource-configuration>>.
 
@@ -30,12 +30,12 @@ int aesop_set_config(const char* key, const char* value);
 The `key` argument is the name of the configuration parameter to be set,
 while the `value` argument is the new value for that configuration
 parameter.  All values must be provided as strings.  The function returns 0
-on success, `AE_ERR_NOT_FOUND` if the key is not known to Aesop, or
+on success, `AE_ERR_NOT_FOUND` if the key is not known to {aesop}, or
 `AE_ERR_INVAL` if the key is valid but the value is not. 
 
 There is currently no corresponding function to query a configuration
 parameter or list available keys (as of February 2012), although this will be 
-added in future versions of Aesop.
+added in future versions of {aesop}.
 
 
 Debugging
@@ -45,7 +45,7 @@ Debugging
 
 
 
-The code injected by the aesop translator supports writing tracing
+The code injected by the {aesop} translator supports writing tracing
 information to `stderr`.
 
 The following components can be traced:
@@ -83,11 +83,11 @@ enable or disable tracing.
 
 
 //=====================================================================
-Standard Aesop modules
+Standard {aesop} modules
 -----------------------
 //=====================================================================
 
-The following modules are bundled with the aesop distribution.
+The following modules are bundled with the {aesop} distribution.
 
 [[ref-timer]]
 Timer
@@ -151,7 +151,7 @@ __blocking int aesocket_accept(
     int * err);
 ----
 
-In the aesop version of the accept system call,
+In the {aesop} version of the accept system call,
 unlike the system call, the descriptor for the new connection is returned in
 `*newfd`, while an error, if any, is returned in `*err`.
 The function returns `AE_SUCCESS` when a new connection is accepted,
@@ -232,7 +232,7 @@ __blocking int aefile_fdatasync(int fd);
 __blocking int aefile_ftruncate(int fd, off_t length);
 __blocking int aefile_unlink(const char *pathname);
 ----
-These are aesop versions of the regular `pwrite`, `pread`, `fsync`,
+These are {aesop} versions of the regular `pwrite`, `pread`, `fsync`,
 `fdatasync`, `ftruncate` and `unlink` functions.
 
 [NOTE]
@@ -279,7 +279,7 @@ int rb_slot_complete (rb_slot_t * slot);
 
 Release a captured slot. This call returns `AE_SUCCESS` if it successfully
 released a `rb_slot_capture` call on the slot. If the slot was not active (for
-example because it was already cancelled), an unspecified aesop error code is
+example because it was already cancelled), an unspecified {aesop} error code is
 returned.
 
 [source,c]
@@ -294,7 +294,7 @@ illegal to call this function on a slot that is currently captured.
 [TIP]
 ====
 The ResourceBuilder functions provide a low level toolkit used to build higher
-level code. For example, the ResourceBuilder is used to implement the aesop
+level code. For example, the ResourceBuilder is used to implement the {aesop}
 socket functions. ResourceBuilder is also a good basis for building
 synchronization primitives, such as mutexes and semaphores.
 ====
@@ -303,7 +303,7 @@ synchronization primitives, such as mutexes and semaphores.
 thread
 ~~~~~~
 
-WARNING: The thread module relies on internal details of the current aesop
+WARNING: The thread module relies on internal details of the current {aesop}
 implementation. Its use and interface might change in future versions.
 
 Header: `aethread.hae`
@@ -335,14 +335,14 @@ The `aethread_hint` function is a blocking function which will complete when a
 free thread can be found in the specified group. If all threads in the group
 are in use, this function will wait until one becomes available.  When
 returning from this call, *one of the threads of the specified group will be
-used to continue execution*. With the current aesop translator, this means
+used to continue execution*. With the current {aesop} translator, this means
 that the code following the `aethread_hint` call will execute using one of the
 threads of the group, until the thread becomes idle. 
 
 [NOTE]
 .Implementation Detail
 ====
-In the current aesop implementation, a thread becomes idle when one of the
+In the current {aesop} implementation, a thread becomes idle when one of the
 following happens:
 
 * Entering a blocking call which cannot complete immediately.
@@ -357,7 +357,7 @@ thread to become available. The function returns `AE_ERR_CANCELLED` when the
 search was cancelled, or `AE_SUCCESS` in when execution successfully switched
 to one of the group threads.
 
-The thread module is mainly used to create an aesop blocking function (which
+The thread module is mainly used to create an {aesop} blocking function (which
 supports concurrent execution) from a long lived C function which would
 otherwise force the calling thread to become idle.
 See <<ref-thread>> for more details and an example.

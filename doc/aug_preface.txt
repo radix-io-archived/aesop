@@ -3,30 +3,30 @@
 Preface
 =========
 
-This document is the aesop user guide. It describes how to obtain, build and
-install the aesop language. In addition, it describes how to program using
-aesop.
+This document is the {aesop} user guide. It describes how to obtain, build and
+install the {aesop} language. In addition, it describes how to program using
+{aesop}.
 
 
 Latest version of this document
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-This document can be found in the aesop distribution,
+This document can be found in the {aesop} distribution,
 which can be downloaded from http://trac.mcs.anl.gov/projects/aesop.
 
 
 Contacting Us
 ~~~~~~~~~~~~~
 
-Aesop Online
+{aesop} Online
 ^^^^^^^^^^^^
 
-The aesop home page is located at http://trac.mcs.anl.gov/projects/aesop.
-Please report aesop issues (for this document or the aesop translator) and
+The {aesop} home page is located at http://trac.mcs.anl.gov/projects/aesop.
+Please report {aesop} issues (for this document or the {aesop} translator) and
 feature requests at http://trac.mcs.anl.gov/projects/aesop/newticket.
 
 By Email
 ^^^^^^^^
-For other questions and concerns, the aesop developers can be contacted
+For other questions and concerns, the {aesop} developers can be contacted
 at mailto:triton-core@mcs.anl.gov[triton-core@mcs.anl.gov].
 
 Conventions and notations
@@ -45,10 +45,10 @@ printf ("Example code\n");
 Implementation-specific Behavior
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is important to differentiate between the _aesop language_ and the way this
-language is currently implemented by the _aesop translator_. The aesop language
+It is important to differentiate between the _{aesop} language_ and the way this
+language is currently implemented by the _{aesop} translator_. The {aesop} language
 leaves certain aspects open. For these cases, the behavior as implemented by the
-current version of the aesop translator might change in future versions.
+current version of the {aesop} translator might change in future versions.
 In this document implementation-specific behavior will be indicated as shown
 below.
 
