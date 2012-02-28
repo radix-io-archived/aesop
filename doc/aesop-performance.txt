@@ -1,32 +1,34 @@
-= Aesop Performance Analysis
+:aesop: Aesop
+
+= {aesop} Performance Analysis
 
 == Introduction
 
-This document examines the performance of Aesop in terms of runtime
+This document examines the performance of {aesop} in terms of runtime
 performance, memory efficiency, programmer productivity, and compile time
 performance.  
 
-Aesop is a programming language and programming model designed
+{aesop} is a programming language and programming model designed
 to implement distributed system software with high development productivity and run
 time efficiency.
 Further details about the language and development environment can be found
-in the Aesop User's Guide.
+in the {aesop} User's Guide.
 
 The remainder of this document is organized as follows.
 <<sec-case-study>> describe a network service
-case study which is then used to evaluate the performance of Aesop
+case study which is then used to evaluate the performance of {aesop}
 relative to more traditional server architectures in terms of performance
 (<<runtime-perf>>), memory usage (<<sec-memory>>), and productivity
 (<<sec-productivity>>).  <<sec-overhead-analysis>> provides a more detailed
-breakdown of specific sources of Aesop overhead, while 
-<<sec-compile>> concludes by discussing Aesop compile-time code translation
+breakdown of specific sources of {aesop} overhead, while 
+<<sec-compile>> concludes by discussing {aesop} compile-time code translation
 performance.
 
 [[sec-case-study]]
 == Case study description
 
 We will use a simple network service case study for quantitative
-evaluation of the Aesop programming language.  The case study is a TCP
+evaluation of the {aesop} programming language.  The case study is a TCP
 server that can write or read data from local files.  It is expected to
 process requests from multiple clients simultaneously.  The description
 of the test server and client are given in the following subsections.
@@ -149,7 +151,7 @@ digraph G
 We implemented the same request protocol in multiple server daemons
 in order to contrast different approaches to concurrent
 request processing.  Each server uses the same fundamental coding style to 
-the degree possible.  One server is implemented using the Aesop language,
+the degree possible.  One server is implemented using the {aesop} language,
 while all other servers are implemented in C.  The `pthread` library was
 used in all cases that required explicit threading, while the `libev`
 library was used in all cases that required an explicit event loop
@@ -157,15 +159,15 @@ library was used in all cases that required an explicit event loop
 
 ==== Server Implementations
 
-We implemented six server types including Aesop. Each server type examines
+We implemented six server types including {aesop}. Each server type examines
 a different type of concurrency model.
  
-===== Aesop
+===== {aesop}
 
-The Aesop server is implemented in the Aesop programming language. The server uses a
+The {aesop} server is implemented in the {aesop} programming language. The server uses a
 'lonely pbranch' to service each client. All operations for a client are
 handled within a single pbranch.  The socket and file operations are
-performed with blocking Aesop functions that are provided by the Aesop
+performed with blocking {aesop} functions that are provided by the {aesop}
 standard library.  The underlying socket resource uses
 non-blocking sockets with a thread pool of 12 threads. The file resource uses
 synchronous IO and a thread pool with 4 threads.
@@ -315,11 +317,11 @@ mpirun -np <procs> echo-client --ip <ip> --port 9999 --path <path> --num-request
 
 === Expectations
 
-Aesop is intended to improve developer productivity while preserving
+{aesop} is intended to improve developer productivity while preserving
 scalable performance for system software workloads.  The goal of the raw
-performance comparison therefore is not to show that Aesop offers superior
+performance comparison therefore is not to show that {aesop} offers superior
 performance to traditional approaches in all scenarios.  Instead, we want to
-determine if Aesop offers sufficient performance for consideration
+determine if {aesop} offers sufficient performance for consideration
 as a viable programming model based on its productivity
 merits.  We will elaborate on the productivity aspect of the comparison later in
 <<sec-productivity>>.
@@ -337,10 +339,10 @@ image::fig/write-hist.png[]
 
 <<fig-writehist>> shows the overall run time of the concurrent write
 workload for each server implementation as the number of client processes
-is scaled from 16 to 1024.  In this graph we see that Aesop does not
+is scaled from 16 to 1024.  In this graph we see that {aesop} does not
 perform as well as the other servers for small workloads (taking 3.2
 seconds at the smallest scale, verses 1.9 seconds for the thread-per-op
-server).  However, Aesop is the fastest server at the largest scale
+server).  However, {aesop} is the fastest server at the largest scale
 (taking 119.8 seconds verses 130.8 seconds for the nearest competitors
 in thread-per-client and thread-per-client-nb).  
 
@@ -348,17 +350,17 @@ in thread-per-client and thread-per-client-nb).
 [[fig-readhist]]
 image::fig/read-hist.png[]
 
-<<fig-readhist>> shows the results of the read experiment.  Aesop performs
+<<fig-readhist>> shows the results of the read experiment.  {aesop} performs
 more favorably at small scale for this workload than in the previously shown
 write workload.  At the largest scale,
-Aesop completes the test in 48.3 seconds verses 46.1 seconds for the fastest
+{aesop} completes the test in 48.3 seconds verses 46.1 seconds for the fastest
 server (thread-pool).  The event server performs particularly poorly in all
 cases, ultimately running the largest scale test in 77.2 seconds.
 
-The small scale results for Aesop may indicate that additional tuning
+The small scale results for {aesop} may indicate that additional tuning
 is needed to improve latency for small test runs.  The issue is likely
-isolated to the write path of the file I/O resource in the Aesop standard
-library, as we see asymmetric results in the read and write tests for Aesop
+isolated to the write path of the file I/O resource in the {aesop} standard
+library, as we see asymmetric results in the read and write tests for {aesop}
 in terms of its relative performance.
 
 ==== Network I/O
@@ -376,12 +378,12 @@ image::fig/write-null-hist.png[]
 [[fig-readnull]]
 image::fig/read-null-hist.png[]
 
-Aesop is competitive with (and in most cases better than) the other
+{aesop} is competitive with (and in most cases better than) the other
 implementations except for the thread-per-client server in both the
 write-null (<<fig-writenull>>) and read-null (<<fig-readnull>>) evaluation.  We were unable to
 isolate a concrete reason for this discrepancy in profiling.  One notable
 difference in the two implementations, however, is that the
-thread-per-client server uses blocking socket operations, while the aesop
+thread-per-client server uses blocking socket operations, while the {aesop}
 socket resource uses non-blocking operations.  Based on this observation, we implemented the
 thread-per-client-nb server to isolate the impact of non-blocking socket
 operations on performance.  The thread-per-client-nb implementation is
@@ -389,14 +391,14 @@ identical to the thread-per-client implementation except that each socket
 uses non-blocking operations and polling to transmit and receive data.  As
 seen in these tests, the use of non-blocking operations slows down the
 thread-per-client server to the point that it is practically equivalent to
-the Aesop server at scale.
+the {aesop} server at scale.
 
-Another notable observation in these graphs is that the Aesop server is
+Another notable observation in these graphs is that the {aesop} server is
 competitive at small scale, and in fact is the fastest implementation in the
 16 client process read-null test and nearly the fastest in the 16 client
 process write-null test.  This supports the observation from the previous
-section that poor Aesop performance at small scale is likely a tuning flaw
-in the file resource used in the Aesop standard library, rather than a
+section that poor {aesop} performance at small scale is likely a tuning flaw
+in the file resource used in the {aesop} standard library, rather than a
 fundamental programming language problem.
 
 ==== Fairness
@@ -419,7 +421,7 @@ image::fig/read-time.png[]
 
 In <<fig-writetime>> and <<fig-readtime>> we see that the event server is
 the only fair server. However, it achieves this fairness by sacrificing
-overall throughput.  During our initial experimentation, aesop was configured
+overall throughput.  During our initial experimentation, {aesop} was configured
 to be a fair system as it favored executing all disk and network operations
 in FIFO order if possible.  We discovered that this behavior was detrimental
 to throughput in practice; the server performed better if it made progress
@@ -461,7 +463,7 @@ metrics are graphed using a box and whiskers plot. The box represents the
 first and third quartiles and the whiskers are the minimum and maximum
 values. The following results are for the 1024 client size selected from
 the same iteration as the maximum runtime graphs. <<fig-writelat>> and
-<<fig-readlat>> show aesop offers vary comparative latency performance
+<<fig-readlat>> show {aesop} offers vary comparative latency performance
 as the other configurations and only notably thread-per-op and event are
 significantly worse.  An interesting observation is that the overall fairness
 across clients shown in the previous section does not appear to correlate in
@@ -475,43 +477,43 @@ image::fig/write-null-lat.png[]
 [[fig-readnulllat]]
 image::fig/read-null-lat.png[]
 
-In <<fig-writenulllat>> and <<fig-readnulllat>> we see again that aesop has
+In <<fig-writenulllat>> and <<fig-readnulllat>> we see again that {aesop} has
 very good latency metrics compared to the other servers. In this case the
 thread-per-op and event are noticeably worse than the other server
 implementations.
 
 ==== Summary
 
-The runtime analysis shows that aesop is competitive with the most
+The runtime analysis shows that {aesop} is competitive with the most
 optimal alternate server implementations at the 1024 client size.
-In the _read_ test, aesop is 4.5% slower than the fastest implementation,
-thread-pool. Aesop was the fastest implementation in the _write_ test.
+In the _read_ test, {aesop} is 4.5% slower than the fastest implementation,
+thread-pool. {aesop} was the fastest implementation in the _write_ test.
 The thread-per-client implementation was fastest in the _read null_ and
-_write null_ tests.  Here aesop is significantly slower at around 25-30%,
+_write null_ tests.  Here {aesop} is significantly slower at around 25-30%,
 however, as we showed above, the difference in performance was due to the
 native performance difference in synchronous and asynchronous sockets.
-If we look at the performance comparison to the thread-per-client-nb, aesop
+If we look at the performance comparison to the thread-per-client-nb, {aesop}
 was only 4.7% slower in the _read null_ test and was faster in the _write null_
-test. If aesop were using a native asynchronous transport such as InfiniBand verbs
+test. If {aesop} were using a native asynchronous transport such as InfiniBand verbs
 or SSM, we believe that it would perform as well as a thread-per-client implementation.
 
 Another interesting factor was that there was no one fastest server
 implementation. Each workload presents a different challenge and building
-a single tuned server is difficult. A key advantage of aesop is the ability
-to change the underlying implementation or turning for the aesop
+a single tuned server is difficult. A key advantage of {aesop} is the ability
+to change the underlying implementation or turning for the {aesop}
 runtime without changing the server code. During our investigation
 we experimented with different underlying thread models for the network and
-file resources of aesop. The aesop resources can be configured at runtime
+file resources of {aesop}. The {aesop} resources can be configured at runtime
 to use the different thread models or tuning options. With the knowledge
 that building a specific server implementation, which is optimal for a generic
-workload, is extremely difficult, aesop becomes powerful because these types of changes can be made
+workload, is extremely difficult, {aesop} becomes powerful because these types of changes can be made
 without changing the server source.
 
 [[sec-memory]]
 == Runtime Memory Efficiency
 
 Another aspect of the overall performance is the memory efficiency of each
-server implementation.  In this section we compare aesop to the other server implementations
+server implementation.  In this section we compare {aesop} to the other server implementations
 using the same runtime performance experitment.
 
 === Experiment
@@ -554,9 +556,9 @@ results (in addition to the thread pool server) because it is the only
 implementation which does not spawn any additional threads to handle
 increasing numbers of network connections.
 
-Although the Aesop server cannot match the thread-pool server in terms of
+Although the {aesop} server cannot match the thread-pool server in terms of
 memory usage, it does compare favorably to the thread-per-client and
-thread-per op servers.  In the read test, for example, Aesop consumes
+thread-per op servers.  In the read test, for example, {aesop} consumes
 roughly 10 MiB of paged in memory verses almost 18 MiB of paged in memory
 for the thread-per-client server at scale.
 
@@ -568,7 +570,7 @@ to be a more relevant metric in practice.
 [[sec-productivity]]
 == Productivity
 
-The core design element of aesop is to make programming of a concurrent
+The core design element of {aesop} is to make programming of a concurrent
 server easier, so the trade off for memory and runtime performance should
 be worth it. To evaluate this we examine the code complexity of each of the
 server implementations. 
@@ -598,13 +600,13 @@ To simplify the comparison, error handling was excluded for all servers
 except for assertions on expected return codes.  The protocol definition
 (ie, request and acknowledgment structs) as well as helper functions to
 loop over send and receive were not counted in any of the implementations,
-as these were similar in all four.  Also note that the Aesop version
-does not include the Aesop standard library, which 
-provides a binding between Aesop and the standard POSIX socket API as part
+as these were similar in all four.  Also note that the {aesop} version
+does not include the {aesop} standard library, which 
+provides a binding between {aesop} and the standard POSIX socket API as part
 of its default functionality.  The focus
 of this comparison is on the core logic defining the server implementation.
 
-The Aesop and thread-per-client servers are very similar in terms of
+The {aesop} and thread-per-client servers are very similar in terms of
 complexity. The slight increase in complexity for the thread-per-client
 server results from
 the additional function calls needed to create and join threads.  The
@@ -615,7 +617,7 @@ calls is implemented in helper functions which are not included in the
 analysis.
 
 The thread-pool and event models are both much more complex than the
-thread-per-client or aesop model.  In the case of the thread-pool server,
+thread-per-client or {aesop} model.  In the case of the thread-pool server,
 this additional complexity arises from not only the queuing and thread
 management logic, but also the event loop which is necessary to detect
 incoming requests and dispatch them to the queue.  The event server
@@ -629,25 +631,25 @@ Although the event model appears less complex than the thread-pool model accordi
 Mod. CC, qualitatively it is significantly more challenging to develop.
 
 [[sec-overhead-analysis]]
-== Sources of Aesop overhead
+== Sources of {aesop} overhead
 
-As we've seen aesop compares favorably to other concurrency models but loses
+As we've seen {aesop} compares favorably to other concurrency models but loses
 some performance compared to the best case hand tuned version. Here we examine
-the overheads associated with aesop. The first item to examine is the
-cost associated with an aesop blocking call.
+the overheads associated with {aesop}. The first item to examine is the
+cost associated with an {aesop} blocking call.
 
 === Performance Implications of Blocking Calls
 
-While this isn't immediately visible from looking at the aesop source code,
+While this isn't immediately visible from looking at the {aesop} source code,
 blocking calls, when compared to a plain C function call, have extra overhead
-due to the way they are transformed by the aesop compiler. The following
+due to the way they are transformed by the {aesop} compiler. The following
 section highlights the sources of this overhead.
 
 ==== State Management
 
 Most of the overhead is caused by the need to preserve the state
 of the blocking call while execution (temporarily) switches to another
-function. In order to preserve this state, the aesop compiler relocates all
+function. In order to preserve this state, the {aesop} compiler relocates all
 function-scoped variables from the stack to the heap.
 When entering a blocking function, heap memory needs to be allocated for these
 variables. As allocating heap memory is much more time consuming than
@@ -656,13 +658,13 @@ than calling a regular function.
 
 ==== Synchronization Overhead
 
-A second source of overhead originates from the multi-threaded nature of aesop
-code. While aesop does not create any threads, many of the aesop resources
-internally use threads.  Therefore, the aesop compiler has to ensure that the
+A second source of overhead originates from the multi-threaded nature of {aesop}
+code. While {aesop} does not create any threads, many of the {aesop} resources
+internally use threads.  Therefore, the {aesop} compiler has to ensure that the
 emitted code is multi-thread safe. For example, in the following code,
 two pbranches might be executing concurrently using different threads.
 Since these threads could both be modifying the pwait state simultaneously,
-aesop
+{aesop}
 uses locks to serialize their access. Locks, and other synchronization
 primitives account for most of the remaining performance difference between
 blocking and regular function calls.
@@ -681,13 +683,13 @@ pwait {
 ----
 
 [NOTE]
-Currently, the aesop compiler uses a combination of atomic operations and
+Currently, the {aesop} compiler uses a combination of atomic operations and
 mutexes to maintain thread-safety. There is an ongoing effort to convert to
 atomic operations where possible.
 
 ==== Quantifying Blocking Call Overhead
 
-For this test, a regular C function and a aesop blocking function are
+For this test, a regular C function and a {aesop} blocking function are
 called in a loop.  By timing the total time required to complete the loop,
 an estimate of the time needed to execute the function call is obtained.
 
@@ -727,14 +729,14 @@ The results for these are shown in the +tcmalloc+ column.
 The program used to obtain these results is in the repository:
 +tests/blocking-overhead.ae+.
 
-From these results we see that an Aesop `__blocking` function is significantly
+From these results we see that an {aesop} `__blocking` function is significantly
 slower than a basic C function.  Test case 4 illustrates that almost all of
 this overhead is a result of the memory management and synchronization
-performed by Aesop in order to enable efficient concurrency.
+performed by {aesop} in order to enable efficient concurrency.
 
-It is also important to note that Aesop is a superset of the C language, and
+It is also important to note that {aesop} is a superset of the C language, and
 normal C functions (with the associated low overhead) can still be used in
-an Aesop program.  The `__blocking` functions are most appropriate for
+an {aesop} program.  The `__blocking` functions are most appropriate for
 functions that perform blocking device or resource operations, while
 standard C functions are better suited for computationally intense inner-loop routines.
 
@@ -744,11 +746,11 @@ The main memory overhead incurred by blocking functions originates
 from the need to protect the logical state of the function while
 temporarily switching to other functions.  Stack variables, function
 arguments, and return values must all be moved to the heap by the
-aesop source translator.  In a normal C program, those items consume
-stack space. In addition, aesop internally maintains a number of control
+{aesop} source translator.  In a normal C program, those items consume
+stack space. In addition, {aesop} internally maintains a number of control
 structures. Pointers to these structures are passed as function arguments
 to the blocking function, and consequently consume stack space. Currently,
-aesop adds about 4 pointers and 2 integers to each blocking function call.
+{aesop} adds about 4 pointers and 2 integers to each blocking function call.
 
 ==== Lonely pbranches
 
@@ -774,11 +776,11 @@ consume memory until the pbranch returns.
 [[sec-compile]]
 == Compile Time Performance
 
-Currently aesop imposes some overhead when compiling aesop source. 
-In a simple micro-benchmark an existing aesop source file was compiled and
-then compiled again as straight C. The aesop source file contains 4043
+Currently {aesop} imposes some overhead when compiling {aesop} source. 
+In a simple micro-benchmark an existing {aesop} source file was compiled and
+then compiled again as straight C. The {aesop} source file contains 4043
 lines and is about 116 KB in size. The same source file is renamed to a .c
-file and four +#define+s are added which redefine the aesop keywords to nothing.
+file and four +#define+s are added which redefine the {aesop} keywords to nothing.
 
 The test was executed on a dual processor Intel Xeon E5620 running at 2.4 GHz
 with 24 GB of RAM.
