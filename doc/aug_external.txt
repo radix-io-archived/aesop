@@ -1,61 +1,347 @@
 Interfacing with external C libraries
 =====================================
 
+
+[[ref-aesop-techniques]]
+Aesop Techniques
+----------------
+
+This chapter describes how to call existing C code from an aesop program.
+The way to do this depends on if the aesop protoype of the external
+function should be blocking or not.
+
 [[ref-interface-non-blocking]]
 Non-blocking functions
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
-Non-blocking functions can be called directly.
+If the the external library function does not need to be blocking,
+the function can be called directly. No special considerations need to be
+made.
 
-If the library provides an asynchronous interface, even though 
-Currently, there are two ways to do this.
+As an example, consider the `math.h` header. All functions provided by this
+header are cpu-bound, meaning there is generally no reason to make them
+blocking in aesop.  To call these functions, simply include the header and
+call them as in a regular C program.
 
-The first one is to use the _ResourceBuilder_ module (described below).
-The second one is to write an aesop resource for the library.
+Asynchronous Interfaces
+~~~~~~~~~~~~~~~~~~~~~~~
 
-ResourceBuilder
-^^^^^^^^^^^^^^^
+However, in some cases, the external library provides an explicit asynchronous
+interface. Consider the POSIX aio functions.  The POSIX aio library supports
+starting a non-blocking operation through `aio_read` or `aio_write`, with
+notification either through a signal or by calling a user-specified callback
+function.
 
+While it is possible to directly use the asynchronous interface to the
+library, doing so does not take advantage of the extra features aesop
+provides.  For example, overlap (concurrency) has to be managed manually and
+aesop will not be able to cancel ongoing operations.
+
+In addition, in aesop, the functionality offered by the library would
+typically be exposed through blocking functions, as I/O depends on external
+events (i.e. disk, network) and is not cpu bound.
+
+Therefore, it is recommended to create a single blocking aesop function
+combining the asynchronous operation and its completion or cancellation.
+There are a number of ways to do this. This section describes using the
+ResourceBuilder module (<<ref-resourcebuilder>>).  An alternative technique is
+discussed in <<ref-resource>>.
+
+[[ref-resourcebuilder]]
+Building Blocking Functions using ResourceBuilder
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This section discusses how to make a blocking aesop write function on top of
+the POSIX AIO asynchronous I/O functions.
+
+
+----
+     static void aesop_write_complete (union sigval)
+     {
+        rb_slot_complete ((rb_slot_t *) sigval.sival_ptr);
+     }
+
+     __blocking int aesop_write (int fd, ... )
+     {
+        struct aiocb aio;
+        rb_slot_t slot;
+
+
+        aio.aio_fildes = fd;
+        ...
+        aio.aio_sigevent.sigev_notify = SIGEV_THREAD;
+        aio.aio_sigevent.sigev_value.sival_ptr = &slot;
+        aio.aio_sigevent.sigev_notify_function = &aesop_write_complete;
+        ...
+
+        rb_slot_initialize (&slot);
+
+        // start asynchronous operation
+        aio_write (&aio);
+
+        // wait for operation to complete
+        ret = rb_slot_capture (&slot);
+        if (ret != AE_SUCCESS)
+        {
+            // cancelled: handle appropriately
+            ...
+            aio_cancel (fd, &aio);
+            ...
+
+            return -EINTR;
+        }
+
+        rb_slot_destroy (&slot);
+
+        return ...
+     }
+----
+
+In this example, the resourcebuilder slot is used as a condition variable.
+The function starts the asynchronous I/O operation (which is a non-blocking
+call), and then waits for the slot to be signalled.
+
+The signalling happens by the completion of the I/O operation, which will call
+the `aio_write_complete` callback and complete the slot.
+
+Since the `rb_slot_capture` function is blocking, aesop can switch execution
+elsewhere until the slot is either completed (by the completion of the write
+operation) or until the call is cancelled (by a call to `ae_cancel_branches`),
+in which case the capture function will return with an error.
 
 
 
 [[ref-interface-blocking]]
 Blocking functions
--------------------
+~~~~~~~~~~~~~~~~~~
 
-
-
+C library functions which should really be blocking in aesop
+(to improve concurrency and ease of use) generally need some wrapper code to
+make them into blocking aesop functions. This section describes how this can
+be done using the 'thread' module.
 
 
 [[ref-thread]]
-Using the `thread` module
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Building Blocking Functions using the Thread module
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Consider the POSIX open function:
+
+----
+int open (const char * pathname, int flags);
+----
+
+Since there is no asynchronous version of the `open` call, we cannot apply the
+ResourceBuilder technique (<<ref-resourcebuilder>>). The best way to deal with
+these functions is to create a thread to call the function without blocking
+the calling thread. The newly created thread will be
+idle while waiting for the operation to complete. However, aesop will use the
+parent thread to continue executing other code where possible.
+
+The thread module can simplify implementing this technique:
+
+----
+___blocking int aesop_open (const char * pathname, int flags)
+{
+   int ret;
+   ret = aethread_hint (open_group);
+   if (ret == AE_ERR_CANCELLED)
+   {
+      // operation was cancelled
+      return -EINTR;
+   }
+   return open (pathname, flags);
+}
+----
+
+In this example, `open_group` is a thread group which was created by an
+earlier call to `aethread_create_group`.  As described in <<ref-thread>>,
+provided the `aethread_hint` call is successful, _in the current aesop
+implementation_, the code up to the following blocking call will execute in a
+thread borrowed from the thread group. As `aethread_hint` is a blocking
+function, the aesop thread calling `aesop_open` will switch to other work upon
+entering the `aethread_hint` call, making sure execution in other branches
+continues while the newly created thread will execute the `open` call and
+sleep until the operation completes. 
 
 [NOTE]
+.Implementation Detail
 =====
-The BranchThreader module relies on the internals of the current
-source-to-source translator.
+The thread module relies on the internals of the current
+source-to-source translator. Its use and API might change in future aesop
+releases.
 =====
 
 
 
 //========================================================================
 //========================================================================
-Resources
----------
+[[ref-resource]]
+Aesop Resources
+---------------
 //========================================================================
 //========================================================================
 
-In some cases, the techniques outlined in <<ref-interface-non-blocking>> and
-<<ref-interface-blocking>> cannot be used or do not offer sufficient control.
+In some cases, the techniques outlined in <<ref-aesop-techniques>>
+cannot be used or do not offer sufficient control.
 This section provides details on how to write the low level glue code to
 directly integrate an external library into aesop.
 
 Resources?
 ~~~~~~~~~~
 
-Defining a new resource
-~~~~~~~~~~~~~~~~~~~~~~~
+<<ref-whenblocking>> describes how to construct an aesop blocking function.
+However, it is also possible to create a blocking function _directly in C_.
+This is done by creating a new aesop _resource_.
+
+In short, a resource integrates with aesop to export a number of regular and
+_blocking_ functions, together with hooks aesop can call to cancel the
+blocking calls issued by the resource, and to enable the resource to make
+progress.
+
+Note that resources are implemented in C, and do not have access to any of the
+aesop extensions.
+
+Defining Blocking Functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A resource can define a new blocking call by using the `ae_define_post` macro.
+(This macro is defined in the `resource.h` header)
+
+For example:
+
+----
+ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
+{
+   ...
+}
+----
+
+The code above generates the following aesop prototype:
+
+----
+__blocking int rb_slot_capture (rb_slot_t * slot);
+----
+
+The `ae_define_post` macro supports a variable number of arguments, enabling
+the creation of blocking functions with more than one parameter.
+
+The resource has to provide a matching aesop header file (`.hae') listing the
+public (aesop)  prototypes of the functions it exports.
+
+The function needs to return a single integer argument. This argument can be
+one of the following:
+
+* `AE_SUCCESS`: the blocking function was successfully initiated.
+* `AE_IMMEDIATE_COMPLETION`: The blocking function already completed. This is
+ an optimization indicating aesop does not need to switch to another function
+ to continue execution. In effect, it makes the function behave as a
+ non-blocking function.
+* An aesop error code: this indicates that there was a problem starting the
+ blocking call.
+
+The blocking function, assuming no immediate completion, needs to do the
+following:
+
+. Generate an _operation id_ (`ae_op_id_t` type), which can be used by aesop
+to test for completion and to identify the operation in case of cancellation.
+
+. Capture the context of the caller, so that execution can continue at this
+point once the blocking function completes.
+
+. Return from the function so that the thread can switch to other work (for
+example a concurrent branch) while waiting for the completion of the blocking
+call.
+
+Once the resource determines that the blocking function can complete, it will
+use the captured context to continue execution with the statement following
+the blocking call.
+
+Generating the Operation ID
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following function creates a new operation id:
+
+----
+ae_op_id_t ae_id_gen (int resource_id, uintptr_t data);
+----
+
+The operation id includes the identity of the resource that generated it
+(`resource_id`), and allows for private data (up to the size of a pointer) to
+be stored within the resource id. This is for internal use by the resource.
+The `resource_id` value is provided when registering the resource (see
+<<ref-register-resource>>).
+
+The private data can be retrieved using the `ae_id_lookup` function.
+
+----
+uintptr_t ae_id_lookup (ae_op_id_t id, int * resource_id);
+----
+
+The function returns the private data, and stores the resource ID of the
+resource creating the operation in `*resource_id`.
+
+Capturing the caller's Execution Context
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Within a function created by the `ae_define_post` macro, it is possible to use
+the `ae_op_fill` macro to capture the aesop execution context. This macro
+takes the internal aesop parameters (similar to the function stack) and stores
+them in a `struct ae_op`.
+
+The `ae_op` structure contains two members that can be read by the resource.
+
+[horizontal]
+
+*user_ptr*:: An internal data member used by aesop.
+
+*callback*:: This parameter is a pointer to a function `void (*callback) (void
+*, T)`, where `T` is the return type of the aesop blocking function being
+completed. The first parameter (`void *`) needs to be set to the `user_ptr`
+when calling the function.
+
+Completing a blocking function can then be done by calling the callback
+provided by the stored in the `ae_op` structure (and filled in by the
+`ae_op_fill` macro).
+
+WARNING: The `ae_op` structure can be modified by the callback in certain
+cases. It is required to copy the `callback` and `user_ptr` values onto the
+stack *before* completing the blocking function.
+
+For example (from ResourceBuilder):
+
+----
+void (*callback) (void *, int) = op.callback;  /* op = struct ae_op */
+void * user_ptr = op.user_ptr;
+callback (user_ptr, returncode);
+----
+
+Returning data from a blocking call
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Since the return code of a blocking call defined using `ae_define_post` is
+always an integer, used by aesop internally, controlling the return value from
+a blocking call cannot be done using a simple `return`.
+
+If the call completed immediately (and the blocking function returns
+`AE_IMMEDIATE_COMPLETION`) or failed to start (returning an aesop error), the
+return code for the blocking call can be set through the `__ae_retval`
+pointer. This pointer is set by `ae_define_post`, and is only accessible
+within its scope. The type of the pointer is the same as the type listed as
+the first parameter to the `ae_define_post` function.
+
+If the function was completed at a later point (by calling the aesop provided
+callback), the return code of the blocking function can be passed in as the
+second parameter to the callback (the first parameter is used by aesop
+internally).
+
+
+// Changing the heading below to the other breaks the build???!?!?
+
+[[ref-register-resource]]
+==== Registering a New Resource
+
+The header `resource.h` defines the following structure:
 
 ----
 struct ae_resource
@@ -70,11 +356,19 @@ struct ae_resource
 };
 ----
 
-A resource is responsible for indicating it has work to do, by calling the
-`ae_resource_request_poll` function. After calling this function, aesop will
-schedule a call to the resource's `poll_context` function.
-The `ae_resource_request_poll` function is thread-safe and can safely be
-called from within a signal handler.
+* The `resource_name` member is the only mandatory field in this structure.
+
+* The `test` function, if implemented, can be used by aesop to wait for the
+  completion of a specific operation, specified by the `id` parameter.
+  Generally, it is not necessary to implement this function; the `test`
+  function pointer can be set to `NULL`.
+
+* The `cancel` function is an asynchronous request to cancel the specified
+  operation. The resource is still responsible for completing the blocking
+  function by calling the operation's callback from the `ae_op` structure.
+
+* The `poll` and `config_array` members will be discussed below.
+
 
 [NOTE]
 ====
@@ -83,110 +377,94 @@ The `register_context` and `unregister_context` functions should be set to
 `NULL`. The `poll_context` function can safely ignore the `context` parameter.
 ====
 
-The `resource_name` member is the only mandatory field in this structure.
-
-
-
-
 The new resource should be registered with aesop using the `ae_resource_register`
-function.
+function. The internal ID for the resource (used in creating an operation ID)
+is returned in `*newid`.
 
 ----
 int ae_resource_register (struct ae_resource *resource, int *newid);
 void ae_resource_unregister (int resource_id);
 ----
 
+[TIP]
+====
+The `ResourceBuilder` and `Thread` resources provide good examples on how to
+construct a simple resource. Their code can be found in the `resources`
+directory in the aesop distribution.
+====
 
-/////
+[[ref-resource-configuration]]
+Resource Configuration
+~~~~~~~~~~~~~~~~~~~~~~
 
-What is a resource?
-A resource is a very thin shim layer that converts aesop blocking calls into async calls to some system resource or system library (like mpi, file access, ssm, etc.)
+When a resource is registered with the aesop system using the
+`ae_resource_register()` function, the resource author has the option of
+specifying configuration parameters for that resource using the
+`config_array` field of the required `ae_resource` struct.  The 
+`config_array` field is a `NULL` terminated array of structs of type `struct
+ae_resource_config`, which is defined as follows:
 
-A resource API uses the same types and conventions as the underlying resource; we don't try to hide any of that. It just handles how to post and complete blocking operations.
+----
+struct ae_resource_config
+{
+    const char* name;
+    const char* default_value;
+    const char* description;
+    int (*updater)(const char* key, const char* value);
+};
+----
 
-Aesop is re-entrant and uses threads.
+The `name` field is the name of the configuration parameter (which
+corresponds to the `key` argument of the `aesop_set_config()` function).
+The `default_value` field specifies the starting value of the configuration
+parameter.  The `description` is a free form text field, though standard
+practice is to limit this to a single line of text describing the
+configuration parameter.  The `updater` field is a pointer to a function
+that will be invoked when the configuration parameter is updated.  The
+resource must provide this function and handle configuration updates in a
+manner appropriate for the resource.  For example, this function may
+perform an `sscanf()` to read an integer value, and then check its values
+against the legal ranges for the parameter before accepting it.  The
+resource should return 0 on success or `AE_ERR_INVALID` if the configuration
+value is not valid.
+
+The `config_array` field can be set to `NULL` at resource registration time
+if the resource does not support any configuration parameters.
+
+[NOTE]
+====
+As of February 2012 this functionality is only avaialable to resources, but
+in future work we will extend this concept to allow arbitrary Aesop
+components to register configuration parameters in a similar manner.
+====
+
+
+[[ref-progress]]
+Resource Progress
+~~~~~~~~~~~~~~~~~
 
 A resource can use a number of progress models:
 
-if the resource has its own threads or progress engine, then it can trigger callbacks that drive the next aesop execution state
-if the resource is passive, it can request polling from aesop and aesop will drive it with explicit poll calls
-Polling resources can "busy poll" or just indicate specific times when they would like to be polled
-Creating a new resource
-Look at resources/timer/timer.c as an example.
+First, if the underlying API exported by the resource has its own threads or
+progress engine, then it can trigger callbacks that drive the next aesop
+execution state. The POSIX AIO functionality is an example of this.
 
-The most important file that a resource will use to help define its interface is resource.h, which can be found in the top level directory.
+If the underlying functionality is passive, the resource can request polling
+from aesop and aesop will drive it by explicit calls to the resource polling
+function specified at registration time. Polling resources can "busy poll" or
+just indicate specific times when they would like to be polled.
 
-The ae_resource struct defines the interface to each resource. It includes the following pointers:
+A resource is responsible for indicating it has work to do, by calling the
+`ae_resource_request_poll` function. After calling this function, aesop will
+schedule a call to the resource's `poll_context` function.
+The `ae_resource_request_poll` function is thread-safe and can safely be
+called from within a signal handler.
 
-resource_name
-test()
-poll_context()
-cancel()
-register_context()
-unregister_context()
-config_array()
-resource_name is the only mandatory field. The others are optional depending on what functionality your resource provides.
-
-SSM as an example
-In ssm, the user calls a function called ssm_wait() which will trigger callbacks. ssm_wait() takes a timeout argument to tell it how long to wait. The callbacks are executed in serial in the context of the wait() call. wait() does not spawn threads. The callback functions can do pretty much anything; they can even post new SSM operations.
-
-SSM init function returns a handle. A use case for calling init twice and getting two handles would be if you wanted to use two transports simultaneously.
-
-SSM makes progress on communication autonomously, even if you don't call wait(). So wait() does not drive communication progress, it only lets you find completion events.
-
-If the ssm_wait() function is sleeping in one thread, while another thread registers a callback and does a put/get, then the wait _will_ pick up the new completion event. You don't have to restart the wait() call. This simplifies the resource greatly.
-
-Kevin's example of an SSM resource
-
-General plan: Kevin will provide a basic, possibly poor performing ssm resource, UAB team will own it from there to test performance and tune it, change threading, etc. to match best practice for SSM performance.
-
-Issues: we have to decide (soon, not necessarily today) where to host resources. Should ssm be part of the aesop repo, or should there be separate repos so that not every aesop user gets ssm, etc.
-
-Code walkthrough
-
-There are some minor differences between "in tree" version of aesop within the triton repo, and the "stand alone" version of aesop that we are working with. Kevin's example is in tree, and will need some minor porting to go along with aesop.
-
-Error codes: functions that aesop actually uses directly (init and finalize are good examples) you must use pre-defined error codes. For functions that are specific to your resource (like put() and get()) you can do absolutely anything that you want.
-
-There is a call to register the initialization and finalization routines (triton_init_register()).
-
-The initialization function: register the resource with aesop, specify the ae_resource struct that fills in function pointers for various functionality. Then you create a default context.
-
-Right now the transport and address are hard coded (using tcp on localhost).
-
-ae_define_post(... triton_ssm_put ...)
-The ae_define_post lets you specify a blocking function and its arguments. It (behind the scenes) tacks on extra arguments that are needed by aesop.
-
-Blocking functions like this can support immediate completion. SSM does not do this yet, but it is something we can discuss later as an optimization. The idea is to avoid context switch to another thread if you post an operation that can be finished in place.
-
-The opcache is an aesop thing that lets you allocate a struct to represent an in-flight operation (an "op"). It has a user-definable field that you can use to tack on information specific to your resource.
-
-The following macro populates the op structure with fields to tell aesop what to do when the operation completes:
-
-ae_op_fill_with_params()
-General comment: this example needs one line comments explaining what's going on, and point out which things are optional.
-
-General comment: it might be a good idea for ANL to just implement some basic functions and then hand off to UAB to fill in remainder, would be a good exercise for everyone.
-
-This function can be used to track operations (put them in whatever queues you would like as a resource imlementor):
-
-ae_ops_enqueue()
-The caller of ae_ops_enqueue() is responsible for appropriate locking when modifying or moving op structures around. Until the resource completes an operation (and hands off control to aesop) it is the resource's responsibility to handle them until then.
-
-The following function handles polling:
-
-triton_ssm_poll()
-Right now the resource busy spins and expects aesop to call the poll function constantly. We know that this is not a final implementation. In the longer term we want this resource to have a thread that drives the wait() function. Once that is in place then the poll function is no longer needed.
-
-General issue: we need to discuss whether to keep wrappers for things like triton_mutex_lock(). If we do want to keep wrappers, we need to decide whether each component does its own wrappers or we all agree on a centralized implementation/wrapper across the project.
-
-Future work (not enough time in this session)
-Need to address semantics of ssm in relation to anl/triton work, independent of the resource implementation. Let's pick back up on that this afternoon after completing the agenda.
-
-UAB can also send visitors to ANL easily if we need more interaction later.
-
-////
-
+A combination of these models is also possible. For example, a signal handler
+or callback can record the completion of a resource function, and request a
+poll. When the resource's polling function is subsequently called by aesop,
+the resource can complete the action by calling the appropriate aesop
+callback.
 
 When to write a resource
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -214,5 +492,6 @@ more likely to require updating when moving to a new version of aesop.  In
 addition, writing an interface using `Thread` or `ResourceBuilder` typically
 requires less code, these modules already take care of dealing with low level
 details such as generating operation id's and cancellation.
+
 
 

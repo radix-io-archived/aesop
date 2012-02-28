@@ -6,14 +6,15 @@ The Aesop Standard Library
 Aesop System Interfaces and Tools
 ----------------------------------
 
-
 Configuration Interface
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Aesop provides a unified interface to advertise and set configuration
-parameters across all registered resources.  This section describes both
-the Aesop user interface to this functionality as well as the Aesop library
-author's interface to this functionality.
+parameters across code modules.
+
+This section describes the Aesop user interface to this functionality; The low
+level C interface used for system components is described in
+<<ref-resource-configuration>>.
 
 Querying and setting configuration parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,46 +36,6 @@ There is currently no corresponding function to query a configuration
 parameter or list available keys (as of February 2012), although this will be 
 added in future versions of Aesop.
 
-Registering new configuration parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-When a resource is registered with the Triton library using the
-`ae_resource_register()` function, the resource author has the option of
-specifying configuration parameters for that resource using the
-`config_array` field of the required `ae_resource` struct.  The 
-`config_array` field is a `NULL` terminated array of structs of type `struct
-ae_resource_config`, which is defined as follows:
-
-----
-struct ae_resource_config
-{
-    const char* name;
-    const char* default_value;
-    const char* description;
-    int (*updater)(const char* key, const char* value);
-};
-----
-
-The `name` field is the name of the configuration parameter (which
-corresponds to the `key` argument of the `aesop_set_config()` function).
-The `default_value` field specifies the starting value of the configuration
-parameter.  The `description` is a free form text field, though standard
-practice is to limit this to a single line of text describing the
-configuration parameter.  The `updater` field is a pointer to a function
-that will be invoked when the configuration parameter is updated.  The
-resource must provide this function and handle configuration updates in a
-manner appropriate for the resource.  For example, this function may
-perform an `sscanf()` to read an integer value, and then check its values
-against the legal ranges for the parameter before accepting it.  The
-resource should return 0 on success or `AE_ERR_INVALID` if the configuration
-value is not valid.
-
-The `config_array` field can be set to `NULL` at resource registration time
-if the resource does not support any configuration parameters.
-
-As of February 2012 this functionality is only avaialable to resources, but
-in future work we will extend this concept to allow arbitrary Aesop
-components to register configuration parameters in a similar manner.
 
 Debugging
 ~~~~~~~~~~
@@ -111,8 +72,10 @@ The `value` parameter can be set to `1` or `0`, in order to respectively
 enable or disable tracing.
 
 
+//=====================================================================
 Standard Aesop modules
 -----------------------
+//=====================================================================
 
 The following modules are bundled with the aesop distribution.
 
@@ -309,6 +272,7 @@ thread
 WARNING: The thread module relies on internal details of the current aesop
 implementation. Its use and interface might change in future versions.
 
+Header: `aethread.hae`
 
 The following functions are used to intialize and shut down the thread module.
 
