@@ -123,9 +123,12 @@ If mpich is installed, there is no need to install OpenPA.
 The Open Portable Atomic Library can be downloaded from the following
 location: http://trac.mcs.anl.gov/projects/openpa.
 Configure using the included `configure` script, optionally specifying where
-the library needs to be installed (using the `--prefix` option). If installing
-in a non-standard location, make sure to use the `--with-openpa`
+the library needs to be installed (using the `--prefix` option).
 
+[NOTE]
+=====
+If installing OpenPA in a non-standard location, make sure to use the `--with-openpa` argument when configuring Aesop.
+=====
 
 Obtaining the Aesop distribution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -148,7 +151,7 @@ repository might contain bugs or fail to build.  If that is the case, please
 let us know by opening a ticket at http://trac.mcs.anl.gov/projects/aesop.
 =========
 
-In order to install Aesop is is necessary to first clone the repository.
+In order to install Aesop it is necessary to first clone the repository.
 The aesop source code repository is public and can be cloned by
 anonymous users:
 
