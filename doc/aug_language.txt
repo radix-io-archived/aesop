@@ -63,7 +63,7 @@ execution, and are used by aesop to introduce concurrency to
 the C language.
 
 
-The `__blocking` qualifyier
+The `__blocking` qualifier
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All blocking functions must be marked as such. Below is an example of a
@@ -138,7 +138,7 @@ execution to code that is ready to execute while waiting for the external
 event to occur.
 
 For example, a function reading data from the network or a disk will typically
-be blocking, since the function I/O bound. If the function is blocking, as
+be blocking, since the function is I/O bound. If the function is blocking, as
 soon as the processor core would become idle, execution can continue
 elsewhere. If the function is not blocking, the processor core would become
 idle until the read completes.
@@ -285,7 +285,7 @@ In the example above, each pbranch will get a private copy of the loop
 variable `i`. Since the next iteration of the loop does not depend on the
 completion of the pbranch, `pprivate` is required here to prevent changes to
 the value of `i` in a pbranch while the branch is still executing.
-In this case, `pprivate` required, as manually assigning `i` to a private copy
+In this case, `pprivate` is required, as manually assigning `i` to a private copy
 would be prone to a race condition.
 
 
@@ -360,7 +360,7 @@ Lonely pbranches
 ~~~~~~~~~~~~~~~~~
 
 It is possible to use a `pbranch` outside of `pwait`. In this case, the
-pbranch executes as normal but it not possible to wait for the branch
+pbranch executes as normal but it not possible to wait for the branch to
 complete.
 
 
