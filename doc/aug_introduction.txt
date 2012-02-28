@@ -289,7 +289,7 @@ Using the Aesop Source-To-Source Translator
 File Dependencies
 ~~~~~~~~~~~~~~~~~~
 
-[graphviz]
+["graphviz", width=300]
 .Translation Dependencies
 ---------------
 digraph G
