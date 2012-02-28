@@ -37,6 +37,7 @@ Source code and shell commands
 
 Example source code, or example commands are rendered as follows:
 
+[source,c]
 ----
 printf ("Example code\n");
 ----

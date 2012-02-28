@@ -55,6 +55,7 @@ This section discusses how to make a blocking aesop write function on top of
 the POSIX AIO asynchronous I/O functions.
 
 
+[source,c]
 ----
      static void aesop_write_complete (union sigval)
      {
@@ -127,6 +128,7 @@ Building Blocking Functions using the Thread module
 
 Consider the POSIX open function:
 
+[source,c]
 ----
 int open (const char * pathname, int flags);
 ----
@@ -140,6 +142,7 @@ parent thread to continue executing other code where possible.
 
 The thread module can simplify implementing this technique:
 
+[source,c]
 ----
 ___blocking int aesop_open (const char * pathname, int flags)
 {
@@ -211,6 +214,7 @@ A resource can define a new blocking call by using the `ae_define_post` macro.
 
 For example:
 
+[source,c]
 ----
 ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
 {
@@ -220,6 +224,7 @@ ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
 
 The code above generates the following aesop prototype:
 
+[source,c]
 ----
 __blocking int rb_slot_capture (rb_slot_t * slot);
 ----
@@ -263,6 +268,7 @@ Generating the Operation ID
 
 The following function creates a new operation id:
 
+[source,c]
 ----
 ae_op_id_t ae_id_gen (int resource_id, uintptr_t data);
 ----
@@ -275,6 +281,7 @@ The `resource_id` value is provided when registering the resource (see
 
 The private data can be retrieved using the `ae_id_lookup` function.
 
+[source,c]
 ----
 uintptr_t ae_id_lookup (ae_op_id_t id, int * resource_id);
 ----
@@ -311,6 +318,7 @@ stack *before* completing the blocking function.
 
 For example (from ResourceBuilder):
 
+[source,c]
 ----
 void (*callback) (void *, int) = op.callback;  /* op = struct ae_op */
 void * user_ptr = op.user_ptr;
@@ -344,6 +352,7 @@ internally).
 
 The header `resource.h` defines the following structure:
 
+[source,c]
 ----
 struct ae_resource
 {
@@ -382,6 +391,7 @@ The new resource should be registered with aesop using the `ae_resource_register
 function. The internal ID for the resource (used in creating an operation ID)
 is returned in `*newid`.
 
+[source,c]
 ----
 int ae_resource_register (struct ae_resource *resource, int *newid);
 void ae_resource_unregister (int resource_id);
@@ -405,6 +415,7 @@ specifying configuration parameters for that resource using the
 `config_array` field is a `NULL` terminated array of structs of type `struct
 ae_resource_config`, which is defined as follows:
 
+[source,c]
 ----
 struct ae_resource_config
 {

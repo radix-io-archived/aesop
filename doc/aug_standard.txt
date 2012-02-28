@@ -22,6 +22,7 @@ Querying and setting configuration parameters
 The following function can be used to set arbitrary configuration
 parameters:
 
+[source,c]
 ----
 int aesop_set_config(const char* key, const char* value);
 ----
@@ -66,6 +67,7 @@ The following components can be traced:
 
 The `aesop_set_debugging` call can be used to enable or disable tracing for a component.
 
+[source,c]
 ----
 int aesop_set_debugging (const char * what, int value);
 ----
@@ -94,6 +96,7 @@ Timer
 Header: `timer.hae`
 
 
+[source,c]
 ----
 int aesop_timer_init(void);
 void aesop_timer_finalize(void);
@@ -105,6 +108,7 @@ as one call to `aesop_timer_finalize` is made for every call to
 `aesop_timer_init`.
 
 
+[source,c]
 -----
 __blocking int aesop_timer(int millisecs);
 ----
@@ -118,6 +122,7 @@ Socket
 
 Header: `aesocket.hae`
 
+[source,c]
 -----
 int aesocket_init (void);
 int aesocket_finalize (void);
@@ -126,6 +131,7 @@ int aesocket_finalize (void);
 Module initialization functions.
 
 
+[source,c]
 ----
 int aesocket_prepare (int fd);
 ----
@@ -135,6 +141,7 @@ Before a socket can be used with the aesocket functions, it needs some tuning
 function takes care of this.  This function might change the
 blocking/non-blocking nature of the given descriptor.
 
+[source,c]
 ----
 __blocking int aesocket_accept(
     int sockfd,
@@ -154,6 +161,7 @@ error occurred (returned in `*err`) occurred.
 NOTE: It is not necessary to call `aesocket_prepare` on the descriptors
 returned by this function.
 
+[source,c]
 -----
 __blocking int aesocket_read(
     int fd,
@@ -171,6 +179,7 @@ bytes read into `buf` is returned in `*ret`.
 
 
 
+[source,c]
 ----
 __blocking int aesocket_write(
     int fd,
@@ -181,6 +190,7 @@ __blocking int aesocket_write(
 ----
 Similar to `aesocket_read`, but writes data to the socket instead.
 
+[source,c]
 ----
 __blocking int aesocket_ready (int fd, int flags, int * err);
 ----
@@ -203,6 +213,7 @@ File
 
 Header: `aefile.hae`
 
+[source,c]
 ----
 int aefile_init(void);
 void aefile_finalize(void);
@@ -212,6 +223,7 @@ calling any of the functions below.
 
 
 
+[source,c]
 ----
 __blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t offset);
 __blocking ssize_t aefile_pread(int fd, void *buf, size_t count, off_t offset);
@@ -236,6 +248,7 @@ ResourceBuilder
 
 Header: `resourcebuilder.hae`
 
+[source,c]
 ----
 void rb_slot_initialize (rb_slot_t * slot);
 ----
@@ -244,6 +257,7 @@ void rb_slot_initialize (rb_slot_t * slot);
 Prepare a slot for use by the `rb_slot_capture` function.
 
 
+[source,c]
 ----
 __blocking int rb_slot_capture (rb_slot_t * slot);
 ----
@@ -258,6 +272,7 @@ to a cancellation request.
 After a call to this function, the slot needs to be destroyed (using
 `rb_slot_destroy` and reinitialized before it can be used again.
 
+[source,c]
 ----
 int rb_slot_complete (rb_slot_t * slot);
 ----
@@ -267,6 +282,7 @@ released a `rb_slot_capture` call on the slot. If the slot was not active (for
 example because it was already cancelled), an unspecified aesop error code is
 returned.
 
+[source,c]
 ----
 void rb_slot_destroy (rb_slot_t * slot);
 ----
@@ -294,6 +310,7 @@ Header: `aethread.hae`
 
 The following functions are used to intialize and shut down the thread module.
 
+[source,c]
 ----
 int aethread_init(void);
 void aethread_finalize(void);
@@ -302,12 +319,14 @@ void aethread_finalize(void);
 The thread module provides the concept of a thread group. Groups are created
 with a certain size, and cannot grow beyond this size.
 
+[source,c]
 ----
 struct aethread_group * aethread_create_group_pool(int size);
 void aethread_destroy_group(struct aethread_group * group);
 ----
 
 
+[source,c]
 ----
 __blocking int aethread_hint(struct aethread_group * group);
 ----

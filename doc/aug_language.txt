@@ -69,6 +69,7 @@ The `__blocking` qualifier
 All blocking functions must be marked as such. Below is an example of a
 blocking function.
 
+[source,c]
 ----
 __blocking int test (void);
 ----
@@ -76,6 +77,7 @@ __blocking int test (void);
 It is also possible to declare a pointer to a blocking function, similar to
 declaring a pointer to a regular function.
 
+[source,c]
 ----
 __blocking int (*test) (void);
 ----
@@ -83,6 +85,7 @@ __blocking int (*test) (void);
 The `__blocking` qualifier is part of the type. Therefore, the following
 two function pointers have distinct types and cannot be assigned to each other.
 
+[source,c]
 ----
 void (*func1) (int);
 __blocking void (*func2) (int);
@@ -157,24 +160,25 @@ Parallel Branches
 
 The best way to introduce parallel branches is through an example:
 
+[source,c,numbered]
 ----
-1   __blocking void example (void)
-2   {
-3     pwait
-4     {
-5        pbranch
-6        {
-7           printf ("In branch 1\n");
-8           aesop_timer (10000);
-9        }
-10       pbranch
-11       {
-12         printf ("In branch 2\n");
-13         aesop_timer (10000);
-14       }
-15    }
-16    printf ("After pwait\n");
-17  }
+__blocking void example (void)
+{
+    pwait
+    {
+        pbranch
+        {
+            printf ("In branch 1\n");
+            aesop_timer (10000);
+        }
+        pbranch
+        {
+            printf ("In branch 2\n");
+            aesop_timer (10000);
+        }
+    }
+    printf ("After pwait\n");
+}
 ----
 
 The function `aesop_timer` (discussed in <<ref-timer>>) suspends execution for
@@ -235,6 +239,7 @@ using the `pbreak` keyword. The effect of `pbreak` is similar to that of
 `break` in a `for` or `while` loop.
 
 .Example
+[source,c]
 -----
 
 pbranch
@@ -267,6 +272,7 @@ value of the shared variable.
 The `pprivate` keyword is especially relevant for pbranches created
 within `for` and `while` loops. The code below shows an example.
 
+[source,c]
 ----
 pwait 
 {
@@ -327,6 +333,7 @@ signal set, and 0 otherwise.
 
 
 .Example
+[source,c]
 ----
 __blocking void cancel_example (void)
 {
@@ -364,6 +371,7 @@ pbranch executes as normal but it not possible to wait for the branch to
 complete.
 
 
+[source,c]
 ----
 __blocking example_lonely (void)
 {
@@ -404,6 +412,7 @@ The `main` function for an aesop program is identified using `aesop_main_set`.
 The named function must be a blocking function, and must take the same
 arguments as the standard C `main` function.
 
+[source,c]
 ----
 int aesop_main (int argc, char ** args)
 {
@@ -424,6 +433,7 @@ usual.
 
 
 .Example:
+[source,c]
 ----
 aesop_main_set_with_init (pre_init, aesop_main);
 ----
@@ -435,6 +445,7 @@ Hello World
 
 Below is an example aesop program.
 
+[source,c]
 ----
 #include <aesop.h>
 #include <timer.hae>
