@@ -231,6 +231,15 @@ that disk I/O is _not_ involved in those cases.
 
 === Experiment
 
+This experiment was executed on Feburary 7, 2012 and Feburary 9, 2012.
+The experiment was done using the {aesop} version from Triton and the
+client code was from the triton-private repository. A patch was applied
+to triton to modify queue usage.
+
+* triton ba74000dc0a0aaa35754015734c2944d45ed0daf
+* triton-private d0cc70d12fba6edabe7478e21784f91588496bf2
+* triton-file-unfair-queue.patch
+
 ==== Experiment System
 
 All experiments were executed on the Fusion cluster managed by 
