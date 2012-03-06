@@ -10,15 +10,15 @@ v0.1, 2012-01
 // -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
 
-include::aug_preface.txt[]
+include::{buildpath}/aug_preface.txt[]
 
-include::aug_introduction.txt[]
+include::{buildpath}/aug_introduction.txt[]
 
-include::aug_language.txt[]
+include::{buildpath}/aug_language.txt[]
 
-include::aug_standard.txt[]
+include::{buildpath}/aug_standard.txt[]
 
-include::aug_external.txt[]
+include::{buildpath}/aug_external.txt[]
 
 
 
