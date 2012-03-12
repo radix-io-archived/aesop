@@ -26,6 +26,20 @@ void rb_slot_initialize (rb_slot_t * slot)
 #endif
 }
 
+/*
+ * returns true if the slot was:
+ *   moved from STATUS_UNINITIALIZED to STATUS_EMPTY.
+ *   already in STATUS_EMPTY.
+ */
+int rb_slot_reinitialize (rb_slot_t * slot)
+{
+   const int newstatus = STATUS_EMPTY;
+   int status;
+
+   status = OPA_cas_int (&slot->status, STATUS_UNINITIALIZED, newstatus);
+   return ((status == STATUS_UNINITIALIZED) || (status == STATUS_EMPTY));
+}
+
 void rb_slot_clear (rb_slot_t *slot)
 {
     OPA_store_int (&slot->status, STATUS_UNINITIALIZED);
