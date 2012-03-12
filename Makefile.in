@@ -62,6 +62,7 @@ BUILD_CC = @BUILD_CC@
 BUILD_LD = @BUILD_LD@
 BUILD_CFLAGS = @BUILD_CFLAGS@
 BUILD_LDFLAGS = @BUILD_LDFLAGS@
+BUILD_SSM = @BUILD_SSM@
 
 STRICT_CFLAGS = @STRICT_CFLAGS@
 VALGRIND_CLEAN = @VALGRIND_CLEAN@
@@ -69,6 +70,12 @@ CPPFLAGS = @CPPFLAGS@
 
 ifneq (0,$(VALGRIND_CLEAN))
    CPPFLAGS += -DVALGRIND_CLEAN -DVALGRIND
+endif
+
+ifeq ($(BUILD_SSM),1)
+   CPPFLAGS += -I@SSMPATH@/common
+   LDFLAGS += -L@SSMPATH@/lib
+   LIBS += -lssm_ref -lssmp_mpi
 endif
 
 CFLAGS= -I$(srcdir)/src/c-utils -I$(srcdir)/include -I. -I src/c-utils -I$(srcdir) @CFLAGS@ $(CPPFLAGS)
