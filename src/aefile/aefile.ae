@@ -15,6 +15,16 @@
 
 struct aethread_group* file_threads = NULL;
 
+#define AETHREAD_RUN() \
+do { \
+    int __ret; \
+    __ret = aethread_hint(file_threads); \
+    if(__ret == AE_ERR_SYSTEM) \
+        return(-EIO); \
+    if(__ret == AE_ERR_CANCELLED) \
+        return(-EINTR); \
+}while(0) 
+
 int aefile_init(void)
 {
     assert(file_threads == NULL);
@@ -38,7 +48,7 @@ __blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t of
 {
     ssize_t ret;
 
-    aethread_hint(file_threads);
+    AETHREAD_RUN();
 
     ret = pwrite(fd, buf, count, offset);
     if(ret < 0)
@@ -53,7 +63,7 @@ __blocking ssize_t aefile_pread(int fd, void *buf, size_t count, off_t offset)
 {
     ssize_t ret;
 
-    aethread_hint(file_threads);
+    AETHREAD_RUN();
 
     ret = pread(fd, buf, count, offset);
     if(ret < 0)
@@ -68,7 +78,7 @@ __blocking int aefile_fsync(int fd)
 {
     int ret;
 
-    aethread_hint(file_threads);
+    AETHREAD_RUN();
 
     ret = fsync(fd);
     if(ret < 0)
@@ -83,7 +93,7 @@ __blocking int aefile_fdatasync(int fd)
 {
     int ret;
 
-    aethread_hint(file_threads);
+    AETHREAD_RUN();
 
     ret = fdatasync(fd);
     if(ret < 0)
@@ -98,7 +108,7 @@ __blocking int aefile_ftruncate(int fd, off_t length)
 {
     int ret;
 
-    aethread_hint(file_threads);
+    AETHREAD_RUN();
 
     ret = ftruncate(fd, length);
     if(ret < 0)
@@ -113,7 +123,7 @@ __blocking int aefile_unlink(const char *pathname)
 {
     int ret;
 
-    aethread_hint(file_threads);
+    AETHREAD_RUN();
 
     ret = unlink(pathname);
     if(ret < 0)
