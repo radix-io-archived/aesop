@@ -316,6 +316,8 @@ parser/module.mk
 parser/tests/blocking/module.mk
 src/socket/module.mk
 src/socket/test/module.mk
+src/ssm/module.mk
+src/ssm/test/module.mk
 doc/module.mk
 ])
 

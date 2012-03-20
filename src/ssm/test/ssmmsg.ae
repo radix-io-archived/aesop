@@ -1,0 +1,113 @@
+#include "aesop.h"
+#include "aesop-support.hae"
+#include "src/ssm/aessm.hae"
+
+#define DATAVAL 0xffbaffabffbaffab
+
+/*
+ * This test demonstrates a msg to a remote host.
+ */
+static __blocking int test_main (int argc, char **argv)
+{
+    aessm_t     ssm1;
+    ssm_me_id   me1;
+    ssm_evt_t   evt1;
+    int         rc1;
+
+    aessm_t     ssm2;
+    ssm_me_id   me2;
+    ssm_evt_t   evt2;
+    int         rc2;
+
+    // publish match for msg
+
+    rc1 = aessm_initialize(&ssm1);
+    assert(rc1 == AE_SUCCESS);
+
+    rc1 = aessm_link (ssm1.ssm,
+                      0,
+                      0x1234,
+                      0, 
+                      NULL,
+                      SSM_ME_POS_HEAD,
+                      SSM_ME_NONE, 
+                      1,
+                      &me1);
+    assert(rc1 == AE_SUCCESS);
+
+    pwait
+    {
+        // wait for match
+        pbranch
+        {
+            memset(&evt1, 0, sizeof(evt1));
+
+            rc1 = aessm_wait (me1, &evt1);
+            assert(rc1 == AE_SUCCESS);
+            assert(evt1.result == SSM_RESULT_SUCCESS);
+            assert(evt1.info_a == DATAVAL);
+            assert(evt1.info_b == ~DATAVAL);
+
+            memset(&evt1, 0, sizeof(evt1));
+
+            rc1 = aessm_unlink (me1, &evt1);
+            assert(rc1 == AE_SUCCESS);
+            assert(evt1.result == SSM_RESULT_SUCCESS);
+
+            rc1 = aessm_finalize(&ssm1);
+            assert(rc1 == AE_SUCCESS);
+        }
+
+        // post msg to remote
+        pbranch
+        {
+            uint64_t    dataA = DATAVAL;
+            uint64_t    dataB = ~DATAVAL;
+
+            memset(&evt2, 0, sizeof(evt2));
+
+            rc2 = aessm_initialize(&ssm2);
+            assert(rc2 == AE_SUCCESS);
+
+            rc2 = aessm_link (ssm2.ssm,
+                              SSM_ME_SEND_ONLY,
+                              0x1234,
+                              0,
+                              NULL, 
+                              SSM_ME_POS_HEAD,
+                              SSM_ME_NONE, 
+                              0,
+                              &me2);
+            assert(rc2 == AE_SUCCESS);
+
+            rc2 = aessm_msg(me2, ssm1.laddr_id, dataA, dataB, &evt2);
+            assert(rc2 == AE_SUCCESS);
+            assert(evt2.result == SSM_RESULT_SUCCESS);
+            assert(dataA == DATAVAL);
+            assert(dataB == ~DATAVAL);
+
+            memset(&evt2, 0, sizeof(evt2));
+
+            rc2 = aessm_unlink(me2, &evt2);
+            assert(rc2 == AE_SUCCESS);
+            assert(evt2.result == SSM_RESULT_SUCCESS);
+
+            rc2 = aessm_finalize(&ssm2);
+            assert(rc2 == AE_SUCCESS);
+        }
+    }
+
+    printf("SUCCESS\n");
+    return 0;
+}
+
+aesop_main_set(test_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

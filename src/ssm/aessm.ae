@@ -1,0 +1,614 @@
+#include "aesop.h"
+#include "ae-error.h"
+#include "resources/resourcebuilder/resourcebuilder.hae"
+#include "aessm.hae"
+
+#include "ssm.h"
+#include "ssmdef.h"
+#include "ssmp_unix_tcp.h"
+#include "ssmp_localmem.h"
+
+#include <pthread.h>
+#include <sys/time.h>
+
+/*
+ * Struct: aessm_cb_s
+ * Members:
+ *   slot1 - holds RB slot for initial call
+ *   slot2 - holds RB slot for cancellation call
+ *   evt   - results of SSM event structure
+ *   completion_count - expected number of local completions
+ *   completion_error - number of local completions that were errors.
+ * Comments:
+ *   This structure holds data needed to track the state of the blocking
+ *   operation and is used in the <aessm_callback>.
+ */
+typedef struct aessm_cb_s
+{
+    rb_slot_t slot1;
+    rb_slot_t slot2;
+    ssm_evt_t evt;
+    uint64_t  completion_expected;
+    uint64_t  completion_count;
+    uint64_t  completion_error;
+} aessm_cb_t;
+
+/*
+ * Function: aessm_callback
+ *   Generic callback used from all SSM calls generated from within
+ *   the aessm module.
+ *
+ * Parameters:
+ *   cbdata - data supplied in ssm_cb()
+ *   evdata - data supplied from SSM event.
+ *
+ * Returns:
+ *   void
+ */
+static void aessm_callback (void *cbdata, void *evdata)
+{
+    ssm_evt_p evtp;
+    aessm_cb_t *data;
+
+    evtp = (ssm_evt_p) evdata;
+    data = (aessm_cb_t *) cbdata;
+
+//printf ("cb: op=0x%x owner=%d result=%d\n",
+//        evtp->op, evtp->owner, evtp->result);
+
+    if (evtp->op == SSM_OP_UNLINK)
+    {
+        data->evt = *evtp;
+        rb_slot_complete(&data->slot1);
+        rb_slot_complete(&data->slot2);
+    }
+    else if ((evtp->op == SSM_OP_PUT) ||
+             (evtp->op == SSM_OP_GET) ||
+             (evtp->op == SSM_OP_MSG) ||
+             (evtp->op == SSM_OP_PING))
+    {
+        data->evt = *evtp;
+        switch (evtp->result)
+        {
+            case SSM_RESULT_NO_MATCH:
+            case SSM_RESULT_CANCELLED:
+            case SSM_RESULT_TIMEOUT:
+            case SSM_RESULT_NETWORK_FAILURE:
+                data->completion_error += 1;
+            case SSM_RESULT_SUCCESS:
+                data->completion_count += 1;
+                if (evtp->owner == SSM_OWNER_REMOTE)
+                {
+                    if (data->completion_count >= data->completion_expected)
+                    {
+                        rb_slot_complete(&data->slot1);
+                        rb_slot_complete(&data->slot2);
+                    }
+                }
+                else
+                {
+                    rb_slot_complete(&data->slot1);
+                    rb_slot_complete(&data->slot2);
+                }
+                break;
+            case SSM_RESULT_INIT:
+            default:
+                break;
+        }
+    }
+    else
+    {
+        // unknown operation
+        assert(0);
+    }
+    return;
+}
+
+/*
+ * Function: aessm_link
+ *   Wraps the ssm_link call. All aessm operations must use <aessm_link>.
+ *
+ * Parameters:
+ *   id - SSM instance id.
+ *   flags - ssm_link flags.
+ *   match_bits - ssm_link match bits.
+ *   mask_bits - ssm_link mask bits.
+ *   data_iovec - buffer to associate with match or data movement operation.
+ *   pos - position to insert into match list.
+ *   anchor - reference to us for pos.
+ *   count - expected number of local completions.
+ *   me_id - generated match entry.
+ *
+ * Returns:
+ *   AE_SUCCESS - on success
+ *   AE_ERR_SYSTEM - on failure
+ *   me - The generated match entry is returned in this parameter.
+ *
+ * Comments:
+ *   A standard callback is associated with all ssm operations.
+ *   This callback handles waking up the correct blocking functions.
+ */
+int aessm_link (ssm_id ssm,
+                ssm_flags16 flags,
+                ssm_match_bits match_bits,
+                ssm_match_bits mask_bits,
+                ssm_iovec_p data_iovec,
+                ssm_me_pos pos,
+                ssm_me_id anchor,
+                uint64_t count,
+                ssm_me_id *me_id)
+{
+    aessm_cb_t *cb_dt;
+    ssm_cb_id   cb_id;
+
+    cb_dt = malloc(sizeof(aessm_cb_t));
+    if (cb_dt == NULL)
+    {
+        return AE_ERR_SYSTEM;
+    }
+
+    memset(cb_dt, 0, sizeof(aessm_cb_t));
+    rb_slot_initialize(&cb_dt->slot1);
+    rb_slot_initialize(&cb_dt->slot2);
+    cb_dt->completion_expected = count;
+
+    cb_id = ssm_cb (aessm_callback, cb_dt, SSM_CB_NO_FLAGS);
+    if (cb_id == NULL)
+    {
+        return AE_ERR_SYSTEM;
+    }
+
+    *me_id = ssm_link (ssm, flags, match_bits, mask_bits,
+                       data_iovec, pos, anchor, cb_id);
+    if (*me_id == SSM_ME_NONE)
+    {
+        return AE_ERR_SYSTEM;
+    }
+
+    return AE_SUCCESS;
+}
+
+/*
+ * Function: aessm_unlink
+ *   Wraps the ssm_unlink fuction.
+ *
+ * Parameters:
+ *   me_id - the match entry created by an <aessm_link> call.
+ *   evt_id - detailed results of the operation. Can be NULL.
+ *
+ * Returns:
+ *   AE_SUCCESS - if the call completed successfully.
+ *   AE_ERR_CANCELLED - if the call was cancelled.
+ *   evt - filled with results of completion callback if not NULL.
+ */
+__blocking int aessm_unlink(ssm_me_id me_id, ssm_evt_p evt_id)
+{
+    aessm_cb_t *cb_dt;
+    ssm_cb_id   cb_id;
+    int rc;
+
+    cb_id = ssm_me_cb(me_id);
+    assert(cb_id);
+
+    cb_dt = ssm_cb_data(cb_id);
+    assert(cb_dt);
+
+    assert(rb_slot_reinitialize(&cb_dt->slot1));
+    assert(rb_slot_reinitialize(&cb_dt->slot2));
+    
+    ssm_unlink(me_id);
+
+    rc = rb_slot_capture(&cb_dt->slot1);
+    if (rc == AE_ERR_CANCELLED)
+    {
+        rc = rb_slot_capture(&cb_dt->slot2);
+        assert(rc == AE_SUCCESS);
+    }
+    else
+    {
+        rc = rb_slot_capture(&cb_dt->slot2);
+    }
+
+    if (evt_id)
+    {
+        *evt_id = cb_dt->evt;
+    }
+    
+    rb_slot_destroy(&cb_dt->slot1);
+    rb_slot_destroy(&cb_dt->slot2);
+
+    free(cb_id);
+    free(cb_dt);
+
+    return rc;
+}
+
+/*
+ * Function: aessm_put
+ *   Wraps ssm_put.
+ *
+ * Parameters:
+ *   me_id - The match entry that describes the memory to put.
+ *   raddr_id - the address of the remote target.  
+ *   evt_id - detailed results of the operation. Can be NULL.
+ *
+ * Returns:
+ *   AE_SUCCESS - if the operation was successful.
+ *   AE_ERR_CANCELLED - if the operation was cancelled.
+ *   AE_ERR_* - other error conditions.
+ */
+__blocking int aessm_put (ssm_me_id me_id,
+                          ssm_addr_id raddr_id,
+                          ssm_evt_p evt_id)
+{
+    aessm_cb_t *cb_dt;
+    ssm_tx_id   tx_id;
+    ssm_cb_id   cb_id;
+    ssm_id      ssm;
+    int         rc;
+
+    cb_id = ssm_me_cb(me_id);
+    assert(cb_id);
+
+    cb_dt = ssm_cb_data(cb_id);
+    assert(cb_dt);
+
+    assert(rb_slot_reinitialize(&cb_dt->slot1));
+    assert(rb_slot_reinitialize(&cb_dt->slot2));
+ 
+    tx_id = ssm_put (me_id, raddr_id);
+    if (tx_id == SSM_TX_NONE)
+    {
+        rb_slot_clear(&cb_dt->slot1);
+        rb_slot_clear(&cb_dt->slot2);
+        return AE_ERR_SYSTEM;
+    }
+
+    rc = rb_slot_capture(&cb_dt->slot1);
+    if (rc == AE_ERR_CANCELLED)
+    {
+        ssm = ssm_me_owner(me_id);
+        (void) ssm_cancel(ssm, tx_id);
+        rc = rb_slot_capture(&cb_dt->slot2);
+        assert(rc == AE_SUCCESS);
+    }
+    else
+    {
+        rc = rb_slot_capture(&cb_dt->slot2);
+    }
+
+    if (evt_id)
+    {
+        *evt_id = cb_dt->evt;
+    }
+
+    rb_slot_destroy(&cb_dt->slot1);
+    rb_slot_destroy(&cb_dt->slot2);
+
+    return rc;
+}
+
+/*
+ * Function: aessm_get
+ *   Wraps ssm_get.
+ *
+ * Parameters:
+ *   me_id - The match entry that describes the memory to get.
+ *   raddr_id - the address of the remote target.  
+ *   evt - detailed results of the operation. Can be NULL.
+ *
+ * Returns:
+ *   AE_SUCCESS - if the operation was successful.
+ *   AE_ERR_CANCELLED - if the operation was cancelled.
+ *   AE_ERR_* - other error conditions.
+ */
+__blocking int aessm_get (ssm_me_id me_id,
+                          ssm_addr_id raddr_id,
+                          ssm_evt_p evt_id)
+{
+    aessm_cb_t *cb_dt;
+    ssm_tx_id   tx_id;
+    ssm_cb_id   cb_id;
+    ssm_id      ssm;
+    int         rc;
+
+    cb_id = ssm_me_cb(me_id);
+    assert(cb_id);
+
+    cb_dt = ssm_cb_data(cb_id);
+    assert(cb_dt);
+
+    assert(rb_slot_reinitialize(&cb_dt->slot1));
+    assert(rb_slot_reinitialize(&cb_dt->slot2));
+ 
+    tx_id = ssm_get (me_id, raddr_id);
+    if (tx_id == SSM_TX_NONE)
+    {
+        rb_slot_clear(&cb_dt->slot1);
+        rb_slot_clear(&cb_dt->slot2);
+        return AE_ERR_SYSTEM;
+    }
+
+    rc = rb_slot_capture(&cb_dt->slot1);
+    if (rc == AE_ERR_CANCELLED)
+    {
+        ssm = ssm_me_owner(me_id);
+        (void) ssm_cancel(ssm, tx_id);
+        rc = rb_slot_capture(&cb_dt->slot2);
+        assert(rc == AE_SUCCESS);
+    }
+    else
+    {
+        rc = rb_slot_capture(&cb_dt->slot2);
+    }
+
+    if (evt_id)
+    {
+        *evt_id = cb_dt->evt;
+    }
+
+    rb_slot_destroy(&cb_dt->slot1);
+    rb_slot_destroy(&cb_dt->slot2);
+
+    return rc;
+}
+
+/*
+ * Function: aessm_msg
+ *   Wraps ssm_msg.
+ *
+ * Parameters:
+ *   me_id - The match entry that describes the remote host to send to.
+ *   raddr_id - the address of the remote target.  
+ *   info_a - 64bit piece of data to pass to other end.
+ *   info_b - 64bit piece of data to pass to other end.
+ *   evt - detailed results of the operation. Can be NULL.
+ *
+ * Returns:
+ *   AE_SUCCESS - if the operation was successful.
+ *   AE_ERR_CANCELLED - if the operation was cancelled.
+ *   AE_ERR_* - other error conditions.
+ */
+__blocking int aessm_msg (ssm_me_id me_id,
+                          ssm_addr_id raddr_id,
+                          uint64_t info_a,
+                          uint64_t info_b,
+                          ssm_evt_p evt_id)
+{
+    aessm_cb_t *cb_dt;
+    ssm_tx_id   tx_id;
+    ssm_cb_id   cb_id;
+    ssm_id      ssm;
+    int         rc;
+
+    cb_id = ssm_me_cb(me_id);
+    assert(cb_id);
+
+    cb_dt = ssm_cb_data(cb_id);
+    assert(cb_dt);
+
+    assert(rb_slot_reinitialize(&cb_dt->slot1));
+    assert(rb_slot_reinitialize(&cb_dt->slot2));
+ 
+    // right now it is assumed this can't fail.
+    (void) ssm_msg (me_id, raddr_id, info_a, info_b);
+
+    rc = rb_slot_capture(&cb_dt->slot1);
+    if (rc == AE_ERR_CANCELLED)
+    {
+        ssm = ssm_me_owner(me_id);
+        (void) ssm_cancel(ssm, tx_id);
+        rc = rb_slot_capture(&cb_dt->slot2);
+        assert(rc == AE_SUCCESS);
+    }
+    else
+    {
+        rc = rb_slot_capture(&cb_dt->slot2);
+    }
+
+    if (evt_id)
+    {
+        *evt_id = cb_dt->evt;
+    }
+
+    rb_slot_destroy(&cb_dt->slot1);
+    rb_slot_destroy(&cb_dt->slot2);
+
+    return rc;
+}
+
+/*
+ * Function: aessm_ping
+ *   Wraps ssm_ping.
+ *
+ * Parameters:
+ *   me_id - The match entry that describes the host to ping.
+ *   raddr_id - the address of the remote target.  
+ *   evt - detailed results of the operation. Can be NULL.
+ *
+ * Returns:
+ *   AE_SUCCESS - if the operation was successful.
+ *   AE_ERR_CANCELLED - if the operation was cancelled.
+ *   AE_ERR_* - other error conditions.
+ */
+__blocking int aessm_ping (ssm_me_id me_id,
+                           ssm_addr_id raddr_id,
+                           ssm_evt_p evt_id)
+{
+    aessm_cb_t *cb_dt;
+    ssm_tx_id   tx_id;
+    ssm_cb_id   cb_id;
+    ssm_id      ssm;
+    int         rc;
+
+    cb_id = ssm_me_cb(me_id);
+    assert(cb_id);
+
+    cb_dt = ssm_cb_data(cb_id);
+    assert(cb_dt);
+
+    assert(rb_slot_reinitialize(&cb_dt->slot1));
+    assert(rb_slot_reinitialize(&cb_dt->slot2));
+ 
+    // right now, assume this can not fail.
+    (void) ssm_ping (me_id, raddr_id);
+
+    rc = rb_slot_capture(&cb_dt->slot1);
+    if (rc == AE_ERR_CANCELLED)
+    {
+        ssm = ssm_me_owner(me_id);
+        (void) ssm_cancel(ssm, tx_id);
+        rc = rb_slot_capture(&cb_dt->slot2);
+        assert(rc == AE_SUCCESS);
+    }
+    else
+    {
+        rc = rb_slot_capture(&cb_dt->slot2);
+    }
+
+    if (evt_id)
+    {
+        *evt_id = cb_dt->evt;
+    }
+
+    rb_slot_destroy(&cb_dt->slot1);
+    rb_slot_destroy(&cb_dt->slot2);
+
+    return rc;
+}
+
+/*
+ * Function: aessm_wait
+ *   This function waits for a given number of local completions on the
+ *   match entry and then returns.
+ *
+ * Parameters:
+ *   me - match entry generated by <aessm_link>.
+ *
+ * Returns:
+ *   AE_SUCCESS - if the call was successful.
+ *   AE_ERR_CANCELLED - if tthe call was cancelled.
+ *   AE_ERR_* - if other error.
+ */
+__blocking int aessm_wait (ssm_me_id me_id, ssm_evt_p evt_id)
+{
+    aessm_cb_t *cb_dt;
+    ssm_id      ssm;
+    ssm_cb_id   cb_id;
+    int         rc;
+
+    cb_id = ssm_me_cb (me_id);
+    assert(cb_id);
+
+    cb_dt = ssm_cb_data(cb_id);
+    assert(cb_dt);
+
+    assert(rb_slot_reinitialize(&cb_dt->slot1));
+    assert(rb_slot_reinitialize(&cb_dt->slot2));
+
+    rc = rb_slot_capture(&cb_dt->slot1);
+    if (rc == AE_ERR_CANCELLED)
+    {
+        rc = rb_slot_capture(&cb_dt->slot2);
+        assert(rc == AE_SUCCESS);
+    }
+    else
+    {
+        rc = rb_slot_capture(&cb_dt->slot2);
+    }
+
+    if (evt_id)
+    {
+        *evt_id = cb_dt->evt;
+    }
+
+    rb_slot_destroy(&cb_dt->slot1);
+    rb_slot_destroy(&cb_dt->slot2);
+
+    return rc;
+}
+
+/*
+ * Function: aessm_poll
+ *   This function calls ssm_wait in a loop from a dedicated thread.
+ *
+ * Parameters:
+ *   arg - ssm instance to drive.
+ *
+ * Returns:
+ *   nothing.
+ */
+static void * aessm_poll (void *arg)
+{
+    struct timeval tv;
+    aessm_t *aessm_id;
+    int rc;
+
+    aessm_id = (aessm_t*) arg;
+
+    tv.tv_sec  = 0;
+    tv.tv_usec = 500;
+
+    while (aessm_id->state)
+    {
+        rc = ssm_wait(aessm_id->ssm, &tv);
+        assert(rc >= 0);
+    }
+
+    return NULL;
+}
+
+/*
+ * Function: aessm_initialize
+ *   Initialize an SSM context, spawns a thread to push ssm_poll.
+ *
+ * Parameters:
+ *   aessm_id - container for aessm data
+ *
+ * Returns:
+ *   AE_SUCCESS - on success
+ */
+int aessm_initialize (aessm_t *aessm_id)
+{
+    ssmp_localmem_init_id id;
+    ssm_net_proc np;
+    ssm_addr_id  la;
+    ssm_flags16  fl;
+    int          rc;
+
+    /* this would be handled through configurable init parameters */
+    id = ssmp_localmem_init();
+    np = ssmp_localmem_proc;
+    la = ssmp_localmem_addr(id);
+    fl = 0;
+
+    aessm_id->laddr_id = la;
+    aessm_id->ssm = ssm_start(np, la, fl, NULL);
+    aessm_id->state = 1;
+
+    rc = pthread_create(&aessm_id->thread_id, NULL, aessm_poll, aessm_id);
+    assert(rc == 0);
+
+    return AE_SUCCESS;
+}
+
+/*
+ * Function: aessm_finalize
+ *   Finalize an SSM context, joins thread created by <aessm_initailize>
+ *
+ * Parameters:
+ *   aessm_id - container for aessm data
+ *
+ * Returns:
+ *   AE_SUCCESS - on success
+ */
+int aessm_finalize (aessm_t *aessm_id)
+{
+    aessm_id->state = 0;
+    pthread_join(aessm_id->thread_id, NULL);
+
+    ssm_stop(aessm_id->ssm);
+    SSM_DELETE(aessm_id->laddr_id);
+
+    return AE_SUCCESS;
+}

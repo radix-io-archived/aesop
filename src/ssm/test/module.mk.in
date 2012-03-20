@@ -1,0 +1,10 @@
+DIR := src/ssm/test
+
+ifeq ($(BUILD_SSM),1)
+
+AETESTSRC += $(DIR)/ssmput.ae \
+             $(DIR)/ssmget.ae \
+             $(DIR)/ssmmsg.ae \
+             $(DIR)/ssmping.ae
+
+endif
