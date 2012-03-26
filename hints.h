@@ -2,12 +2,12 @@
 #define __AE_HINTS_H__
 
 #include "src/c-utils/triton-base.h"
-#include "ae-list.h"
+#include "src/c-utils/triton-list.h"
 #include "ae-thread.h"
 
 struct ae_hints
 {
-    ae_list_t entries;
+    triton_list_t entries;
     int transfer_count;
     struct ae_hints *parent;
     triton_mutex_t lock;

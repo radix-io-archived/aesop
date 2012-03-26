@@ -3,7 +3,7 @@
 
 #include "ae-types.h"
 #include "ae-thread.h"
-#include "ae-list.h"
+#include "src/c-utils/triton-list.h"
 #include "ae-error.h"
 #include "hints.h"
 
@@ -63,8 +63,8 @@ struct ae_ctl
     void *spec_ctl;
     ae_op_id_t current_op_id;
     ae_mutex_t mutex;
-    ae_list_t children;
-    struct ae_list_link link;
+    triton_list_t children;
+    struct triton_list_link link;
     int posted;
     int completed;
     int allposted;
@@ -104,7 +104,7 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
 
     ctl->context = context;
     ae_mutex_init(&ctl->mutex, NULL);
-    ae_list_init(&ctl->children);
+    triton_list_init(&ctl->children);
     OPA_store_int (&ctl->refcount, 1);
     ae_op_id_clear(ctl->current_op_id);
     if(internal) ctl->parent = (struct ae_ctl *)user_ptr;
@@ -169,12 +169,12 @@ static inline void ae_ctl_pwait_start(struct ae_ctl *ctl)
     ctl->posted = 0;
     ctl->completed = 0;
     ctl->allposted = 0;
-    assert(ae_list_count(&ctl->children) == 0);
+    assert(triton_list_count(&ctl->children) == 0);
 }
 
 static inline void ae_ctl_lone_pbranch_start(struct ae_ctl *ctl)
 {
-    ae_list_link_clear(&ctl->link);
+    triton_list_link_clear(&ctl->link);
     ae_lone_pbranches_add(ctl);
     /* parent context disappears, we need to copy the hint */
     ae_hints_dup(ctl->parent->hints, &ctl->hints);
@@ -195,8 +195,8 @@ static inline void ae_ctl_pbranch_start(struct ae_ctl *ctl)
     ae_hints_dup(ctl->parent->hints, &ctl->hints);
     ae_mutex_lock(&ctl->parent->mutex);
     ctl->parent->posted++;
-    ae_list_link_clear(&ctl->link);
-    ae_list_add_back(&ctl->link, &ctl->parent->children);
+    triton_list_link_clear(&ctl->link);
+    triton_list_add_back(&ctl->link, &ctl->parent->children);
     ae_mutex_unlock(&ctl->parent->mutex);
 }
 
@@ -205,7 +205,7 @@ static inline enum ae_pwait_command ae_ctl_pbranch_done(struct ae_ctl *ctl, enum
     /* lock parent mutex */
     ae_mutex_lock(&ctl->parent->mutex);
     /* remove myself from parent list (parent->children) */
-    ae_list_del(&ctl->link);
+    triton_list_del(&ctl->link);
     /* destroy my hints */
     ae_hints_destroy(ctl->hints);
     /* increment completed count of parent ctl */
