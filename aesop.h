@@ -8,7 +8,7 @@
 #include <aesop/ae-log.h>
 #include <aesop/ae-debug.h>
 #include <aesop/ae-ctl.h>
-#include "src/c-utils/triton-uint128.h"
+#include <aesop/triton-uint128.h>
 
 int aesop_init(const char *resource_list);
 void aesop_finalize(void);
