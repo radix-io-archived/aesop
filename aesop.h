@@ -2,16 +2,14 @@
 #define __AESOP_H__
 
 #include "src/c-utils/triton-base.h"
-#include "ae-error.h"
 #include "src/c-utils/triton-list.h"
 #include "src/c-utils/triton-thread.h"
+#include "ae-error.h"
 #include "ae-log.h"
 #include "ae-debug.h"
 
 #include "resource.h"
 #include "op.h"
-#include "opcache.h"
-
 
 int aesop_init(const char *resource_list);
 void aesop_finalize(void);

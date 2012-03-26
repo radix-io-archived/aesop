@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include "aesop.h"
 #include "triton-list.h"
+#include "opcache.h"
 #include "parser/tests/blocking/btest.h"
 
 #define RESOURCE_NAME "btest"
