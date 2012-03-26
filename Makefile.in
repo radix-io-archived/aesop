@@ -687,7 +687,7 @@ in_tree_include: include/aesop
 include/aesop:
 	mkdir -p include/aesop
 	for hdr in $(INSTALL_HDR_SRC); do \
-		ln -s $$hdr include/aesop; \
+		ln -f -s $$hdr include/aesop; \
 	done
 
 install:: all
