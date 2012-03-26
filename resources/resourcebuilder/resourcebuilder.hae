@@ -14,7 +14,7 @@ struct rb_slot_t
    struct ae_op  op;
 
 #ifdef RB_NO_OPA
-   ae_mutex_t    lock;
+   triton_mutex_t    lock;
    int           status;
 #else
    OPA_int_t     status;

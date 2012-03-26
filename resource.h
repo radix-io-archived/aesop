@@ -2,7 +2,7 @@
 #define __RESOURCE_H__
 
 #include "ae-types.h"
-#include "ae-thread.h"
+#include "src/c-utils/triton-thread.h"
 #include "src/c-utils/triton-list.h"
 #include "ae-error.h"
 #include "ae-ctl.h"

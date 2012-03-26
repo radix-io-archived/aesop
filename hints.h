@@ -3,7 +3,7 @@
 
 #include "src/c-utils/triton-base.h"
 #include "src/c-utils/triton-list.h"
-#include "ae-thread.h"
+#include "src/c-utils/triton-thread.h"
 
 struct ae_hints
 {

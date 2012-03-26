@@ -23,7 +23,7 @@ static int immediate_completion = 1;
 #define ZERO_BYTE_READ_THRESHOLD 0
 
 
-static ae_mutex_t mutex = AE_MUTEX_INITIALIZER;
+static triton_mutex_t mutex = TRITON_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static unsigned int refcount = 0;
 
@@ -55,7 +55,7 @@ static void socket_thread_wake_cb (struct ev_loop * loop, ev_async * w, int
 
 static void aesocket_check_queue (void)
 {
-   ae_mutex_lock (&mutex);
+   triton_mutex_lock (&mutex);
 
    while (socket_thread_add != 0)
    {
@@ -79,7 +79,7 @@ static void aesocket_check_queue (void)
 
    pthread_cond_broadcast (&cond);
 
-   ae_mutex_unlock (&mutex);
+   triton_mutex_unlock (&mutex);
 }
 
 static void aesocket_thread_wakeup (void)
@@ -98,7 +98,7 @@ static void * aesocket_thread_main (void * arg)
 
 int aesocket_init (void)
 {
-   ae_mutex_lock (&mutex);
+   triton_mutex_lock (&mutex);
    if (!refcount++)
    {
       socket_ev_loop = ev_loop_new (EVFLAG_AUTO);
@@ -107,13 +107,13 @@ int aesocket_init (void)
 
       pthread_create (&socket_thread, 0, aesocket_thread_main, 0);
    }
-   ae_mutex_unlock (&mutex);
+   triton_mutex_unlock (&mutex);
    return AE_SUCCESS;
 }
 
 int aesocket_finalize (void)
 {
-   ae_mutex_lock (&mutex);
+   triton_mutex_lock (&mutex);
    if (0 == --refcount)
    {
       socket_thread_done = 1;
@@ -122,7 +122,7 @@ int aesocket_finalize (void)
 
       ev_loop_destroy (socket_ev_loop);
    }
-   ae_mutex_unlock (&mutex);
+   triton_mutex_unlock (&mutex);
    return AE_SUCCESS;
 }
 
@@ -155,7 +155,7 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
 
    rb_slot_initialize (&entry.slot);
 
-   ae_mutex_lock (&mutex);
+   triton_mutex_lock (&mutex);
 
    {
       entry.next = socket_thread_add;
@@ -164,7 +164,7 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
       aesocket_thread_wakeup ();
    }
 
-   ae_mutex_unlock (&mutex);
+   triton_mutex_unlock (&mutex);
 
 
    ret = rb_slot_capture (&entry.slot);
@@ -175,7 +175,7 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
       int added = 1;
       /* we're cancelled */
 
-      ae_mutex_lock (&mutex);
+      triton_mutex_lock (&mutex);
 
       /* check if the libev thread already added the fd */
       if (socket_thread_add == &entry)
@@ -213,7 +213,7 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
          }
       }
 
-      ae_mutex_unlock (&mutex);
+      triton_mutex_unlock (&mutex);
 
       ret = AE_ERR_CANCELLED;
    }

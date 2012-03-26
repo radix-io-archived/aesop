@@ -2,7 +2,7 @@
  * make will try to build ./resourcebuilder.h and fail.
  */
 #include "resources/resourcebuilder/resourcebuilder.h"
-#include "ae-thread.h"
+#include "src/c-utils/triton-thread.h"
 
 #define RB_DEFAULT_SIZE 64
 #define RB_RESOURCE_NAME "resourcebuilder"
@@ -62,7 +62,7 @@ static int rb_callback (rb_slot_t * slot, int success)
    void (*callback)(void *, int) = 0;
    void * user_ptr = 0;
 
-   ae_mutex_lock (&slot->lock);
+   triton_mutex_lock (&slot->lock);
    switch (slot->status)
    {
       case STATUS_UNINITIALIZED:
@@ -96,7 +96,7 @@ static int rb_callback (rb_slot_t * slot, int success)
          break;
    }
 
-   ae_mutex_unlock (&slot->lock);
+   triton_mutex_unlock (&slot->lock);
 
    if (callback)
       callback (user_ptr, (success ? AE_SUCCESS : AE_ERR_INVALID));
@@ -185,7 +185,7 @@ ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
    int ret;
    int aret;
 
-   ae_mutex_lock (&slot->lock);
+   triton_mutex_lock (&slot->lock);
    switch (slot->status)
    {
       case STATUS_COMPLETED_SUCCESS:
@@ -212,7 +212,7 @@ ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
          slot->status = STATUS_ARMED;
          break;
    }
-   ae_mutex_unlock (&slot->lock);
+   triton_mutex_unlock (&slot->lock);
 
    *__ae_retval = ret;
    return aret;

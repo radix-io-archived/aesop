@@ -2,7 +2,7 @@
 #define __AE_CTL_H__
 
 #include "ae-types.h"
-#include "ae-thread.h"
+#include "src/c-utils/triton-thread.h"
 #include "src/c-utils/triton-list.h"
 #include "ae-error.h"
 #include "hints.h"
@@ -62,7 +62,7 @@ struct ae_ctl
     struct ae_ctl *parent;
     void *spec_ctl;
     ae_op_id_t current_op_id;
-    ae_mutex_t mutex;
+    triton_mutex_t mutex;
     triton_list_t children;
     struct triton_list_link link;
     int posted;
@@ -103,7 +103,7 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     ctl->hints = hints;
 
     ctl->context = context;
-    ae_mutex_init(&ctl->mutex, NULL);
+    triton_mutex_init(&ctl->mutex, NULL);
     triton_list_init(&ctl->children);
     OPA_store_int (&ctl->refcount, 1);
     ae_op_id_clear(ctl->current_op_id);
@@ -193,17 +193,17 @@ static inline void ae_ctl_lone_pbranch_done(struct ae_ctl *ctl, enum ae_ctl_stat
 static inline void ae_ctl_pbranch_start(struct ae_ctl *ctl)
 {
     ae_hints_dup(ctl->parent->hints, &ctl->hints);
-    ae_mutex_lock(&ctl->parent->mutex);
+    triton_mutex_lock(&ctl->parent->mutex);
     ctl->parent->posted++;
     triton_list_link_clear(&ctl->link);
     triton_list_add_back(&ctl->link, &ctl->parent->children);
-    ae_mutex_unlock(&ctl->parent->mutex);
+    triton_mutex_unlock(&ctl->parent->mutex);
 }
 
 static inline enum ae_pwait_command ae_ctl_pbranch_done(struct ae_ctl *ctl, enum ae_ctl_state *state)
 {
     /* lock parent mutex */
-    ae_mutex_lock(&ctl->parent->mutex);
+    triton_mutex_lock(&ctl->parent->mutex);
     /* remove myself from parent list (parent->children) */
     triton_list_del(&ctl->link);
     /* destroy my hints */
@@ -217,17 +217,17 @@ static inline enum ae_pwait_command ae_ctl_pbranch_done(struct ae_ctl *ctl, enum
         /* set state of this control so that callback can do the right thing */
         *state |= AE_CTL_PWAIT_DONE;
         /* tell pwait to continue */
-        ae_mutex_unlock(&ctl->parent->mutex);
+        triton_mutex_unlock(&ctl->parent->mutex);
         return AE_PWAIT_CONTINUE;
     }
 
-    ae_mutex_unlock(&ctl->parent->mutex);
+    triton_mutex_unlock(&ctl->parent->mutex);
     return AE_PWAIT_YIELD;
 }
 
 static inline enum ae_pwait_command ae_ctl_pwait_init_done(struct ae_ctl *ctl)
 {
-    ae_mutex_lock(&ctl->mutex);
+    triton_mutex_lock(&ctl->mutex);
 
     /* This has to be the initial pass through the pbranches
      * of the pwait.
@@ -241,14 +241,14 @@ static inline enum ae_pwait_command ae_ctl_pwait_init_done(struct ae_ctl *ctl)
      */
     if(ctl->posted == ctl->completed)
     {
-        ae_mutex_unlock(&ctl->mutex);
+        triton_mutex_unlock(&ctl->mutex);
         return AE_PWAIT_CONTINUE;
     }
 
     /* Otherwise (not all pbranches have completed),
      * we need to tell the pwait to yield.
      */
-    ae_mutex_unlock(&ctl->mutex);
+    triton_mutex_unlock(&ctl->mutex);
     return AE_PWAIT_YIELD;
 }
 
