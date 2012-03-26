@@ -659,7 +659,7 @@ etags:
 	$(A2X) -L -v -v -a buildpath=$(abs_srcdir)/doc --dblatex-opts "-P latex.output.revhistory=0" -a data-uri -a icons -a toc -a max-width=55em $<
 
 $(builddir)/doc/fig: $(abs_srcdir)/doc/fig
-	ln -f -s $< $@
+	ln -s $< $@
 
 .INTERMEDIATE: %.ditta_txt
 %.ditta_txt: %.txt
@@ -687,7 +687,7 @@ in_tree_include: include/aesop
 include/aesop:
 	mkdir -p include/aesop
 	for hdr in $(INSTALL_HDR_SRC); do \
-		ln -f -s $$hdr include/aesop; \
+		ln -s $$hdr include/aesop 2> /dev/null; \
 	done
 
 install:: all
