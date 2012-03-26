@@ -436,7 +436,7 @@ $(GENLIBOBJS) $(LIBOBJS) $(TESTOBJS): %.o: %.c
 			$(call MODCFLAGS_C,$*) $<
 
 # Auto-generated dependencies for .c files
-$(LIBDEPS) $(GENLIBDEPS) $(TESTDEPS) $(TESTLIBDEPS): %.d: %.c
+$(LIBDEPS) $(GENLIBDEPS) $(TESTDEPS) $(TESTLIBDEPS): %.d: %.c in_tree_include
 	$(Q) "  DEP           $@"
 	$(E)CC=$(call MCC_C,$*) $(srcdir)/maint/depend.sh $(call dirname,$*) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
@@ -497,7 +497,7 @@ $(AEOBJS): %.o: $(HSBIN) %.ae
                 -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
 
 # Auto-generated dependencies for .ae files
-$(AEDEPS): %.ae.d: %.ae
+$(AEDEPS): %.ae.d: %.ae in_tree_include
 	$(Q) "  DEP           $@"
 	$(E)CC=$(call MCC_C,$*) $(srcdir)/maint/depend-ae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
@@ -511,7 +511,7 @@ $(AESOP_TRHDR): %.h: %.hae $(HSBIN)
                 -j -c $(call MCC_AE,$*) $(VA) $(DA) $(AEPRETTY) \
                 -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
 
-$(AESOP_TRHDR_DEPS): %.h.d: %.hae
+$(AESOP_TRHDR_DEPS): %.h.d: %.hae in_tree_include
 	$(Q) "  DEP           $@"
 	$(E)CC=$(call MCC_C,$*) $(srcdir)/maint/depend-hae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
@@ -678,7 +678,17 @@ INSTALL_HDR += src/c-utils/triton-list.h \
  src/c-utils/triton-thread.h \
  src/c-utils/triton-base.h
 
-INSTALL_HDR_SRC=$(patsubst %,$(srcdir)/%,$(INSTALL_HDR))
+INSTALL_HDR_SRC=$(patsubst %,$(abs_srcdir)/%,$(INSTALL_HDR))
+
+.PHONY: in_tree_include include/aesop
+
+in_tree_include: include/aesop
+
+include/aesop:
+	mkdir -p include/aesop
+	for hdr in $(INSTALL_HDR_SRC); do \
+		ln -s $$hdr include/aesop; \
+	done
 
 install:: all
 	install -d $(bindir)
