@@ -659,7 +659,7 @@ etags:
 	$(A2X) -L -v -v -a buildpath=$(abs_srcdir)/doc --dblatex-opts "-P latex.output.revhistory=0" -a data-uri -a icons -a toc -a max-width=55em $<
 
 $(builddir)/doc/fig: $(abs_srcdir)/doc/fig
-	ln -s $< $@
+	ln -f -s $< $@
 
 .INTERMEDIATE: %.ditta_txt
 %.ditta_txt: %.txt
