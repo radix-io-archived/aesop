@@ -1,8 +1,8 @@
 #include <unistd.h>
-#include "aesop.h"
+#include <aesop/aesop.h>
 #include "parser/tests/blocking/btest.hae"
 #include <assert.h>
-#include "aesop-support.hae"
+#include <aesop/aesop-support.hae>
 
 static __blocking void foo_fn(void)
 {

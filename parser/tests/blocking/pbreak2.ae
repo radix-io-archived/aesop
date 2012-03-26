@@ -1,6 +1,6 @@
-#include "aesop.h"
+#include <aesop/aesop.h>
+#include <aesop/aesop-support.hae>
 #include "parser/tests/blocking/btest.hae"
-#include "aesop-support.hae"
 
 static __blocking void run_pbreak2(void)
 {

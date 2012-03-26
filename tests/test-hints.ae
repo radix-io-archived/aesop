@@ -1,6 +1,6 @@
 
-#include "aesop.h"
-#include "resources/timer/timer.hae"
+#include <aesop/aesop.h>
+#include <aesop/timer.hae>
 
 __blocking void do_blocking3(void)
 {

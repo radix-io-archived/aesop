@@ -1,5 +1,5 @@
 
-#include "aesop.h"
+#include <aesop/aesop.h>
 #include "parser/tests/blocking/btest.hae"
 
 struct mystruct

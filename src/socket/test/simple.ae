@@ -1,7 +1,7 @@
-#include "aesop.h"
-#include "aesop-support.hae"
-#include "resources/timer/timer.hae"
-#include "src/socket/aesocket.hae"
+#include <aesop/aesop.h>
+#include <aesop/aesop-support.hae>
+#include <aesop/timer.hae>
+#include <aesop/aesocket.hae>
 
 #include <unistd.h>
 #include <fcntl.h>

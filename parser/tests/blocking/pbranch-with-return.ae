@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "aesop.h"
+#include <aesop/aesop.h>
 #include "parser/tests/blocking/btest.hae"
 
 static __blocking int pbranch_with_return(void)

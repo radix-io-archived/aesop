@@ -7,9 +7,9 @@
 #include <fcntl.h>
 #include <stdlib.h>
 
-#include "aesop.h"
-#include "src/aefile/aefile.hae"
-#include "resources/thread/aethread.hae"
+#include <aesop/aesop.h>
+#include <aesop/aefile.hae>
+#include <aesop/aethread.hae>
 
 static double wtime(void)
 {

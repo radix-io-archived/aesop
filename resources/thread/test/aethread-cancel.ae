@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include "aesop.h"
-#include "resources/thread/aethread.hae"
-#include "resources/timer/timer.hae"
-#include "aesop-support.hae"
+#include <aesop/aesop.h>
+#include <aesop/aethread.hae>
+#include <aesop/timer.hae>
+#include <aesop/aesop-support.hae>
 
 static double wtime(void)
 {

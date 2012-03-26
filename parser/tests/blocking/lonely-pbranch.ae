@@ -1,8 +1,8 @@
 #include <assert.h>
 
-#include "aesop.h"
+#include <aesop/aesop.h>
+#include <aesop/timer.hae>
 #include "parser/tests/blocking/btest.hae"
-#include "resources/timer/timer.hae"
 
 static __blocking void lonely_pbranch(void)
 {

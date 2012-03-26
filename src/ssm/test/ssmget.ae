@@ -1,6 +1,6 @@
-#include "aesop.h"
-#include "aesop-support.hae"
-#include "src/ssm/aessm.hae"
+#include <aesop/aesop.h>
+#include <aesop/aesop-support.hae>
+#include <aesop/aessm.hae>
 
 #define DATAVAL 0xffbaffabffbaffab
 

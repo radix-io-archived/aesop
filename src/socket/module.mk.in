@@ -2,4 +2,5 @@ DIR := src/socket
 
 AELIBSRC += $(DIR)/aesocket.ae
 AESOP_HDR += $(DIR)/aesocket.hae
+INSTALL_HDR += $(DIR)/aesocket.hae
 

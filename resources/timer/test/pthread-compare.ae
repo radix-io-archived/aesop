@@ -1,8 +1,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include "aesop.h"
-#include "resources/timer/timer.hae"
+#include <aesop/aesop.h>
+#include <aesop/timer.hae>
 
 triton_mutex_t mutex = TRITON_MUTEX_INITIALIZER;
 

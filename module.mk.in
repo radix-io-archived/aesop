@@ -15,4 +15,5 @@ INSTALL_HDR += ae-types.h \
  ae-blocking-parser.h \
  hints.h \
  ae-init.h \
- ae-debug.h
+ ae-debug.h \
+ aesop-support.hae

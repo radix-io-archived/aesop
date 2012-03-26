@@ -1,9 +1,8 @@
 #ifndef __AESOP_SUPPORT_HAE__
 #define __AESOP_SUPPORT_HAE__
 
-#include "aesop.h"
-#include "resource.h"
-#include "resources/timer/timer.hae"
+#include <aesop/aesop.h>
+#include <aesop/timer.hae>
 
 /** TODO: need to fix this. depends on timer */
 
