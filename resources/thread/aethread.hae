@@ -1,7 +1,7 @@
 #ifndef __AETHREAD_HAE__
 #define __AETHREAD_HAE__
 
-#include "aesop.h"
+#include <aesop/aesop.h>
 
 struct aethread_group;
 

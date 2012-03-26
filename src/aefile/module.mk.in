@@ -2,4 +2,6 @@ DIR := src/aefile
 
 AESOP_HDR += $(DIR)/aefile.hae
 
+INSTALL_HDR += $(DIR)/aefile.hae
+
 AELIBSRC += $(DIR)/aefile.ae

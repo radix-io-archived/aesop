@@ -1,7 +1,7 @@
 #ifndef __AEFILE_HAE__
 #define __AEFILE_HAE__
 
-#include "aesop.h"
+#include <aesop/aesop.h>
 
 #include <unistd.h>
 #include <sys/types.h>

@@ -2,6 +2,8 @@ DIR := resources/resourcebuilder
 
 AESOP_HDR += $(DIR)/resourcebuilder.hae
 
+INSTALL_HDR += $(DIR)/resourcebuilder.hae
+
 LIBSRC += $(DIR)/resourcebuilder.c
 
 
