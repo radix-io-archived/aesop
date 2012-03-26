@@ -1,7 +1,7 @@
 #ifndef __AESOP_H__
 #define __AESOP_H__
 
-#include "ae-base.h"
+#include "src/c-utils/triton-base.h"
 #include "ae-error.h"
 #include "ae-thread.h"
 #include "ae-list.h"

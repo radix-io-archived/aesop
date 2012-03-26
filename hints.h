@@ -1,7 +1,7 @@
 #ifndef __AE_HINTS_H__
 #define __AE_HINTS_H__
 
-#include "ae-base.h"
+#include "src/c-utils/triton-base.h"
 #include "ae-list.h"
 #include "ae-thread.h"
 

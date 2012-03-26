@@ -690,6 +690,6 @@ install:: all
 	install -m 644 $(srcdir)/opcache.h $(includedir)
 	install -m 644 $(srcdir)/ae-init.h $(includedir)
 	install -m 644 $(srcdir)/ae-thread.h $(includedir)
-	install -m 644 $(srcdir)/ae-base.h $(includedir)
+	install -m 644 $(srcdir)/src/c-utils/triton-base.h $(includedir)
 	install -m 644 $(srcdir)/ae-debug.h $(includedir)
 	install -m 644 $(srcdir)/op.h $(includedir)
