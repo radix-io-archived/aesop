@@ -7,9 +7,7 @@
 #include "ae-error.h"
 #include "ae-log.h"
 #include "ae-debug.h"
-
 #include "resource.h"
-#include "op.h"
 
 int aesop_init(const char *resource_list);
 void aesop_finalize(void);

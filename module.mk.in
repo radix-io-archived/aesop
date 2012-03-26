@@ -16,5 +16,4 @@ INSTALL_HDR += ae-types.h \
  resource.h \
  hints.h \
  ae-init.h \
- ae-debug.h \
- op.h 
+ ae-debug.h
