@@ -7,4 +7,15 @@ LIBSRC += opcache.c \
           ae-ctl.c \
 	  ae-init.c
 
-
+INSTALL_HDR += ae-types.h \
+ ae-ctl.h \
+ ae-log.h \
+ aesop.h \
+ ae-error.h \
+ ae-blocking-parser.h \
+ resource.h \
+ hints.h \
+ opcache.h \
+ ae-init.h \
+ ae-debug.h \
+ op.h 

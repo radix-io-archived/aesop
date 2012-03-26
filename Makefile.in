@@ -131,6 +131,7 @@ GENLIBHDR :=
 AETESTSRC :=
 AEPROGRAMSRC :=
 AESOP_HDR :=
+INSTALL_HDR :=
 AETESTLIBSRC :=
 TESTLIBSRC :=
 HSSRC :=
@@ -671,6 +672,14 @@ doc: $(DOCPDF)
 docshtml: $(DOCHTML)
 dochtml: $(DOCHTML)
 
+# manually add some c-utils headers to the install list 
+
+INSTALL_HDR += src/c-utils/triton-list.h \
+ src/c-utils/triton-thread.h \
+ src/c-utils/triton-base.h
+
+INSTALL_HDR_SRC=$(patsubst %,$(srcdir)/%,$(INSTALL_HDR))
+
 install:: all
 	install -d $(bindir)
 	install -d $(libdir)
@@ -678,18 +687,4 @@ install:: all
 	install -m 755 bin/aecc $(bindir)
 	install -m 755 bin/aecc-utils $(bindir)
 	install -m 644 lib/libaesop.* $(libdir)
-	install -m 644 $(srcdir)/src/c-utils/triton-list.h $(includedir)
-	install -m 644 $(srcdir)/ae-types.h $(includedir)
-	install -m 644 $(srcdir)/ae-ctl.h $(includedir)
-	install -m 644 $(srcdir)/ae-log.h $(includedir)
-	install -m 644 $(srcdir)/aesop.h $(includedir)
-	install -m 644 $(srcdir)/ae-error.h $(includedir)
-	install -m 644 $(srcdir)/ae-blocking-parser.h $(includedir)
-	install -m 644 $(srcdir)/resource.h $(includedir)
-	install -m 644 $(srcdir)/hints.h $(includedir)
-	install -m 644 $(srcdir)/opcache.h $(includedir)
-	install -m 644 $(srcdir)/ae-init.h $(includedir)
-	install -m 644 $(srcdir)/src/c-utils/triton-thread.h $(includedir)
-	install -m 644 $(srcdir)/src/c-utils/triton-base.h $(includedir)
-	install -m 644 $(srcdir)/ae-debug.h $(includedir)
-	install -m 644 $(srcdir)/op.h $(includedir)
+	install -m 644 $(INSTALL_HDR_SRC) $(includedir)
