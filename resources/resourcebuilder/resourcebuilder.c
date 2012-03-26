@@ -3,6 +3,7 @@
  */
 #include "resources/resourcebuilder/resourcebuilder.h"
 #include "src/c-utils/triton-thread.h"
+#include "resource.h"
 
 #define RB_DEFAULT_SIZE 64
 #define RB_RESOURCE_NAME "resourcebuilder"

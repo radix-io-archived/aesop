@@ -1,11 +1,11 @@
 #ifndef __AE_CTL_H__
 #define __AE_CTL_H__
 
-#include "ae-types.h"
-#include "src/c-utils/triton-thread.h"
-#include "src/c-utils/triton-list.h"
-#include "ae-error.h"
-#include "hints.h"
+#include <aesop/triton-thread.h>
+#include <aesop/triton-list.h>
+#include <aesop/ae-types.h>
+#include <aesop/ae-error.h>
+#include <aesop/hints.h>
 
 #include <opa_primitives.h>
 

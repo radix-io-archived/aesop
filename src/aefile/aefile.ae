@@ -12,6 +12,7 @@
 
 #include "src/aefile/aefile.hae"
 #include "resources/thread/aethread.hae"
+#include "resource.h"
 
 struct aethread_group* file_threads = NULL;
 

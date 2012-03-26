@@ -7,8 +7,7 @@
  * want to use Triton.
  */
 
-#include "triton-string.h"
-#include "triton-uint128.h"
+#include <aesop/triton-uint128.h>
 
 #define ae_op_id_t uint128_t
 #define ae_op_id_clear triton_uint128_setzero
@@ -16,7 +15,5 @@
 #define ae_op_id_set triton_uint128_set
 
 #define ae_op_id_equal(id1, id2) !memcmp(&id1, &id2, sizeof(ae_op_id_t))
-
-#define ae_string_t triton_string_t
 
 #endif

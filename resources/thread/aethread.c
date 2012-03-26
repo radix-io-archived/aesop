@@ -7,6 +7,7 @@
 #include "op.h"
 #include "opcache.h"
 #include "resources/thread/aethread.h"
+#include "resource.h"
 
 struct aethread_op
 {

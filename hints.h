@@ -1,9 +1,9 @@
 #ifndef __AE_HINTS_H__
 #define __AE_HINTS_H__
 
-#include "src/c-utils/triton-base.h"
-#include "src/c-utils/triton-list.h"
-#include "src/c-utils/triton-thread.h"
+#include <aesop/triton-base.h>
+#include <aesop/triton-list.h>
+#include <aesop/triton-thread.h>
 
 struct ae_hints
 {

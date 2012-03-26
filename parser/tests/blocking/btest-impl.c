@@ -8,6 +8,7 @@
 #include "triton-list.h"
 #include "opcache.h"
 #include "parser/tests/blocking/btest.h"
+#include "resource.h"
 
 #define RESOURCE_NAME "btest"
 

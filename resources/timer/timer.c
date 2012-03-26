@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include "aesop.h"
+#include "resource.h"
 #include "op.h"
 #include "opcache.h"
 #include "resources/timer/timer.h"
