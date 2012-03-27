@@ -41,6 +41,15 @@ if test "x$GCC" = "x"; then
 fi
 AC_MSG_RESULT(yes)
 
+dnl Check to see if CC can handle label pointers
+AC_MSG_CHECKING(if the C compiler supports label pointers)
+AC_TRY_COMPILE([], [void* foo; my_label: foo=&&my_label;],
+    AC_MSG_RESULT(yes),
+    AC_MSG_RESULT(no)
+    AC_MSG_ERROR(CC does not support label pointer extension, please try gcc or clang)
+)
+
+
 dnl regardless of what compiler the user is using, we still check for gcc in 
 dnl the path to use for generating dependencies
 AC_CHECK_PROG(HAVE_GCC_BIN, gcc, yes, no,)
