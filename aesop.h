@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #ifndef __AESOP_H__
 #define __AESOP_H__
 
@@ -209,3 +215,12 @@ ae_op_id_t ae_id_gen(int resource_id, intptr_t ptr);
 intptr_t ae_id_lookup(ae_op_id_t id, int *resource_id);
 
 #endif
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

@@ -1,3 +1,10 @@
+found something!
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #ifndef __AE_HINTS_H__
 #define __AE_HINTS_H__
 

@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #ifndef __OPCACHE_H__
 #define __OPCACHE_H__
 
@@ -86,5 +92,5 @@ void ae_opcache_put(ae_opcache_t cache, struct ae_op *op);
  *  c-basic-offset: 4
  * End:
  *
- * vim: ts=8 sts=4 sw=4 expandtab
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
  */

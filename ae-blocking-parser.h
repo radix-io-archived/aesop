@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #ifndef __AE_BLOCKING_PARSER_H__
 #define __AE_BLOCKING_PARSER_H__
 
@@ -616,3 +622,12 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
 
 
 #endif /* __AE_BLOCKING_PARSER_H__ */
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

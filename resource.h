@@ -1,3 +1,10 @@
+found something!
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #ifndef __RESOURCE_H__
 #define __RESOURCE_H__
 
@@ -107,7 +114,8 @@ static inline void aesop_print_stack(FILE *stream) { }
 #endif /* __AE_RESOURCE_H__ */
 
 /*
- * Local Variables:
+ * Local variables:
+ *  c-indent-level: 4
  *  c-basic-offset: 4
  * End:
  *
