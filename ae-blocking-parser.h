@@ -206,6 +206,7 @@ static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr) \
     __ae_myret = AE_SUCCESS;                            \
     if(*__ae_state == AE_CTL_CALL_COMPLETE)             \
     {                                                   \
+fake_label_to_please_clang:                             \
         assert(__ae_ctl->gen.state_label);              \
         goto *__ae_ctl->gen.state_label;                \
     }
