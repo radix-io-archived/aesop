@@ -41,6 +41,13 @@ if test "x$GCC" = "x"; then
 fi
 AC_MSG_RESULT(yes)
 
+dnl regardless of what compiler the user is using, we still check for gcc in 
+dnl the path to use for generating dependencies
+AC_CHECK_PROG(HAVE_GCC_BIN, gcc, yes, no,)
+if test "$HAVE_GCC_BIN" = "no"; then
+        AC_MSG_ERROR([gcc must be in path in order to generate build dependencies])
+fi
+
 AX_GHC("")
 
 dnl ======================================================================

@@ -13,4 +13,4 @@ fi
 # -x c tells gcc to pretend like the input file is a c file regardless of
 #   filename extension.  This is useful for cases where we want gcc to
 #   generate dependencies on raw .ae files.
-exec $CC -x c -M -MM -MG "$@" | sed -e "s@^\(.*\)\.o:@$DIR\1.o:@"
+exec gcc -x c -M -MM -MG "$@" | sed -e "s@^\(.*\)\.o:@$DIR\1.o:@"

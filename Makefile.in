@@ -438,7 +438,7 @@ $(GENLIBOBJS) $(LIBOBJS) $(TESTOBJS): %.o: %.c
 # Auto-generated dependencies for .c files
 $(LIBDEPS) $(GENLIBDEPS) $(TESTDEPS) $(TESTLIBDEPS): %.d: %.c in_tree_include
 	$(Q) "  DEP           $@"
-	$(E)CC=$(call MCC_C,$*) $(srcdir)/maint/depend.sh $(call dirname,$*) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
+	$(E)$(srcdir)/maint/depend.sh $(call dirname,$*) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
 $(TESTLIBOBJS): %.o: %.c
 
@@ -499,7 +499,7 @@ $(AEOBJS): %.o: $(HSBIN) %.ae
 # Auto-generated dependencies for .ae files
 $(AEDEPS): %.ae.d: %.ae in_tree_include
 	$(Q) "  DEP           $@"
-	$(E)CC=$(call MCC_C,$*) $(srcdir)/maint/depend-ae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
+	$(E)$(srcdir)/maint/depend-ae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
 # Generate header files (%.h) from AE header files
 # NOTE: this is used by resource .c files that need to include the .h
@@ -513,7 +513,7 @@ $(AESOP_TRHDR): %.h: %.hae $(HSBIN)
 
 $(AESOP_TRHDR_DEPS): %.h.d: %.hae in_tree_include
 	$(Q) "  DEP           $@"
-	$(E)CC=$(call MCC_C,$*) $(srcdir)/maint/depend-hae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
+	$(E)$(srcdir)/maint/depend-hae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
 # TODO: we need a better solution here.  The problem is that the
 # auto-dependencies often include generated headers.  If we make the .d

@@ -18,4 +18,4 @@ fi
 #   generate dependencies on raw .ae files.
 # there is one manual addition to the dependencies (ae-blocking-parser.h)
 #   which is implicitly added by the aesop parser
-exec $CC -x c -M -MM -MG "$@" | sed -e "s@^\(.*\)\.o:@$DIR\1.h: $SRCDIR/ae-blocking-parser.h@"
+exec gcc -x c -M -MM -MG "$@" | sed -e "s@^\(.*\)\.o:@$DIR\1.h: $SRCDIR/ae-blocking-parser.h@"
