@@ -1,4 +1,3 @@
-found something!
 /*
  * (C) 2009 The University of Chicago
  *
