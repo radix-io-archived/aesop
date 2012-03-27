@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #ifndef __AEFILE_HAE__
 #define __AEFILE_HAE__
 
@@ -18,3 +24,12 @@ __blocking int aefile_unlink(const char *pathname);
 
 #endif
 
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

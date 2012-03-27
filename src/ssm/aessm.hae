@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #ifndef __SSM_HAE__
 #define __SSM_HAE__
 
@@ -29,3 +35,12 @@ __blocking int aessm_ping (ssm_me_id me, ssm_addr_id target_addr, ssm_evt_p evt)
 __blocking int aessm_wait (ssm_me_id me, ssm_evt_p evt);
 
 #endif
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

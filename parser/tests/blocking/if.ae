@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #include <aesop/aesop.h>
 #include "parser/tests/blocking/btest.hae"
 #include <assert.h>
@@ -43,3 +49,12 @@ __blocking int aesop_main(int argc, char **argv)
 }
 aesop_main_set(aesop_main);
 
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

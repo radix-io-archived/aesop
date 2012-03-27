@@ -1,3 +1,10 @@
+found something!
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 
 #include <stdio.h>
 #include <aesop/aesop.h>
@@ -53,7 +60,8 @@ __blocking int aesop_main(int argc, char **argv)
 aesop_main_set(aesop_main);
 
 /*
- * Local Variables:
+ * Local variables:
+ *  c-indent-level: 4
  *  c-basic-offset: 4
  * End:
  *

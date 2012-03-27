@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #include <stdio.h>
 #include "aesop.h"
 #include "resources/resourcebuilder/resourcebuilder.hae"
@@ -65,3 +71,12 @@ __blocking int test_main (int argc, char ** args)
 }
 
 aesop_main_set (test_main, "resourcebuilder");
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

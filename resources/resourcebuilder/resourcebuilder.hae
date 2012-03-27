@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #ifndef __RESOURCEBUILDER_RESOURCEBUILDER_HAE
 #define __RESOURCEBUILDER_RESOURCEBUILDER_HAE
 
@@ -60,3 +66,12 @@ void rb_slot_destroy (rb_slot_t * slot);
 __blocking int rb_slot_capture (rb_slot_t * slot);
 
 #endif
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
