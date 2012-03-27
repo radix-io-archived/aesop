@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #include "libev/ev.h"
 #include <stddef.h>
 #include <unistd.h>
@@ -887,5 +893,5 @@ int ae_resource_init_all(void)
  *  c-basic-offset: 4
  * End:
  *
- * vim: ts=8 sts=4 sw=4 expandtab
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
  */

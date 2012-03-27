@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #include "aesop.h"
 #include "opcache.h"
 #include "jenkins-hash.h"
@@ -415,5 +421,5 @@ struct ae_op * ae_opcache_lookup(ae_opcache_t cache, cache_id_t id)
  *  c-basic-offset: 4
  * End:
  *
- * vim: ts=8 sts=4 sw=4 expandtab
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
  */

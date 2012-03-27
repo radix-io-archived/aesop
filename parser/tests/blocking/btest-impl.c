@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -538,5 +544,5 @@ void btest_enable_immediate_cancel(void)
  *  c-basic-offset: 4
  * End:
  *
- * vim: ts=8 sts=4 sw=4 expandtab
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
  */

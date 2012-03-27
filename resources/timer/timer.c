@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 
 #define _GNU_SOURCE
 
@@ -322,5 +328,5 @@ static void timer_cb(EV_P_ ev_timer *w, int revents)
  *  c-basic-offset: 4
  * End:
  *
- * vim: ts=8 sts=4 sw=4 expandtab
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
  */

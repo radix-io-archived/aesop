@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 #include <signal.h>
 #include <time.h>
 #include <sys/time.h>
@@ -284,5 +290,5 @@ void aethread_finalize(void)
  *  c-basic-offset: 4
  * End:
  *
- * vim: ts=8 sts=4 sw=4 expandtab
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
  */

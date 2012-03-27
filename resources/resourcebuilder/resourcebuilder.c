@@ -1,3 +1,9 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
 /* This needs to be the full path for make -- if relative,
  * make will try to build ./resourcebuilder.h and fail.
  */
@@ -313,3 +319,12 @@ __attribute__((constructor)) void rb_init_register(void)
 }
 
 
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
