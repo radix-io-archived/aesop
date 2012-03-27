@@ -493,7 +493,7 @@ lib/libaesop-test.dylib: $(AETESTLIBOBJS) $(TESTLIBOBJS)
 $(AEOBJS): %.o: $(HSBIN) %.ae
 	$(Q) "  AECC		$*.ae"
 	$(E)$(builddir)/bin/aecc -o $(builddir)/$*.o $(srcdir)/$*.ae \
-                -c $(call MCC_AE,$*) $(VA) $(DA) $(AEPRETTY) \
+                $(VA) $(DA) $(AEPRETTY) \
                 -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
 
 # Auto-generated dependencies for .ae files
@@ -508,7 +508,7 @@ $(AESOP_TRHDR): %.h: %.hae $(HSBIN)
 
 	$(Q) "  AECC		$*.hae"
 	$(E)$(builddir)/bin/aecc -o $(builddir)/$*.h $(srcdir)/$*.hae \
-                -j -c $(call MCC_AE,$*) $(VA) $(DA) $(AEPRETTY) \
+                -j $(VA) $(DA) $(AEPRETTY) \
                 -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
 
 $(AESOP_TRHDR_DEPS): %.h.d: %.hae in_tree_include
