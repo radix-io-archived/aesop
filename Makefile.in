@@ -598,7 +598,7 @@ runvalgrind: $(runVALGRIND)
 	$(E) echo -n "    		$@ : " && cat $@
 
 # other intermediates may exist from aecc and aercc
-INTERM_AESRC=$(patsubst %.o,%.ae.i.s,$(AEOBJS))
+INTERM_AESRC=$(patsubst %.o,%.ae.s,$(AEOBJS))
 INTERM_AEINC=$(patsubst %.o,%.ae.i,$(AEOBJS))
 INTERM_HAEINC=$(patsubst %.h,%.hae.i,$(AESOP_TRHDR))
 
