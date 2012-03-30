@@ -1,7 +1,7 @@
 
 # find the location of this aecc script
 DIR="$( cd "$( dirname "$0" )" && pwd )"
-AECC_CFLAGS="@AECC_CFLAGS@"
+AECC_CFLAGS="@AECC_CFLAGS@ -I$DIR/../include"
 
 # the parsers can be in one of two locations; either in the same directory
 # as this script (if the tools have been installed) or in the ../parser
@@ -540,7 +540,7 @@ doCPP()
         jcppopt="-D__blocking='' -Dpbranch='' -Dpwait='' -Dpbreak=''"
     fi
     runCmd $verbose "Preprocessing step failed:" \
-           "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${ccopts} ${cppinput}"
+           "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${AECC_CFLAGS} ${ccopts} ${cppinput}"
     return $?
 } 
 
@@ -629,7 +629,7 @@ parseRemoteSource()
     done
 
     runCmd $verbose "Aesop remote parsing failed: " \
-           "${AERPARSER} ${serviceopts} ${regopts} -c ${compiler} ${popts} ${namedopt} ${outopt} ${inputopt} -- ${compileropts}"
+           "${AERPARSER} ${serviceopts} ${regopts} -c ${compiler} ${popts} ${namedopt} ${outopt} ${inputopt} -- ${AECC_CFLAGS} ${compileropts}"
     return $?
 }
 
