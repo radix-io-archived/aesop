@@ -1,6 +1,7 @@
 
 # find the location of this aecc script
 DIR="$( cd "$( dirname "$0" )" && pwd )"
+AECC_CFLAGS="@AECC_CFLAGS@"
 
 # the parsers can be in one of two locations; either in the same directory
 # as this script (if the tools have been installed) or in the ../parser
@@ -561,7 +562,7 @@ parseAesopSource()
     fi
     
     runCmd $verbose "Aesop parsing step failed: " \
-           "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${compileropts}"
+           "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${AECC_CFLAGS} ${compileropts}"
     return $?
 }
 
@@ -583,7 +584,7 @@ parseAesopHeader()
     fi
 
     runCmd $verbose "Aesop header parsing failed: " \
-           "${AEPARSER} -c ${compiler} -j ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${compileropts}"
+           "${AEPARSER} -c ${compiler} -j ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${AECC_CFLAGS} ${compileropts}"
     return $?
 }
     
@@ -645,6 +646,6 @@ doCompile()
     fi
 
     runCmd $verbose "Compilation step failed: " \
-           "${compiler} -x c -c -o ${outfile} ${compileropts} ${infile}"
+           "${compiler} -x c -c -o ${outfile} ${AECC_CFLAGS} ${compileropts} ${infile}"
     return $?
 }

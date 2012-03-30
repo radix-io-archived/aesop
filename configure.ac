@@ -311,6 +311,10 @@ AC_COMPILE_IFELSE(
 
 AC_SUBST(BLOCKSOPT)
 
+# these are cflags that will be automatically applied by aecc
+AECC_CFLAGS=$LIBCFLAGS
+AC_SUBST(AECC_CFLAGS)
+
 AC_SUBST(LIBCFLAGS)
 AC_SUBST(THREAD_LIB)
 
