@@ -2,9 +2,6 @@
 # find the location of this aecc script
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 
-SRCDIR=@SRC_RELATIVE_TOP@
-AESRCDIR=${SRCDIR}/src/aesop
-
 # the parsers can be in one of two locations; either in the same directory
 # as this script (if the tools have been installed) or in the ../parser
 # directory (if we are building in tree)
@@ -564,7 +561,7 @@ parseAesopSource()
     fi
     
     runCmd $verbose "Aesop parsing step failed: " \
-           "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- -I${AESRCDIR} ${compileropts}"
+           "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${compileropts}"
     return $?
 }
 
@@ -586,7 +583,7 @@ parseAesopHeader()
     fi
 
     runCmd $verbose "Aesop header parsing failed: " \
-           "${AEPARSER} -c ${compiler} -j ${popts} -r ${namedinput} -o ${output} -i ${input} -- -I${AESRCDIR} ${compileropts}"
+           "${AEPARSER} -c ${compiler} -j ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${compileropts}"
     return $?
 }
     
@@ -631,7 +628,7 @@ parseRemoteSource()
     done
 
     runCmd $verbose "Aesop remote parsing failed: " \
-           "${AERPARSER} ${serviceopts} ${regopts} -c ${compiler} ${popts} ${namedopt} ${outopt} ${inputopt} -- -I${AESRCDIR} ${compileropts}"
+           "${AERPARSER} ${serviceopts} ${regopts} -c ${compiler} ${popts} ${namedopt} ${outopt} ${inputopt} -- ${compileropts}"
     return $?
 }
 
