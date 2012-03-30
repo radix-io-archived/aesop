@@ -1,11 +1,24 @@
 
+# find the location of this aecc script
+DIR="$( cd "$( dirname "$0" )" && pwd )"
+
 SRCDIR=@SRC_RELATIVE_TOP@
 BUILDDIR=@BUILD_ABSOLUTE_TOP@
-
-AEPARSER=${BUILDDIR}/parser/ae-blocking-parser
-AERPARSER=${BUILDDIR}/parser/ae-remote-parser
 AESRCDIR=${SRCDIR}/src/aesop
 
+# the parsers can be in one of two locations; either in the same directory
+# as this script (if the tools have been installed) or in the ../parser
+# directory (if we are building in tree)
+
+if [ -x ${DIR}/ae-blocking-parser ]; then
+    AEPARSER=${DIR}/ae-blocking-parser
+elif [ -x ${DIR}/../parser/ae-blocking-parser ]; then
+    AEPARSER=${DIR}/../parser/ae-blocking-parser
+else
+    echo Unable to find ae-blocking-parser
+    exit 1
+fi
+    
 SPACES="                                                      "
 optind=0
 

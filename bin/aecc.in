@@ -1,8 +1,10 @@
 #!/bin/sh
 
-BUILDDIR=@BUILD_ABSOLUTE_TOP@
+# find the location of this aecc script
+DIR="$( cd "$( dirname "$0" )" && pwd )"
 
-. ${BUILDDIR}/bin/aecc-utils
+# aecc utils should be in the same dir as aecc
+. ${DIR}/aecc-utils
 
 setUsageMessage "Usage: aecc <options> <file> -- <compiler options>.  Specify --help for a list of options."
 
