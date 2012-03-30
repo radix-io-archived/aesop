@@ -692,6 +692,7 @@ install:: all
 	install -d $(bindir)
 	install -d $(libdir)
 	install -d $(includedir)
+	install -m 755 parser/ae-blocking-parser $(bindir)
 	install -m 755 bin/aecc $(bindir)
 	install -m 755 bin/aecc-utils $(bindir)
 	install -m 644 lib/libaesop.* $(libdir)
