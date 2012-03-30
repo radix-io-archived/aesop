@@ -3,7 +3,6 @@
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 
 SRCDIR=@SRC_RELATIVE_TOP@
-BUILDDIR=@BUILD_ABSOLUTE_TOP@
 AESRCDIR=${SRCDIR}/src/aesop
 
 # the parsers can be in one of two locations; either in the same directory
@@ -527,31 +526,23 @@ runCmd()
     rm ${compilerout}
 }
 
-# doCPP <verbose> <compiler> <input> <output> <gendeps> <named outfile> <just cpp> [<compiler opts>]
+# doCPP <verbose> <compiler> <input> <output> <named outfile> <just cpp> [<compiler opts>]
 doCPP()
 {
     verbose="$1" ; shift
     ccpath="$1" ; shift
     cppinput="$1" ; shift
     cppout="$1" ; shift
-    gendeps="$1" ; shift
     namedoutfile="$1" ; shift
     precompile="$1" ; shift
     ccopts=$@
-    
-    depargs=""
-    if test "${gendeps}" = "yes"; then
-        depoutsrc=$(echo "${cppinput}" | sed -e "s|$|.d|")
-        depout=$(echo "${depoutsrc}" | sed -e "s|^${SRCDIR}|${BUILDDIR}|")
-        depargs="-MMD -MF ${depout} -MT ${namedoutfile}"
-    fi
 
     jcppopt="-E"
     if test "${precompile}" = "yes"; then
         jcppopt="-D__blocking='' -Dpbranch='' -Dpwait='' -Dpbreak=''"
     fi
     runCmd $verbose "Preprocessing step failed:" \
-           "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${ccopts} ${cppinput} ${depargs}"
+           "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${ccopts} ${cppinput}"
     return $?
 } 
 
