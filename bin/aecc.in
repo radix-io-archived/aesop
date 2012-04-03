@@ -1,8 +1,10 @@
 #!/bin/sh
 
-BUILDDIR=@BUILD_ABSOLUTE_TOP@
+# find the location of this aecc script
+DIR="$( cd "$( dirname "$0" )" && pwd )"
 
-. ${BUILDDIR}/bin/aecc-utils
+# aecc utils should be in the same dir as aecc
+. ${DIR}/aecc-utils
 
 setUsageMessage "Usage: aecc <options> <file> -- <compiler options>.  Specify --help for a list of options."
 
@@ -10,7 +12,7 @@ setHelpStart "Usage: aecc <options> <file> -- <compiler options>.\n"
 setHelpEnd "\tAll other options (after --) are passed on to the compiler.\n"
 
 addOption h help no none no empty printHelpAndExit "This message."
-addOption c compiler yes compiler no "<compiler path>" none "Path to the compiler to use.  Defaults to gcc."
+addOption c compiler yes compiler no "<compiler path>" none "Path to the compiler to use.  Default specified at configure time."
 addOption p "pretty" no none no empty none "Have the parser output pretty code (no source lines)."
 addOption d "debug" no none no empty none "Enable debugging for the parser."
 addOption s "just-source" no none no empty none "Just generate C source and header files."
@@ -18,11 +20,10 @@ addOption v "show-commands" no none no empty none "Show commands run."
 addOption o "output-file" yes outputfile no "<output file>" none "Specifies the output file [default=a.out]."
 addOption i "interm-file" yes intermfile no "<interm file>" none "Specifies the intermediate file."
 addOption S "from-interm" no none no empty none "Start from (existing) intermediate file."
-addOption M "generate-deps" no none no empty none "Generate dependency file during preprocessing step."
 addOption j "parse-hae" no none no empty none "Generate a C .h header from an Aesop .hae header."
 addOption l "pre-compile" no none no empty none "Pre-compile aesop for syntax checking."
 
-compiler=gcc
+compiler=@CC@
 parseropts=""
 outputfile=a.out
 
@@ -76,7 +77,7 @@ if test "${hasOpt_from_interm}" != "yes"; then
     fi
 
     # Step 1: first generate preprocessed file and dependency file
-    doCPP ${verbose} ${compiler} ${INPUTFILES} ${cppout} "${hasOpt_generate_deps}" ${outputfile} "${hasOpt_pre_compile}" ${COMPILEROPTS}
+    doCPP ${verbose} ${compiler} ${INPUTFILES} ${cppout} ${outputfile} "${hasOpt_pre_compile}" ${COMPILEROPTS}
     exitIfFailed $?
 
     # Step 2: next run parser on preprocessed file

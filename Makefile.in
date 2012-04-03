@@ -436,7 +436,7 @@ $(GENLIBOBJS) $(LIBOBJS) $(TESTOBJS): %.o: %.c
 			$(call MODCFLAGS_C,$*) $<
 
 # Auto-generated dependencies for .c files
-$(LIBDEPS) $(GENLIBDEPS) $(TESTDEPS) $(TESTLIBDEPS): %.d: %.c in_tree_include
+$(LIBDEPS) $(GENLIBDEPS) $(TESTDEPS) $(TESTLIBDEPS): %.d: %.c include/aesop/.done
 	$(Q) "  DEP           $@"
 	$(E)$(srcdir)/maint/depend.sh $(call dirname,$*) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
@@ -493,11 +493,11 @@ lib/libaesop-test.dylib: $(AETESTLIBOBJS) $(TESTLIBOBJS)
 $(AEOBJS): %.o: $(HSBIN) %.ae
 	$(Q) "  AECC		$*.ae"
 	$(E)$(builddir)/bin/aecc -o $(builddir)/$*.o $(srcdir)/$*.ae \
-                -c $(call MCC_AE,$*) $(VA) $(DA) $(AEPRETTY) \
+                $(VA) $(DA) $(AEPRETTY) \
                 -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
 
 # Auto-generated dependencies for .ae files
-$(AEDEPS): %.ae.d: %.ae in_tree_include
+$(AEDEPS): %.ae.d: %.ae include/aesop/.done
 	$(Q) "  DEP           $@"
 	$(E)$(srcdir)/maint/depend-ae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
@@ -508,10 +508,10 @@ $(AESOP_TRHDR): %.h: %.hae $(HSBIN)
 
 	$(Q) "  AECC		$*.hae"
 	$(E)$(builddir)/bin/aecc -o $(builddir)/$*.h $(srcdir)/$*.hae \
-                -j -c $(call MCC_AE,$*) $(VA) $(DA) $(AEPRETTY) \
+                -j $(VA) $(DA) $(AEPRETTY) \
                 -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
 
-$(AESOP_TRHDR_DEPS): %.h.d: %.hae in_tree_include
+$(AESOP_TRHDR_DEPS): %.h.d: %.hae include/aesop/.done
 	$(Q) "  DEP           $@"
 	$(E)$(srcdir)/maint/depend-hae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
@@ -598,7 +598,7 @@ runvalgrind: $(runVALGRIND)
 	$(E) echo -n "    		$@ : " && cat $@
 
 # other intermediates may exist from aecc and aercc
-INTERM_AESRC=$(patsubst %.o,%.ae.i.s,$(AEOBJS))
+INTERM_AESRC=$(patsubst %.o,%.ae.s,$(AEOBJS))
 INTERM_AEINC=$(patsubst %.o,%.ae.i,$(AEOBJS))
 INTERM_HAEINC=$(patsubst %.h,%.hae.i,$(AESOP_TRHDR))
 
@@ -681,20 +681,18 @@ INSTALL_HDR += src/c-utils/triton-list.h \
 
 INSTALL_HDR_SRC=$(patsubst %,$(abs_srcdir)/%,$(INSTALL_HDR))
 
-.PHONY: in_tree_include include/aesop
-
-in_tree_include: include/aesop
-
-include/aesop:
+include/aesop/.done:
 	mkdir -p include/aesop
 	for hdr in $(INSTALL_HDR_SRC); do \
 		ln -s $$hdr include/aesop 2> /dev/null; \
 	done
+	touch include/aesop/.done
 
 install:: all
 	install -d $(bindir)
 	install -d $(libdir)
 	install -d $(includedir)
+	install -m 755 parser/ae-blocking-parser $(bindir)
 	install -m 755 bin/aecc $(bindir)
 	install -m 755 bin/aecc-utils $(bindir)
 	install -m 644 lib/libaesop.* $(libdir)

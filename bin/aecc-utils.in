@@ -1,11 +1,21 @@
 
-SRCDIR=@SRC_RELATIVE_TOP@
-BUILDDIR=@BUILD_ABSOLUTE_TOP@
+# find the location of this aecc script
+DIR="$( cd "$( dirname "$0" )" && pwd )"
+AECC_CFLAGS="@AECC_CFLAGS@ -I$DIR/../include"
 
-AEPARSER=${BUILDDIR}/parser/ae-blocking-parser
-AERPARSER=${BUILDDIR}/parser/ae-remote-parser
-AESRCDIR=${SRCDIR}/src/aesop
+# the parsers can be in one of two locations; either in the same directory
+# as this script (if the tools have been installed) or in the ../parser
+# directory (if we are building in tree)
 
+if [ -x ${DIR}/ae-blocking-parser ]; then
+    AEPARSER=${DIR}/ae-blocking-parser
+elif [ -x ${DIR}/../parser/ae-blocking-parser ]; then
+    AEPARSER=${DIR}/../parser/ae-blocking-parser
+else
+    echo Unable to find ae-blocking-parser
+    exit 1
+fi
+    
 SPACES="                                                      "
 optind=0
 
@@ -514,31 +524,23 @@ runCmd()
     rm ${compilerout}
 }
 
-# doCPP <verbose> <compiler> <input> <output> <gendeps> <named outfile> <just cpp> [<compiler opts>]
+# doCPP <verbose> <compiler> <input> <output> <named outfile> <just cpp> [<compiler opts>]
 doCPP()
 {
     verbose="$1" ; shift
     ccpath="$1" ; shift
     cppinput="$1" ; shift
     cppout="$1" ; shift
-    gendeps="$1" ; shift
     namedoutfile="$1" ; shift
     precompile="$1" ; shift
     ccopts=$@
-    
-    depargs=""
-    if test "${gendeps}" = "yes"; then
-        depoutsrc=$(echo "${cppinput}" | sed -e "s|$|.d|")
-        depout=$(echo "${depoutsrc}" | sed -e "s|^${SRCDIR}|${BUILDDIR}|")
-        depargs="-MMD -MF ${depout} -MT ${namedoutfile}"
-    fi
 
     jcppopt="-E"
     if test "${precompile}" = "yes"; then
         jcppopt="-D__blocking='' -Dpbranch='' -Dpwait='' -Dpbreak=''"
     fi
     runCmd $verbose "Preprocessing step failed:" \
-           "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${ccopts} ${cppinput} ${depargs}"
+           "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${AECC_CFLAGS} ${ccopts} ${cppinput}"
     return $?
 } 
 
@@ -560,7 +562,7 @@ parseAesopSource()
     fi
     
     runCmd $verbose "Aesop parsing step failed: " \
-           "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- -I${AESRCDIR} ${compileropts}"
+           "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${AECC_CFLAGS} ${compileropts}"
     return $?
 }
 
@@ -582,7 +584,7 @@ parseAesopHeader()
     fi
 
     runCmd $verbose "Aesop header parsing failed: " \
-           "${AEPARSER} -c ${compiler} -j ${popts} -r ${namedinput} -o ${output} -i ${input} -- -I${AESRCDIR} ${compileropts}"
+           "${AEPARSER} -c ${compiler} -j ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${AECC_CFLAGS} ${compileropts}"
     return $?
 }
     
@@ -627,7 +629,7 @@ parseRemoteSource()
     done
 
     runCmd $verbose "Aesop remote parsing failed: " \
-           "${AERPARSER} ${serviceopts} ${regopts} -c ${compiler} ${popts} ${namedopt} ${outopt} ${inputopt} -- -I${AESRCDIR} ${compileropts}"
+           "${AERPARSER} ${serviceopts} ${regopts} -c ${compiler} ${popts} ${namedopt} ${outopt} ${inputopt} -- ${AECC_CFLAGS} ${compileropts}"
     return $?
 }
 
@@ -644,6 +646,6 @@ doCompile()
     fi
 
     runCmd $verbose "Compilation step failed: " \
-           "${compiler} -x c -c -o ${outfile} ${compileropts} ${infile}"
+           "${compiler} -x c -c -o ${outfile} ${AECC_CFLAGS} ${compileropts} ${infile}"
     return $?
 }
