@@ -55,7 +55,7 @@ struct ae_resource
 {
     const char *resource_name;
     int (*test)(ae_op_id_t id, int ms_timeout);
-    int (*poll_context)(ae_context_t context);
+    int (*poll_context)(ae_context_t context, void *user_data);
     int (*cancel)(ae_context_t ctx, ae_op_id_t id);
     int (*register_context)(ae_context_t context);
     int (*unregister_context)(ae_context_t context);
@@ -78,6 +78,7 @@ int ae_resource_init_all(void);
 /* Called by resources to register themselves to the resource framework once
  * they are initialized and ready for use by aesop */
 int ae_resource_register(struct ae_resource *resource, int *newid);
+int ae_resource_register_with_data(struct ae_resource *resource, int *newid, void *user_data);
 void ae_resource_unregister(int resource_id);
 
 /* Called by resources to request polling from the event loop */

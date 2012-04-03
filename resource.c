@@ -16,8 +16,9 @@
 struct ae_poll_data
 {
     ev_async async;
-    int (*poll_context)(ae_context_t context);
+    int (*poll_context)(ae_context_t context, void *user_data);
     ae_context_t context;
+    void *user_data;
 };
 
 /* data structures and tables used to track information for
@@ -87,7 +88,7 @@ static void ev_async_cb(EV_P_ ev_async *w, int revents)
         (struct ae_poll_data*)(((char*)w)-offsetof(struct ae_poll_data, async));
 
     assert(poll_data->poll_context);
-    ret = poll_data->poll_context(poll_data->context);
+    ret = poll_data->poll_context(poll_data->context, poll_data->user_data);
     /* TODO: error handling? */
     aesop_error_assert(ret);
     
@@ -132,6 +133,12 @@ int ae_resource_init_register(const char* resource_name,
 
 int ae_resource_register(struct ae_resource *resource, int *newid)
 {
+    return ae_resource_register_with_data(resource, newid, NULL);
+}
+
+int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
+                                   void *user_data)
+{
     int reindex = ae_resource_count;
     int ret;
 
@@ -156,6 +163,7 @@ int ae_resource_register(struct ae_resource *resource, int *newid)
     ae_resource_entries[reindex].poll_data.poll_context =
         resource->poll_context;
     ae_resource_entries[reindex].poll_data.context = NULL;
+    ae_resource_entries[reindex].poll_data.user_data = user_data;
     ev_async_start(eloop, &ae_resource_entries[reindex].poll_data.async);
 
     ae_resource_entries[reindex].id = AE_RESOURCE_IDX2ID(reindex);
@@ -627,6 +635,8 @@ int _ae_context_create(ae_context_t *context, const char *format __attribute__((
                 c->poll_data[reindex].poll_context = 
                     ae_resource_entries[j].poll_data.poll_context;
                 c->poll_data[reindex].context = c;
+                c->poll_data[reindex].user_data = 
+                    ae_resource_entries[j].poll_data.user_data;
 
                 if(ae_resource_entries[j].resource->register_context)
                 {

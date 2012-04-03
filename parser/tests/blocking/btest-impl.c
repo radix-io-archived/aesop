@@ -338,7 +338,7 @@ static struct btest_op * poll_list(ae_ops_t *list, int *more)
    return NULL;
 }
 
-static int btest_poll(ae_context_t context)
+static int btest_poll(ae_context_t context, void *user_data)
 {
    int more, request;
    struct btest_op *b;

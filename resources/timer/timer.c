@@ -111,7 +111,7 @@ ae_define_post(int, aesop_timer, int millisecs)
     return AE_SUCCESS;
 }
 
-static int aesop_timer_poll(ae_context_t context)
+static int aesop_timer_poll(ae_context_t context, void *arg)
 {
     struct ae_op *op;
     struct ae_op *op_head;
