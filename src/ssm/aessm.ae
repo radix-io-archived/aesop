@@ -223,7 +223,7 @@ __blocking int aessm_unlink(ssm_me_id me_id, ssm_evt_p evt_id)
     rb_slot_destroy(&cb_dt->slot1);
     rb_slot_destroy(&cb_dt->slot2);
 
-    free(cb_id);
+    ssm_cb_delete(cb_id);
     free(cb_dt);
 
     return rc;
