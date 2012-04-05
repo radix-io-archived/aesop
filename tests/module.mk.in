@@ -1,7 +1,8 @@
 DIR := tests
 
 AETESTSRC += $(DIR)/test-hints.ae
-
 AETESTSRC += $(DIR)/blocking-overhead.ae
+
+TESTSRC += $(DIR)/resource-register.c
 
 
