@@ -46,7 +46,7 @@ struct ae_resource_entry
 };
 
 static int ae_resource_count = 0;
-static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES];
+static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES]; 
 static struct ev_loop *eloop = NULL;
 ev_async eloop_breaker;
 static pthread_t ev_loop_thread;
@@ -139,8 +139,21 @@ int ae_resource_register(struct ae_resource *resource, int *newid)
 int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
                                    void *user_data)
 {
-    int reindex = ae_resource_count;
+    int reindex = -1;
     int ret;
+    int i;
+
+    if(ae_resource_count == 0)
+    {
+        /* No resources are registered. Make sure that the
+         * resource array is in a valid initial configuration.
+         */
+        for(i=0; i<MAX_RESOURCES; i++)
+        {
+            memset(&ae_resource_entries[i], 0, sizeof(ae_resource_entries[i]));
+            ae_resource_entries[i].id = -1;
+        }
+    }
 
     ev_loop_thread = pthread_self();
     if(eloop == NULL)
@@ -158,6 +171,17 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
     {
 	return AE_ERR_INVALID;
     }
+
+    /* find a free entry */
+    for(i=0; i<AE_MAX_RESOURCES; i++)
+    {
+        if(ae_resource_entries[i].id == -1)
+        {
+            reindex = i;
+            break;
+        }
+    }
+    assert(reindex > -1 && reindex < MAX_RESOURCES);
 
     ev_async_init(&ae_resource_entries[reindex].poll_data.async, ev_async_cb);
     ae_resource_entries[reindex].poll_data.poll_context =
@@ -184,12 +208,9 @@ void ae_resource_unregister(int id)
      */
     ev_async_stop(eloop, &ae_resource_entries[idx].poll_data.async);
 
-    if(idx != (ae_resource_count -1))
-    {
-	/* this is not the last resource in the table; shift everything down */
-	memmove(&ae_resource_entries[idx], &ae_resource_entries[idx+1],
-		(sizeof(struct ae_resource_entry) * (ae_resource_count-idx-1)));
-    }
+    memset(&ae_resource_entries[idx], 0, sizeof(ae_resource_entries[idx]));
+    ae_resource_entries[idx].id = -1;
+
     ae_resource_count--;
 }
 
@@ -224,7 +245,7 @@ static void find_async_watcher(ae_context_t context, int resource_id, ev_async**
     if(!async)
     {
         aesop_err("Error: context %p is not configured to handle resource with id %d", context, resource_id);
-        for(i=0; i<ae_resource_count; i++)
+        for(i=0; i<MAX_RESOURCES; i++)
         {
             if(ae_resource_entries[i].id == resource_id)
             {
@@ -368,17 +389,9 @@ int ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
     else
     {
         ridx = AE_RESOURCE_ID2IDX(resource_id);
-        if(ridx > ae_resource_count)
-        {
-            return AE_ERR_INVALID;
-        }
+        assert(ridx > -1 && ridx < MAX_RESOURCES);
 
         if(ae_resource_entries[ridx].id != resource_id)
-        {
-            return AE_ERR_INVALID;
-        }
-
-        if(ae_resource_entries[ridx].id == -1)
         {
             return AE_ERR_INVALID;
         }
@@ -627,7 +640,7 @@ int _ae_context_create(ae_context_t *context, const char *format __attribute__((
 
         /* find the matching resource and register the context with that resource */
 
-        for(j = 0; j < ae_resource_count; ++j)
+        for(j = 0; j < MAX_RESOURCES; ++j)
         {
             if(!strcmp(ae_resource_entries[j].resource->resource_name, rname))
             {
@@ -794,8 +807,11 @@ int aesop_set_config(const char* key, const char* value)
     int ret;
     struct ae_resource_config* config;
 
-    for(i=0; i<ae_resource_count; i++)
+    for(i=0; i<MAX_RESOURCES; i++)
     {
+        if(ae_resource_entries[i].id == -1)
+            continue;
+
         config = ae_resource_entries[i].resource->config_array; 
         while(config != NULL && config->name != NULL)
         {
@@ -844,8 +860,11 @@ int aesop_set_debugging(const char* resource, int value)
     }
 
     /* check for matching resources and set their debugging value */
-    for(i=0; i<ae_resource_count; i++)
+    for(i=0; i<MAX_RESOURCES; i++)
     {
+        if(ae_resource_entries[i].id == -1)
+            continue;
+
         if(!strcmp(ae_resource_entries[i].resource->resource_name, resource))
         {
             ae_resource_entries[i].debug = value;
