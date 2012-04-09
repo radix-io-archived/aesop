@@ -7,7 +7,7 @@
 #include "aesop.h"
 #include "ae-error.h"
 #include "resources/resourcebuilder/resourcebuilder.hae"
-#include "aessm.hae"
+#include "src/ssm/aessm.hae"
 
 #include "ssm.h"
 #include "ssmdef.h"
@@ -535,7 +535,7 @@ __blocking int aessm_wait (ssm_me_id me_id, ssm_evt_p evt_id)
 }
 
 /*
- * Function: aessm_poll
+ * Function: aessm_thread
  *   This function calls ssm_wait in a loop from a dedicated thread.
  *
  * Parameters:
@@ -544,7 +544,7 @@ __blocking int aessm_wait (ssm_me_id me_id, ssm_evt_p evt_id)
  * Returns:
  *   nothing.
  */
-static void * aessm_poll (void *arg)
+static void * aessm_thread (void *arg)
 {
     struct timeval tv;
     aessm_t *aessm_id;
@@ -565,16 +565,58 @@ static void * aessm_poll (void *arg)
 }
 
 /*
+ * Function: aessm_poll
+ *   This function is intended to be called by the aesop poller.
+ *
+ * Parameters:
+ *   context - aesop internal context
+ *   user_data - data provided in ae_resource_register
+ *
+ * Returns:
+ *   AE_SUCCESS - poll was successful
+ */
+static int aessm_poll (ae_context_t context, void *user_data)
+{
+    struct timeval tv;
+    int            rc;
+    aessm_t        *aessm_id;
+
+    tv.tv_sec  = 0;
+    tv.tv_usec = 0;
+
+    aessm_id = (aessm_t*) user_data;
+
+    if (aessm_id->ssm == NULL) return AE_SUCCESS;
+
+    rc = ssm_wait(aessm_id->ssm, &tv);
+    assert(rc >= 0);
+
+    ae_resource_request_poll(context, aessm_id->resource_id);
+
+    return AE_SUCCESS;
+}
+
+/*
+ * Used for polling mode
+ */
+static struct ae_resource aessm_resource =
+{
+    .resource_name = "aessm",
+    .poll_context  = aessm_poll
+};
+
+/*
  * Function: aessm_initialize
  *   Initialize an SSM context, spawns a thread to push ssm_poll.
  *
  * Parameters:
  *   aessm_id - container for aessm data
+ *   mode - progress mode AESSM_MODE_THREAD, AESSM_MODE_POLL
  *
  * Returns:
  *   AE_SUCCESS - on success
  */
-int aessm_initialize (aessm_t *aessm_id)
+int aessm_initialize (aessm_t *aessm_id, aessm_progress_mode_t mode)
 {
     ssmp_localmem_init_id id;
     ssm_net_proc np;
@@ -591,9 +633,24 @@ int aessm_initialize (aessm_t *aessm_id)
     aessm_id->laddr_id = la;
     aessm_id->ssm = ssm_start(np, la, fl, NULL);
     aessm_id->state = 1;
+    aessm_id->mode = mode;
 
-    rc = pthread_create(&aessm_id->thread_id, NULL, aessm_poll, aessm_id);
-    assert(rc == 0);
+    if (mode == AESSM_MODE_THREAD)
+    {
+        rc = pthread_create(&aessm_id->thread_id, NULL, aessm_thread, aessm_id);
+        assert(rc == 0);
+    }
+    else if (mode == AESSM_MODE_POLL)
+    {
+        ae_resource_register_with_data(&aessm_resource,
+                                       &aessm_id->resource_id,
+                                       aessm_id);
+        ae_resource_request_poll(NULL, aessm_id->resource_id);
+    }
+    else
+    {
+        assert(0);
+    }
 
     return AE_SUCCESS;
 }
@@ -611,9 +668,22 @@ int aessm_initialize (aessm_t *aessm_id)
 int aessm_finalize (aessm_t *aessm_id)
 {
     aessm_id->state = 0;
-    pthread_join(aessm_id->thread_id, NULL);
+
+    if (aessm_id->mode == AESSM_MODE_THREAD)
+    {
+        pthread_join(aessm_id->thread_id, NULL);
+    }
+    else if (aessm_id->mode == AESSM_MODE_POLL)
+    {
+        ae_resource_unregister(aessm_id->resource_id);
+    }
+    else
+    {
+        assert(0);
+    }
 
     ssm_stop(aessm_id->ssm);
+    aessm_id->ssm = NULL;
     SSM_DELETE(aessm_id->laddr_id);
 
     return AE_SUCCESS;
