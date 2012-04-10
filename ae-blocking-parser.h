@@ -47,13 +47,11 @@
     struct __fname##_ctl *__ae_ctl_done __unused__;    \
                                                        \
     __ae_ctl = (struct __fname##_ctl *)__ae_ptr;       \
-    /* Don't know why lock was here: manipulating */   \
-    /* variables local to this code block ... */       \
     state = AE_CTL_CALL_COMPLETE;                      \
-    /* triton_mutex_lock(&__ae_ctl->gen.mutex);  */        \
+    triton_mutex_lock(&__ae_ctl->gen.mutex);           \
     ae_op_id_clear(__ae_ctl->gen.current_op_id);       \
-    /* triton_mutex_unlock(&__ae_ctl->gen.mutex); */
- 
+    triton_mutex_unlock(&__ae_ctl->gen.mutex);
+
 #define AE_MK_CB_FN_INVOKE_WORKER(__bfun, __fname, __pos_str) \
     cbret = __ae_worker_##__bfun(__ae_ctl, &state);           \
     if(cbret != AE_SUCCESS)                                   \
