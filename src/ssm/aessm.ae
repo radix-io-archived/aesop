@@ -134,7 +134,7 @@ static void aessm_callback (void *cbdata, void *evdata)
  *   A standard callback is associated with all ssm operations.
  *   This callback handles waking up the correct blocking functions.
  */
-int aessm_link (ssm_id ssm,
+int aessm_link (aessm_t *aessm,
                 ssm_flags16 flags,
                 ssm_match_bits match_bits,
                 ssm_match_bits mask_bits,
@@ -164,7 +164,7 @@ int aessm_link (ssm_id ssm,
         return AE_ERR_SYSTEM;
     }
 
-    *me_id = ssm_link (ssm, flags, match_bits, mask_bits,
+    *me_id = ssm_link (aessm->ssm, flags, match_bits, mask_bits,
                        data_iovec, pos, anchor, cb_id);
     if (*me_id == SSM_ME_NONE)
     {

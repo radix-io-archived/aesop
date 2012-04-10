@@ -37,7 +37,7 @@ __blocking int test_put(void)
     iovec1.len  = sizeof(data1);
     iovec1.next = NULL;
 
-    rc1 = aessm_link (ssm1.ssm,
+    rc1 = aessm_link (&ssm1,
                       0,
                       0x1234,
                       0, 
@@ -82,7 +82,7 @@ __blocking int test_put(void)
             rc2 = aessm_initialize(&ssm2, AESSM_MODE_POLL);
             assert(rc2 == AE_SUCCESS);
 
-            rc2 = aessm_link (ssm2.ssm,
+            rc2 = aessm_link (&ssm2,
                               SSM_ME_SEND_ONLY,
                               0x1234,
                               0, 
@@ -143,7 +143,7 @@ __blocking int test_get (void)
     iovec1.len  = sizeof(data1);
     iovec1.next = NULL;
 
-    rc1 = aessm_link (ssm1.ssm,
+    rc1 = aessm_link (&ssm1,
                       0,
                       0x1234,
                       0, 
@@ -188,7 +188,7 @@ __blocking int test_get (void)
             rc2 = aessm_initialize(&ssm2, AESSM_MODE_POLL);
             assert(rc2 == AE_SUCCESS);
 
-            rc2 = aessm_link (ssm2.ssm,
+            rc2 = aessm_link (&ssm2,
                               //SSM_ME_SEND_ONLY, // this should work?
                               0,
                               0x1234,
@@ -240,7 +240,7 @@ __blocking int test_msg (void)
     rc1 = aessm_initialize(&ssm1, AESSM_MODE_POLL);
     assert(rc1 == AE_SUCCESS);
 
-    rc1 = aessm_link (ssm1.ssm,
+    rc1 = aessm_link (&ssm1,
                       0,
                       0x1234,
                       0, 
@@ -285,7 +285,7 @@ __blocking int test_msg (void)
             rc2 = aessm_initialize(&ssm2, AESSM_MODE_POLL);
             assert(rc2 == AE_SUCCESS);
 
-            rc2 = aessm_link (ssm2.ssm,
+            rc2 = aessm_link (&ssm2,
                               SSM_ME_SEND_ONLY,
                               0x1234,
                               0,
@@ -354,7 +354,7 @@ __blocking int test_ping (void)
             rc2 = aessm_initialize(&ssm2, AESSM_MODE_POLL);
             assert(rc2 == AE_SUCCESS);
 
-            rc2 = aessm_link (ssm2.ssm,
+            rc2 = aessm_link (&ssm2,
                               //SSM_ME_SEND_ONLY,
                               0,
                               0,

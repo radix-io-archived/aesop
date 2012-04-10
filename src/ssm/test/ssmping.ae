@@ -45,7 +45,7 @@ static __blocking int test_main (int argc, char **argv)
             rc2 = aessm_initialize(&ssm2, AESSM_MODE_THREAD);
             assert(rc2 == AE_SUCCESS);
 
-            rc2 = aessm_link (ssm2.ssm,
+            rc2 = aessm_link (&ssm2,
                               //SSM_ME_SEND_ONLY,
                               0,
                               0,

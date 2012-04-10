@@ -30,7 +30,7 @@ typedef struct aessm_s
 int aessm_initalize (aessm_t *aessm_id, aessm_progress_mode_t mode);
 int aessm_finalize (aessm_t *aessm_id);
 
-int aessm_link (ssm_id ssm, ssm_flags16 flags,
+int aessm_link (aessm_t *aessm, ssm_flags16 flags,
                 ssm_match_bits match_bits, ssm_match_bits mask_bits,
                 ssm_iovec_p data_iovec, ssm_me_pos pos, ssm_me_id anchor,
                 uint64_t count, ssm_me_id *me);
