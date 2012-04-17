@@ -19,6 +19,12 @@ enum ae_ctl_state
 {
     /* inputs for worker functions */
     AE_CTL_START = 1,
+
+    /**
+     * AE_CTL_CALL_COMPLETE indicates that a blocking call made from within
+     * this blocking function completed, and that execution can continue at
+     * the label specified in __ae_ctl->gen.state_label.
+     */
     AE_CTL_CALL_COMPLETE = 1 << 1,
 
     /* outputs from worker functions */
@@ -34,9 +40,9 @@ enum ae_ctl_state
 enum ae_pbranch_state
 {
     AE_PBRANCH_NULL = 0,
-    AE_PBRANCH_INIT = 1,
-    AE_PBRANCH_INPROGRESS = 2,
-    AE_PBRANCH_DONE = 3
+    AE_PBRANCH_INIT,
+    AE_PBRANCH_INPROGRESS,
+    AE_PBRANCH_DONE
 };
 
 /**
@@ -45,8 +51,8 @@ enum ae_pbranch_state
 enum ae_pwait_command
 {
     AE_PWAIT_NONE = 0,
-    AE_PWAIT_CONTINUE = 1,
-    AE_PWAIT_YIELD = 2
+    AE_PWAIT_CONTINUE,
+    AE_PWAIT_YIELD
 };
 
 #define ae_pwait_command_string(__cmd)                                \
