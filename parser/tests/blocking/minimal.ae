@@ -1,0 +1,88 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+
+#include <aesop/aesop.h>
+
+struct ReturnType {};
+
+struct ExampleFunctionParam {};
+
+__blocking struct ReturnType empty_blocking (struct ExampleFunctionParam param)
+{
+   struct ReturnType my_example_return_param;
+   return my_example_return_param;
+}
+
+__blocking int single_blocking_call (double in)
+{
+   struct ExampleFunctionParam my_example_function_param;
+   empty_blocking (my_example_function_param);
+   return 0;
+}
+
+__blocking int empty_pwait (double in)
+{
+   int dummyvar = 0;
+   pwait
+   {
+      int my_pwait_shared_param = 0;
+   }
+   return 0;
+}
+
+
+
+__blocking double blocking (double in)
+{
+   int my_blocking_func_dummy = 0;
+   pwait
+   {
+      pbranch
+      {
+         int my_pbranch1_private = 1;
+         assert ("in pbranch 1");
+      }
+      pbranch
+      {
+         assert ("in pbranch 2");
+      }
+   }
+   return 0;
+}
+
+
+
+
+__blocking int aesop_main(int argc, char **argv)
+{
+   int i = 0;
+   double d;
+
+   i=i+1;
+
+   // d = blocking (1);
+
+
+   if (i == 0)
+      return 1;
+
+   i=i+2;
+
+   return 0;
+}
+
+aesop_main_set(aesop_main);
+
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
