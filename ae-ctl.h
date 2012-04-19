@@ -124,8 +124,12 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     triton_list_init(&ctl->children);
     OPA_store_int (&ctl->refcount, 1);
     ae_op_id_clear(ctl->current_op_id);
-    if(internal) ctl->parent = (struct ae_ctl *)user_ptr;
-    else ctl->parent = NULL;
+
+    if (internal)
+        ctl->parent = (struct ae_ctl *)user_ptr;
+            else
+        ctl->parent = NULL;
+
     ctl->spec_ctl = fctl;
 }
 
