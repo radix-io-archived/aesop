@@ -23,7 +23,16 @@
 #define AE_GET_RESOURCE_MASK(resource_id) (AE_RESOURCE_MASK&(((uint64_t)resource_id)<<56))
 #define AE_GET_RESOURCE_ID(op_id) (((op_id&AE_RESOURCE_MASK)>>56)&0xFF)
 
-
+/**
+ * The post function should:
+ *    - return AE_IMMEDIATE_COMPLETION
+ *        and set *__ae_retval to the return of the functino.
+ *    - return AE_SUCCESS
+ *        and set *__ae_op_id to the opid of the posted operation
+ *    - return an error
+ *
+ *  __ae_user_ptr will point to the ctl of the caller.
+ */
 #define ae_define_post(__ret_type, __fname, __fargs...)                    \
     int __fname(void (*__ae_callback)(void *ptr, __ret_type ret), \
                          void *__ae_user_ptr,                              \
