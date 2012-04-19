@@ -86,6 +86,11 @@ struct ae_resource_config
 
 /* The resource structure is defined by a given resource, and registered
  * to the aesop management code during resource initialization.
+ *
+ * The cancel function should cancel asynchronously;
+ *   it cannot block until the operation was cancelled.
+ *   it (might) be OK to call the callback from the cancel function
+ *        (not sure for now) -- probably best to avoid it.
  */
 struct ae_resource
 {
