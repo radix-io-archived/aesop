@@ -776,6 +776,17 @@ int ae_cancel_branches(struct ae_ctl *ctl)
     assert(!error);
 
     context = ctl->context;
+
+    /*
+     * TODO: Check:
+     *   isn't it possible here for the child to disappear while the parent
+     *   ctl is locked? (i.e. and this function returns an invalid child?)
+     *
+     *  - pbranch start/stop locks parent ctl first, so we should be good
+     *  there?
+     */
+
+    /** Increases refcount for all of the children */
     children_ids = ae_children_get(context, ctl, &count);
 
     error = triton_mutex_unlock(&ctl->mutex);
@@ -790,6 +801,7 @@ int ae_cancel_branches(struct ae_ctl *ctl)
             return ret;
         }
     }
+    /** Decrements refcount for all of the specified ids */
     ae_children_put(children_ids, count);
     return AE_SUCCESS;
 }
