@@ -195,9 +195,11 @@ static inline void ae_ctl_pwait_start(struct ae_ctl *ctl)
 
 static inline void ae_ctl_lone_pbranch_start(struct ae_ctl *ctl)
 {
+    /* the lonely pbranch takes over the cancelled state from the parent */
     triton_list_link_clear(&ctl->link);
     ae_lone_pbranches_add(ctl);
-    /* parent context disappears, we need to copy the hint */
+    /* parent context disappears, we need to copy the hint
+     *   ^^^ is this correct? parent ref is incremented? */
     ae_hints_dup(ctl->parent->hints, &ctl->hints);
     ae_ctl_refinc(ctl->parent);
 }
