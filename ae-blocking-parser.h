@@ -230,12 +230,20 @@ __ae_blocking_function_done:     \
     goto __ae_blocking_function_done;         \
 }
 
+
+/**
+ * We lock the ctl structure before posting an operation to make sure
+ * that a cancel request cannot proceed while we're posting a function in this
+ * context.
+ */
 #define AE_MK_WORKER_BEFORE_POST(__fname, __bcall, __pos_str) \
     __fname##_##__bcall##_##__pos_str##_before_label:         \
     __ae_ctl->gen.state_label =                               \
-        &&__fname##_##__bcall##_##__pos_str##_after_label;
+        &&__fname##_##__bcall##_##__pos_str##_after_label;    \
+    triton_mutex_lock (&__ae_ctl->gen.mutex);
 
 #define AE_MK_WORKER_AFTER_POST(__fname, __bcall, __pos_str) \
+    triton_mutex_unlock (&__ae_ctl->gen.mutex);              \
     if(__ae_postret == AE_SUCCESS)                           \
     {                                                        \
        __ae_myret = AE_SUCCESS;                              \
@@ -255,9 +263,11 @@ __ae_blocking_function_done:     \
     __ae_ctl->gen.state_label =                                                             \
         &&__fname##_##__bcall##_##__pos_str##_after_label;                                  \
     ae_debug_pbranch("ctl_addref: before post: %p\n", __ae_ctl);                            \
-    ae_ctl_addref(&__ae_ctl->gen);
+    ae_ctl_addref(&__ae_ctl->gen); \
+    triton_mutex_lock (&__ae_ctl->gen.mutex);
 
 #define AE_MK_WORKER_AFTER_POST_IN_PBRANCH(__fname, __bcall, __pos_str, __pbranch_pos_str) \
+   triton_mutex_unlock (&__ae_ctl->gen.mutex); \
    if(__ae_postret == AE_SUCCESS)                                                          \
    {                                                                                       \
        *__ae_state |= AE_CTL_POST_SUCCESS;                                                 \
