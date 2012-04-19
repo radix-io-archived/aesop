@@ -722,6 +722,35 @@ int ae_context_destroy(ae_context_t context)
     return AE_SUCCESS;
 }
 
+/**
+ * Set the cancel flag for this ae_ctl and all of its child ae_ctl.
+ */
+void ae_cancel_ctl (struct ae_ctl * ctl);
+
+void ae_cancel_ctl (struct ae_ctl * ctl)
+{
+   triton_mutex_lock (&ctl->mutex);
+
+   ctl->cancelled = 1;
+
+   /* since this ctl is locked, we know that no pbranch can start/stop while
+    * we have the lock (and thus no children created).
+    */
+   struct triton_list_link * entry;
+   struct triton_list_link * safe;
+
+   triton_list_for_each (entry, safe, &ctl->children)
+   {
+      struct ae_ctl * child_ctl = triton_list_get_entry(entry,
+            struct ae_ctl, link);
+      ae_cancel_ctl (child_ctl);
+   }
+   triton_mutex_unlock (&ctl->mutex);
+}
+
+/**
+ * This function is called with the ctl structure of parent of the pwait.
+ */
 int ae_cancel_branches(struct ae_ctl *ctl)
 {
     int ret;
@@ -730,6 +759,8 @@ int ae_cancel_branches(struct ae_ctl *ctl)
     ae_context_t context;
 
     ae_debug_cancel("ae_cancel_branches: %p\n", ctl);
+
+    ae_cancel_ctl (ctl);
 
     if(!ctl)
     {

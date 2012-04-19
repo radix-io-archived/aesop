@@ -34,6 +34,33 @@
                          __ret_type *__ae_retval,                          \
                          ##__fargs)
 
+
+/**
+ * Check if the current control structure has the cancelled state.
+ * This function is meant to be used from within a resource post call
+ * to check if the function should fail immediately.
+ *
+ * This function assumes that, within a resource post call,
+ * __ae_user_ptr points to the ctl structure of the caller.
+ *
+ * Should be true as long as __ae_internal is set to true?
+ */
+#define ae_resource_is_cancelled() ((struct ae_ctl *) __ae_user_ptr)->cancelled
+
+
+/**
+ * This function can be called from within a blocking function to clear the
+ * cancelled state.
+ * It should not be called from within a pbranch (but it should work there as
+ * well).
+ */
+static inline void ae_clear_cancel (struct ae_ctl * ctl)
+{
+   triton_mutex_lock (&ctl->mutex);
+   ctl->cancelled = 0;
+   triton_mutex_unlock (&ctl->mutex);
+}
+
 int ae_check_debug_flag(int resource_id);
 
 #define ae_debug(__resource_id, __format, ...) \

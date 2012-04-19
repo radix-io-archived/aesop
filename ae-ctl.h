@@ -66,6 +66,9 @@ typedef struct ae_context *ae_context_t;
  * nested operations.  This structure is not needed by resource writers or aesop
  * code.
  * TODO: move these to a separate header
+ *
+ * The cancelled field needs to be in here since it is accessed from the
+ * resources, at which point the function might or might not be in a pbranch.
  */
 struct ae_ctl
 {
@@ -84,6 +87,7 @@ struct ae_ctl
     ae_hints_t *hints;
     ae_context_t context;
     OPA_int_t refcount;
+    int cancelled;
 };
 
 /**
@@ -107,6 +111,7 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     ctl->completed = 0;
     ctl->allposted = 0;
     ctl->in_pwait = 0;
+    ctl->cancelled = 0;
 
     /* by default, we just set the hints pointer, assuming the lifetime
      * of the hint pointer passed in will live for the entire blocking call
@@ -202,13 +207,24 @@ static inline void ae_ctl_lone_pbranch_done(struct ae_ctl *ctl, enum ae_ctl_stat
     *state |= AE_CTL_LONE_PBRANCH_DONE;
 }
 
+/**
+ * First locking the parent makes sure that no pbranches can start or stop
+ * while the parent is locked.
+ */
 static inline void ae_ctl_pbranch_start(struct ae_ctl *ctl)
 {
-    ae_hints_dup(ctl->parent->hints, &ctl->hints);
     triton_mutex_lock(&ctl->parent->mutex);
+
+    ae_hints_dup(ctl->parent->hints, &ctl->hints);
+
+    /* take over cancelled status from parent, in case we're creating a branch
+     * at the same time a cancel is ongoing */
+    ctl->cancelled = ctl->parent->cancelled;
+
     ctl->parent->posted++;
     triton_list_link_clear(&ctl->link);
     triton_list_add_back(&ctl->link, &ctl->parent->children);
+
     triton_mutex_unlock(&ctl->parent->mutex);
 }
 

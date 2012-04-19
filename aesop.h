@@ -65,9 +65,11 @@ int ae_count_branches(struct ae_ctl *ctl);
 #ifdef AESOP_PARSER
 #define aesop_cancel_branches() ae_cancel_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
 #define aesop_count_branches() ae_count_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
+#define aesop_clear_cancel () ae_clear_cancel (__ae_ctl ? &__ae_ctl->gen : NULL)
 #else
 static inline int aesop_cancel_branches(void) { return AE_ERR_SYSTEM; }
 static inline int aesop_count_branches(void) { return -1; }
+static inline void aesop_clear_cancel(void) { }
 #endif
 
 /* Set this to zero to cause the main_set macros to busy spin on ae_poll(),
