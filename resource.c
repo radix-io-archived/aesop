@@ -433,6 +433,10 @@ ae_op_id_t ae_id_gen(int resource_id, intptr_t ptr)
     return newid;
 }
 
+/**
+ * Returns the resouce ID of the op in *resource_id, and the user data as the
+ * return of the function.
+ */
 intptr_t ae_id_lookup(ae_op_id_t id, int *resource_id)
 {
     if(resource_id) *resource_id = id.u;
