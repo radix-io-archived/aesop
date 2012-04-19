@@ -295,7 +295,7 @@ __ae_blocking_function_done:     \
     __ae_ctl->return_params.__bcall##_##__pos_str##_ret;
 
 #define AE_MK_WORKER_PBRANCH_DECLS(__fname, __pbranch_pos_str) \
-    enum ae_pbranch_state __ae_pbranch_##__pbranch_pos_str##_state;
+    enum ae_pbranch_state __ae_pbranch_##__pbranch_pos_str##_state = 0;
 
 #define AE_MK_WORKER_PBRANCH_START_STMTS(__fname, __pwait_pos_str, __pbranch_pos_str) \
 __ae_pbranch_##__pbranch_pos_str##_start:                                             \
