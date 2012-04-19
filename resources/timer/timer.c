@@ -59,6 +59,12 @@ ae_define_post(int, aesop_timer, int millisecs)
     struct ae_op *iter, *safe, *holder;
     struct timer_op *timer_op_iter;
 
+    if (ae_resource_is_cancelled ())
+    {
+       *__ae_retval = -ECANCELED;
+       return AE_IMMEDIATE_COMPLETION;
+    }
+
     assert(timer_opcache);
 
     op = ae_opcache_get(timer_opcache);
@@ -66,6 +72,7 @@ ae_define_post(int, aesop_timer, int millisecs)
 
     top = ae_op_entry(op, struct timer_op, op);
     top->op_id = ae_id_gen(aesop_timer_resource_id, (uintptr_t) op);
+
     top->ret = 0;
     top->milliseconds = millisecs;
 

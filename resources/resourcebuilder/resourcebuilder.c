@@ -187,6 +187,12 @@ void rb_slot_destroy (rb_slot_t * slot)
 
 ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
 {
+   if (ae_resource_is_cancelled ())
+   {
+      *__ae_retval = AE_ERR_CANCELLED;
+      return AE_IMMEDIATE_COMPLETION;
+   }
+
 #ifdef RB_NO_OPA
    int ret;
    int aret;

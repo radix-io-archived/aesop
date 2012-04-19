@@ -174,6 +174,12 @@ ae_define_post(int, aethread_hint, struct aethread_group *group)
         assert(0);
     }
 
+    if (ae_resource_is_cancelled ())
+    {
+       *__ae_retval = AE_ERR_CANCELLED;
+       return AE_IMMEDIATE_COMPLETION;
+    }
+
     op = ae_opcache_get(aethread_opcache);
     ae_op_fill(op);
 
