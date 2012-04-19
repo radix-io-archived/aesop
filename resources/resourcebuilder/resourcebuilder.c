@@ -213,6 +213,7 @@ ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
       case STATUS_EMPTY:
          ae_op_fill (&slot->op);
          slot->op_id = ae_id_gen (rb_resource_id, (uintptr_t) slot);
+         *__ae_op_id = slot->op_id;
          ret = AE_SUCCESS;
          aret = AE_SUCCESS;
          slot->status = STATUS_ARMED;
@@ -230,6 +231,7 @@ ae_define_post (int, rb_slot_capture, rb_slot_t * slot)
    /* need to do this first before changing status */
    ae_op_fill (&slot->op);
    slot->op_id = ae_id_gen (rb_resource_id, (uintptr_t) slot);
+   *__ae_op_id = slot->op_id;
 
    status = OPA_cas_int (&slot->status, STATUS_EMPTY, STATUS_ARMED);
 
