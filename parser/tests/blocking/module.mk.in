@@ -33,6 +33,7 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/pbreak6.ae \
 	      $(DIR)/pbreak7.ae \
 	      $(DIR)/pbreak8.ae \
+	      $(DIR)/pbranch-empty.ae \
 	      $(DIR)/if.ae \
 	      $(DIR)/ifnoelse.ae \
 	      $(DIR)/ifnoelse2.ae \
