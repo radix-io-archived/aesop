@@ -68,13 +68,15 @@ int aesop_init(const char* resource_list)
 
 void aesop_finalize(void)
 {
-    initialized--;
-    if(initialized == 0)
-    {
-        ae_hints_component_finalize();
-    }
+   initialized--;
 
-    return;
+   if(initialized)
+      return;
+
+   ae_resource_finalize_active ();
+   ae_hints_component_finalize();
+
+   ae_resource_cleanup ();
 }
 
 

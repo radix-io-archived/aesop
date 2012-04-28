@@ -29,6 +29,7 @@ struct ae_resource_init_data
     char* name;
     int (*init)(void);
     void (*finalize)(void);
+    unsigned int count;
 };
 #define MAX_RESOURCES 32
 static struct ae_resource_init_data ae_resource_init_table[MAX_RESOURCES];
@@ -125,11 +126,26 @@ int ae_resource_init_register(const char* resource_name,
 
     ae_resource_init_table[ae_resource_init_table_count].init = init;
     ae_resource_init_table[ae_resource_init_table_count].finalize = finalize;
+    ae_resource_init_table[ae_resource_init_table_count].finalize = finalize;
     ae_resource_init_table_count++;
 
     return(AE_SUCCESS);
 }
 
+
+static int ae_resource_init_register_cleanup (void)
+{
+   int i;
+
+   for(i=0; i<ae_resource_init_table_count; i++)
+   {
+      free (ae_resource_init_table[i].name);
+      ae_resource_init_table[i].name = 0;
+   }
+   ae_resource_init_table_count = 0;
+
+   return AE_SUCCESS;
+}
 
 int ae_resource_register(struct ae_resource *resource, int *newid)
 {
@@ -319,8 +335,10 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
 /**
  * ae_cancel_op tries to cancel the operation with the given id.  This
  * function returns AE_SUCCESS if the operation was successfully cancelled,
- * the callback for the operation is responsible for returning TRITON_ERR_CANCELLED
- * in the callback or somehow notifying through the callback that the operation was
+ * the callback for the operation is responsible for returning
+ * TRITON_ERR_CANCELLED
+ * in the callback or somehow notifying through the callback that the
+ * operation was
  * cancelled.
  */
 int ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
@@ -345,7 +363,8 @@ int ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
 	ctl = (struct ae_ctl *) tmp;
         if(!ctl)
         {
-            /* No blocking operation associated with this op_id.  Nothing to cancel. */
+            /* No blocking operation associated with this op_id.  Nothing to
+             * cancel. */
             return AE_SUCCESS;
         }
 
@@ -883,7 +902,39 @@ int ae_check_debug_flag(int resource_id)
     return(ae_resource_entries[idx].debug);
 }
 
-int ae_resource_init(const char* resource)
+static int ae_resource_init_helper (int i)
+{
+   int ret = AE_SUCCESS;
+
+   if (!ae_resource_init_table[i].count)
+   {
+      ret = ae_resource_init_table[i].init();
+      if (ret != AE_SUCCESS)
+         return ret;
+   }
+
+   ++ae_resource_init_table[i].count;
+
+   return ret;
+}
+
+static int ae_resource_finalize_helper (int i)
+{
+   int ret = AE_SUCCESS;
+
+   assert (ae_resource_init_table[i].count);
+
+   --ae_resource_init_table[i].count;
+
+   if(!ae_resource_init_table[i].count)
+   {
+      ae_resource_init_table[i].finalize();
+   }
+
+   return ret;
+}
+
+static int ae_resource_string_helper (const char* resource, int init)
 {
     int i;
 
@@ -891,30 +942,77 @@ int ae_resource_init(const char* resource)
     {
         if(!strcmp(resource, ae_resource_init_table[i].name))
         {
-            return(ae_resource_init_table[i].init());
+           if (init)
+              ae_resource_init_helper (i);
+           else
+              ae_resource_finalize_helper (i);
         }
     }
 
     return(AE_ERR_NOT_FOUND);
 }
 
-int ae_resource_init_all(void)
+static int ae_resource_all_helper (int init)
 {
     int i;
-    int ret;
+    int ret = AE_SUCCESS;
 
     for(i=0; i<ae_resource_init_table_count; i++)
     {
-        ret = ae_resource_init_table[i].init();
+        ret = (init ? ae_resource_init_helper (i) 
+                    : ae_resource_finalize_helper (i));
+
         if(ret != AE_SUCCESS)
-        {
-            return(ret);
-        }
+           break;
     }
 
-    return(AE_SUCCESS);
+    return ret;
 }
 
+int ae_resource_init (const char * s)
+{
+   return ae_resource_string_helper (s, 1);
+}
+
+int ae_resource_finalize (const char * s)
+{
+   return ae_resource_string_helper (s, 0);
+}
+
+int ae_resource_finalize_all (void)
+{
+   return ae_resource_all_helper (0);
+}
+
+int ae_resource_init_all (void)
+{
+   return ae_resource_all_helper (1);
+}
+
+int ae_resource_finalize_active (void)
+{
+    int i;
+    int ret = AE_SUCCESS;
+
+    for(i=0; i<ae_resource_init_table_count; i++)
+    {
+       while (ae_resource_init_table[i].count)
+       {
+          ret = ae_resource_finalize_helper (i);
+          if (ret != AE_SUCCESS)
+             return ret;
+       }
+    }
+
+    return ret;
+}
+
+int ae_resource_cleanup (void)
+{
+   ae_resource_init_register_cleanup ();
+   ev_async_stop (eloop, &eloop_breaker);
+   ev_default_destroy ();
+}
 
 /*
  * Local variables:

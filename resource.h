@@ -69,11 +69,25 @@ int ae_resource_init_register(const char* resource_name,
     int (*init)(void),
     void (*finalize)(void));
 
+/**
+ * Cleanup resource 
+ */
+int ae_resource_cleanup (void);
+
 /* initializes the resource named in the argument.  This function is called
  * by aesop itself when it wants to activate a resource. 
  */
 int ae_resource_init(const char* resource);
 int ae_resource_init_all(void);
+
+/**
+ * Finalize specified/all resources
+ */
+int ae_resource_finalize_all (void);
+
+int ae_resource_finalize (const char * resource);
+
+int ae_resource_finalize_active (void);
 
 /* Called by resources to register themselves to the resource framework once
  * they are initialized and ready for use by aesop */
