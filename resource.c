@@ -162,7 +162,7 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
          * event loop and start a watcher that can be used to break it's
          * execution
          */
-        eloop = EV_DEFAULT;
+        eloop = ev_default_loop (EVFLAG_AUTO);
         ev_async_init(&eloop_breaker, ev_break_cb);
         ev_async_start(eloop, &eloop_breaker);
     }
