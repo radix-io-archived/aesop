@@ -98,6 +98,10 @@ void ae_lone_pbranches_add(struct ae_ctl *ctl);
 void ae_lone_pbranches_remove(struct ae_ctl *ctl);
 int ae_lone_pbranches_count(void);
 
+/**
+ * Initialize ctl structure.
+ * Sets the reference count to 1.
+ */
 static inline void ae_ctl_init(struct ae_ctl *ctl,
                                void *fctl,
                                const char *name,
