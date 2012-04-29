@@ -135,6 +135,9 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
         ctl->parent = NULL;
 
     ctl->spec_ctl = fctl;
+
+    fprintf (stderr, "ae_ctl_init(%s) parent=(%s) ref=1\n",
+          ctl->name, ctl->parent ? ctl->parent->name : "none");
 }
 
 static inline void ae_ctl_destroy(struct ae_ctl *ctl)
@@ -156,6 +159,8 @@ static inline int ae_ctl_refinc(struct ae_ctl *ctl)
 {
     int rc;
     rc = OPA_fetch_and_incr_int (&ctl->refcount) + 1;
+    fprintf (stderr, "ae_ctl_addref(%s): new ref: %i\n",
+         ctl->name, rc);
     return rc;
 }
 
@@ -174,6 +179,8 @@ static inline int ae_ctl_refdec(struct ae_ctl *ctl)
 {
     int rc;
     rc = OPA_fetch_and_decr_int (&ctl->refcount) - 1;
+    fprintf (stderr, "ae_ctl_refdec(%s): new ref: %i\n",
+          ctl->name, rc);
     return rc;
 }
 
