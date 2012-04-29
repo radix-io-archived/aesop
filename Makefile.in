@@ -211,6 +211,15 @@ all::
 all:: subdirs
 
 
+###############################################################
+# HACK for broken .hae headers
+.PHONY: 
+headers: resources/timer/timer.h resources/resourcebuilder/resourcebuilder.h \
+   resources/thread/aethread.h parser/tests/blocking/btest.h
+
+###############################################################
+
+
 ################################################################
 # Subdir configure
 ################################################################
