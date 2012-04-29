@@ -137,9 +137,9 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     ctl->spec_ctl = fctl;
 }
 
-static inline void ae_ctl_destroy(void *tctl, struct ae_ctl *ctl)
+static inline void ae_ctl_destroy(struct ae_ctl *ctl)
 {
-    free(tctl);
+    free (ctl);
 }
 
 static inline int ae_ctl_refcount(struct ae_ctl *ctl)
@@ -161,7 +161,10 @@ static inline int ae_ctl_refinc(struct ae_ctl *ctl)
 
 static inline void ae_ctl_addref(struct ae_ctl *ctl)
 {
-    OPA_incr_int (&ctl->refcount);
+#if 0
+   OPA_incr_int (&ctl->refcount);
+#endif
+   ae_ctl_refinc (ctl);
 }
 
 /**
@@ -176,16 +179,15 @@ static inline int ae_ctl_refdec(struct ae_ctl *ctl)
 
 static inline void ae_ctl_done(struct ae_ctl *ctl)
 {
-    int refcount;
-    void *fctl = ctl->spec_ctl;
+   int refcount;
+   void *fctl = ctl->spec_ctl;
 
-
-    refcount = ae_ctl_refdec(ctl);
-    assert(refcount >= 0);
-    if(refcount == 0)
-    {
-        free(fctl);
-    }
+   refcount = ae_ctl_refdec(ctl);
+   assert(refcount >= 0);
+   if(refcount == 0)
+   {
+      ae_ctl_destroy (ctl);
+   }
 }
 
 static inline void ae_ctl_pwait_start(struct ae_ctl *ctl)
