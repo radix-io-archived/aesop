@@ -13,6 +13,11 @@
 
 #include <stdint.h>
 
+/**
+ * TODO: there's really no reason why the op structure has to be mixed in with
+ * the opcache; The link member is needed for the op_cache, and is not needed
+ * for the op.
+ */
 typedef struct ae_op
 {
     void *callback;
