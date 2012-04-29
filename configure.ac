@@ -330,6 +330,8 @@ resources/thread/module.mk
 resources/thread/test/module.mk
 resources/resourcebuilder/module.mk
 resources/resourcebuilder/test/module.mk
+resources/worker/module.mk
+resources/worker/test/module.mk
 module.mk
 tests/module.mk
 parser/module.mk
