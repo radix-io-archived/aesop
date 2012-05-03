@@ -16,6 +16,9 @@
 
 static int rb_resource_id;
 
+static triton_mutex_t rb_module_lock = TRITON_MUTEX_INITIALIZER;
+static unsigned int   rb_module_refcount = 0;
+
 enum {
        STATUS_UNINITIALIZED = 0,
        STATUS_EMPTY,
@@ -295,28 +298,60 @@ static int rb_cancel (ae_context_t rb_ctx, ae_op_id_t op_id)
        : AE_ERR_INVALID);   /* slot already completed */
 }
 
+/*
+static int rb_poll (ae_context_t context, void * user)
+{
+
+}
+*/
+
 struct ae_resource rb_resource =
 {
    .resource_name = RB_RESOURCE_NAME,
    .cancel = rb_cancel,
    .config_array = 0
+//   .poll_context = rb_poll
 };
 
 
-
-static int rb_init (void);
-
 int rb_init (void)
 {
-   return ae_resource_register (&rb_resource, &rb_resource_id);
-}
+   int ret = AE_SUCCESS;
+   triton_mutex_lock (&rb_module_lock);
 
-static void rb_finalize (void);
+   if (!rb_module_refcount)
+   {
+      ret = ae_resource_register (&rb_resource, &rb_resource_id);
+   }
+   ++rb_module_refcount;
+
+   triton_mutex_unlock (&rb_module_lock);
+
+   return ret;
+}
 
 void rb_finalize (void)
 {
-   ae_resource_unregister (rb_resource_id);
+   int ret = AE_SUCCESS;
+   triton_mutex_lock (&rb_module_lock);
+   assert (rb_module_refcount);
+
+   --rb_module_refcount;
+
+   if (!rb_module_refcount)
+   {
+       ae_resource_unregister (rb_resource_id);
+   }
+
+   triton_mutex_unlock (&rb_module_lock);
 }
+
+// ----------------------------------------------------
+// ---------- Older auto registration -----------------
+// ----------------------------------------------------
+// ---- DEPRECATED ------------------------------------
+// ----------------------------------------------------
+
 
 __attribute__((constructor)) void rb_init_register(void);
 

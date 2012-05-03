@@ -29,6 +29,18 @@ struct rb_slot_t
 
 typedef struct rb_slot_t rb_slot_t;
 
+
+/**
+ * Initialize the ResourceBuilder component.
+ */
+int rb_init (void);
+
+/**
+ * Release the ResourceBuilder component
+ */
+void rb_finalize (void);
+
+
 /**
  * Create a slot to hold the callback context.
  * Sets the private slot pointer.
