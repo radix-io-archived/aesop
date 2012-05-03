@@ -80,6 +80,17 @@ static inline ae_op_t *ae_ops_dequeue(ae_ops_t *queue)
     return ae_op_from_link(llink);
 }
 
+/**
+ * Return the ae_ops_t this op is on, NULL if not on any queue.
+ */
+static inline ae_ops_t * ae_ops_get_queue (ae_op_t * op)
+{
+   if (!op)
+      return 0;
+
+   return (ae_ops_t *) triton_list_return_list (&op->link);
+}
+
 #define ae_ops_del(_op) triton_list_del(&(_op)->link)
 #define ae_ops_empty(_ops) triton_list_empty(_ops)
 
