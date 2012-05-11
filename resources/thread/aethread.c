@@ -33,6 +33,10 @@ struct aethread_group
     ae_ops_t oplist;
     triton_list_link_t link;
 };
+
+static triton_mutex_t aethread_cancel_lock = TRITON_MUTEX_INITIALIZER;
+static ae_ops_t       aethread_cancel_queue;
+
 /* TODO: make configurable, or better yet dynamic based a runtime
  * calculation that compares typical op service times against how long it
  * takes to wake up a thread.
@@ -201,8 +205,18 @@ ae_define_post(int, aethread_hint, struct aethread_group *group)
     return AE_SUCCESS;
 }
 
-static int triton_aethread_poll(ae_context_t context, void *user_data)
+static int triton_aethread_poll(ae_context_t context, void * data)
 {
+   triton_mutex_lock (&aethread_cancel_lock);
+   while (!ae_ops_empty (&aethread_cancel_queue))
+   {
+      ae_op_t * op = ae_ops_dequeue (&aethread_cancel_queue);
+
+      triton_mutex_unlock (&aethread_cancel_lock);
+      ae_opcache_complete_op(aethread_opcache, op, int, AE_ERR_CANCELLED);
+      triton_mutex_lock (&aethread_cancel_lock);
+   }
+   triton_mutex_unlock (&aethread_cancel_lock);
     return AE_SUCCESS;
 }
 
@@ -231,7 +245,11 @@ static int triton_aethread_cancel(ae_context_t triton_ctx, ae_op_id_t op_id)
             triton_list_del(&op->link);
             aop = ae_op_entry(op, struct aethread_op, op);
             aop->ret = AE_ERR_CANCELLED;
-            ae_opcache_complete_op(aethread_opcache, op, int, AE_ERR_CANCELLED);
+
+            triton_mutex_lock (&aethread_cancel_lock);
+            ae_ops_enqueue(op, &aethread_cancel_queue);
+            triton_mutex_unlock (&aethread_cancel_lock);
+
             found = 1;
         }
         pthread_mutex_unlock(&group->pool_mutex);
@@ -241,6 +259,13 @@ static int triton_aethread_cancel(ae_context_t triton_ctx, ae_op_id_t op_id)
 
     triton_mutex_unlock(&group_mutex);
 
+    if (found)
+       ae_resource_request_poll(triton_ctx, aethread_resource_id);
+
+    /**
+     * TODO: this needs to be fixed! Return code should depend on result of
+     * cancel.
+     */
     return AE_SUCCESS;
 }
 
@@ -264,6 +289,8 @@ int aethread_init(void)
     int ret;
 
     assert(!initialized);
+
+    ae_ops_init (&aethread_cancel_queue);
     
     ret = AE_OPCACHE_INIT(struct aethread_op, op, AETHREAD_DEFAULT_OPCACHE_SIZE, &aethread_opcache);
     if(ret != 0)
@@ -282,6 +309,8 @@ void aethread_finalize(void)
     ae_resource_unregister(aethread_resource_id);
 
     ae_opcache_destroy(aethread_opcache);
+
+    ae_ops_destroy (&aethread_cancel_queue);
 
     initialized = 0;
 }
