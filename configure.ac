@@ -332,6 +332,7 @@ resources/resourcebuilder/module.mk
 resources/resourcebuilder/test/module.mk
 resources/worker/module.mk
 resources/worker/test/module.mk
+resources/sem/module.mk
 module.mk
 tests/module.mk
 parser/module.mk
