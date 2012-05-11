@@ -305,7 +305,7 @@ static int rb_poll (ae_context_t context, void * user)
 }
 */
 
-struct ae_resource rb_resource =
+static struct ae_resource rb_resource =
 {
    .resource_name = RB_RESOURCE_NAME,
    .cancel = rb_cancel,
