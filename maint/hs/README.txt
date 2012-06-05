@@ -1,2 +1,2 @@
 
-See src/aesop/parser/README
+See src/aesop/parser/README.txt

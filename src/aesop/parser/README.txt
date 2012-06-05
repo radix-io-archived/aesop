@@ -16,6 +16,9 @@ b) Set up a local cabal installation:
 3) Set up Aesop:
 ./maint/hs/setup-aesop
 
+On a given workstation OS installation, steps 1) and 2) are applied
+only once.  Step 3) is applied for each working directory.
+
 On systems without Haskell binary packages (ghc), you'll need to do:
 
 * Download/Build/Install ghc from http://www.haskell.org/ghc/
