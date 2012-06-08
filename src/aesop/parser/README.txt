@@ -4,7 +4,7 @@ How to install the necessary Haskell libraries for Aesop:
 1) Install cabal
 
 a) Install the easy way:
-apt-get install cabal
+apt-get install cabal-install
 
 or:
 b) Set up a local cabal installation:
