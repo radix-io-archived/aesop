@@ -30,6 +30,18 @@
 > import Header
 > import System.Directory
 
+Toggle abp_trace:
+
+> abp_trace_enabled = True
+
+-- > abp_trace_enabled = False
+
+Aesop Blocking Parser trace:
+
+> abp_trace :: String -> IO ()
+> abp_trace s =
+>       if abp_trace_enabled then putStrLn s else putStr ""
+
 > aesopCtlPrefix :: String
 > aesopCtlPrefix = "__ae_ctl"
 
@@ -63,7 +75,7 @@
 > mkBlockingParamsForStruct :: CFunDef -> WalkerT [CDecl]
 > mkBlockingParamsForStruct fdef = do
 >	let ni = nodeInfo fdef
->           ret = getFunDefReturn fdef
+>           ret = fromJust $ getFunDefReturnMaybe fdef
 >       ds <- mkDeclsFromBlocking "AE_MK_BFUN_PARAMS_FOR_STRUCT_DECLS" [] ni
 >       return $ ds
 >                ++ (mkRetParam ret ni) -- optional return parameter:  [__ret_type __ae_ret]
@@ -107,7 +119,7 @@
 > checkForReturn :: CFunDef -> WalkerT CFunDef
 > checkForReturn f@(CFunDef specs declarator decls c@(CCompound idents stmts cni) ni)
 
->	| isVoidReturn $ getFunDefReturn f =
+>	| isVoidReturn $ fromJust $ getFunDefReturnMaybe f =
 >               if null stmts then addVoidReturn
 >                 else if isNothing $ getBlockStmt $ last stmts then addVoidReturn
 >                   else if not $ isReturnStmt $ fromJust $ getBlockStmt $ last stmts then addVoidReturn
@@ -598,7 +610,7 @@ From a blocking function definition, Construct an external declaration parameter
 >						 (mkPWaitName (getPWaitId funDef p)) ni)
 >			     $ getPWaits funDef
 
->           fret = getFunDefReturn funDef
+>           fret = fromJust $ getFunDefReturnMaybe funDef
 >           retValDecl = if isVoidReturn fret then [] else [mkCDecl (fst fret) (snd fret) "return_value" ni]
 >               
 >	bparams <- mkBlockingParamsForStruct funDef
@@ -893,7 +905,7 @@ Normal non-void function
 >	let decls = getFunDefParams funDef
 >	    ni = nodeInfo funDef
 >       params <- sequence $ map translateBlockingFunParam $ removeVoid decls
->       blockingParams <- mkBlockingParamsForFunction (getFunDefReturn funDef) (nodeInfo funDef) 
+>       blockingParams <- mkBlockingParamsForFunction (fromJust $ getFunDefReturnMaybe funDef) (nodeInfo funDef)
 >       body <- mkBlockingBody bctx funDef
 >       ret <- mkBlockingRetType ni
 >	return $ mkFunDef (ret, []) -- return type
@@ -949,7 +961,7 @@ Normal non-void function
 >           fname = getCallName blockingCall
 >           cbFunName = mkCallbackFunName (getParentName b) fname ni
 >           cbRetParam = mkCallbackRetParam fname ni
->           fRetType = getFunDefReturn $ funDef $ getParent b
+>           fRetType = fromJust $ getFunDefReturnMaybe $ funDef $ getParent b
 >           fRetStr = returnToString fRetType
 >           retStr = returnToString retType
 >           bfunName = getParentName b
@@ -1251,9 +1263,15 @@ a BlockingContext as we go along
 >       isValidBlockingFunDef funDef
 
 >       wdebug $ "[transform start]: " ++ (getFunDefName funDef)
+
+>       if (isNothing $ getFunDefReturnMaybe funDef) then do
+>                invalid "function lacks return type" (nodeInfo fdefext)
+>                return []
+>       else do
+
 >	-- register a blocking function with its parameters and return type
 >	registerBlocking ((getFunDefIdent funDef),
->                         (getFunDefReturn funDef),
+>                           (fromJust $ getFunDefReturnMaybe funDef),
 >                         (getFunDefParams funDef))
 
 >	-- Find any blocking function pointers as parameters to the blocking function,
@@ -1268,6 +1286,7 @@ a BlockingContext as we go along
 
 >	-- before generating the context, we add a return; statement at the end if its
 >	-- a void function and doesn't have a return
+
 >	fDefWReturn <- checkForReturn funDef
 
 >	-- Generate the blocking tree of BlockingContext nodes

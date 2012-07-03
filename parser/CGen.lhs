@@ -310,7 +310,7 @@ int ** ret;
 > mkRetDeclFromFunDef :: CFunDef -> String -> [CDecl]
 > mkRetDeclFromFunDef f name =
 >	mkRetDecl rtype name (nodeInfo f)
->	where rtype = getFunDefReturn f
+>	where rtype = fromJust $ getFunDefReturnMaybe f
 
 Functions for building struct members from scratch
 

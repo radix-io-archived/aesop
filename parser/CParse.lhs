@@ -252,7 +252,7 @@ split a function declaration into tuple: (function-name, (return-type, return-de
 >       where (dn:dns) = getCDeclNames decl
 
 > getFunInfo :: CFunDef -> (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl])
-> getFunInfo f = (getFunDefIdent f, getFunDefReturn f, getFunDefParams f)
+> getFunInfo f = (getFunDefIdent f, fromJust (getFunDefReturnMaybe f), getFunDefParams f)
 
 Get the name of a function definition
 
@@ -271,11 +271,27 @@ Get the parameter declarations of a function definition
 
 Get the return type and derived declarators for a function definition
 
-> getFunDefReturn :: CFunDef -> (CTypeSpec, [CDerivedDeclr])
-> getFunDefReturn (CFunDef specs (CDeclr _ derivedDeclrs _ _ _) _ _ _) =
+> getFunDefReturnMaybe :: CFunDef -> Maybe (CTypeSpec, [CDerivedDeclr])
+
+-- > getFunDefReturnMaybe (CFunDef specs (CDeclr _ derivedDeclrs _ _ _) _ _ _)
+-- >   | trace ("GFDRM: " ++ show (find isTypeSpec specs)) False = undefined
+
+> getFunDefReturnMaybe (CFunDef specs (CDeclr _ derivedDeclrs _ _ _) _ _ _)
+>   | isJust (find isTypeSpec specs)  =
 >	let (CTypeSpec tspec) = fromJust $ find isTypeSpec specs
 >           derivedPtrs       = filter isDerivedPtr derivedDeclrs
-> 	in (tspec, derivedPtrs)
+>                 in Just (tspec, derivedPtrs)
+>   | otherwise = Nothing
+
+-- > getFunDefReturn :: CFunDef -> (CTypeSpec, [CDerivedDeclr])
+
+-- > getFunDefReturn (CFunDef specs (CDeclr _ derivedDeclrs _ _ _) _ _ _)
+-- >   | trace ("GFDR: " ++ show (find isTypeSpec specs)) False = undefined
+
+-- > getFunDefReturn (CFunDef specs (CDeclr _ derivedDeclrs _ _ _) _ _ _) =
+-- >	          let (CTypeSpec tspec) =  fromJust $ find isTypeSpec specs
+-- >                     derivedPtrs       = filter isDerivedPtr derivedDeclrs
+-- >                 in (tspec, derivedPtrs)
 
 > isBlockingSpec :: CDeclSpec -> Bool
 > isBlockingSpec (CTypeQual (CBlocking _)) = True

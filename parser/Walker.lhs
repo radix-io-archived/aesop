@@ -227,7 +227,7 @@ Turns into:
 >	w <- get
 >	put $ w { fpTypeReg = fptype : (fpTypeReg w) }
 
-Registery a blocking function pointer.
+Register a blocking function pointer.
 
 > registerBlocking :: FunDecl -> WalkerT ()
 > registerBlocking fd = do
