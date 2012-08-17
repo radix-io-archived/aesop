@@ -8,8 +8,16 @@
 #define SOCKET_TRITON_SOCKET_HAE
 
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <aesop/aesop.h>
+
+/* NOTE: this is a hack.  For some reason the aesop translator
+ * produces a warning about mmsghdr being undefined in socket.h on some
+ * systems, even though we use no functions that that struct, and
+ * regardless * of whether __USE_GNU is defined or not.  Putting a
+ * forward declaration here works around the problem. -Phil
+ */
+struct mmsghdr;
+#include <sys/socket.h>
 
 
 /**
