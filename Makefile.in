@@ -85,22 +85,26 @@ CFLAGS= -I$(srcdir)/src/c-utils -I$(srcdir)/include -I. -Iinclude -I src/c-utils
 
 CWARNS=
 ifneq (0,$(STRICT_CFLAGS))
+	CWARNS += -Wall
 	CWARNS += -Wcast-align -Wbad-function-cast
 	CWARNS += -Wmissing-prototypes -Wmissing-declarations
 	CWARNS += -Wundef -Wpointer-arith
 	CWARNS += -Wnested-externs
 	CWARNS += -Wredundant-decls
-	# Very noisy, too strict
-	CWARNS += -W -Wno-sign-compare
+	# turn on extra warnings, minus a few things
+	CWARNS += -Wextra -Wno-unused-label -Wno-sign-compare -Wno-unused-parameter
 	CWARNS += -Wcast-qual
 	CWARNS += -Wshadow
 	CWARNS += -Wwrite-strings
 	CWARNS += -Wformat
+	CWARNS += -Wunused
 endif
 
 # don't want to warn when we call format functions without string literal parameters
 # e.g. triton_string_init(&str, myname);
 CWARNS += -Wno-format-security
+# also don't warn if we user zero-length formats in printf-style functions
+CWARNS += -Wno-format-zero-length
 # ... or when we have unused labels, which are common in generated aesop
 # code
 CWARNS += -Wno-unused-label 
@@ -179,10 +183,10 @@ else
   VA="-v"
 endif
 
+# note: aesop produces a lot of redundant-decl warnings that have nothing to
+# do with the user-written code, so we turn those off when using -Werror
 ifeq ($(WARNINGS_AS_ERRORS),1)
-	EWARNS = -Werror
-else
-	EWARNS =
+	CWARNS += -Werror -Wno-redundant-decls
 endif
 
 # PHONY targets are targets that do not result in the generation
