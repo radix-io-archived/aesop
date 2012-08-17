@@ -61,11 +61,25 @@ vpkg()
     fi
 }
        
-vpkg transformers 0.2.2.0
-vpkg mtl 2.0.1.0
-vpkg happy 1.18.6
-vpkg alex 2.3.5
-vpkg regex-base 0.93.2
-vpkg regex-posix 0.94.4
-vpkg regex-pcre-builtin 0.94.2.1.7.7
-vpkg syb 0.3
+#vpkg transformers 0.2.2.0
+#vpkg mtl 2.0.1.0
+#vpkg happy 1.18.6
+#vpkg QuickCheck 2.4.2
+#vpkg alex 3.0.2
+#vpkg regex-base 0.93.2
+#vpkg regex-posix 0.94.4
+#vpkg regex-pcre-builtin 0.94.2.1.7.7
+#vpkg syb 0.3.6.1
+
+# Installs cabal locally - apt-get install cabal-install to install globally
+wget http://www.haskell.org/cabal/release/cabal-install-0.14.0/cabal-install-0.14.0.tar.gz
+tar xvfz cabal-install-0.14.0.tar.gz
+cd cabal-install-0.14.0
+sh ./bootstrap.sh
+cabal update
+cabal install alex
+cabal install happy
+
+cabal install regex-posix
+cabal install regex-pcre
+cabal install mtl

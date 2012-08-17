@@ -540,7 +540,7 @@ $(HSBIN): %: $(srcdir)/%.lhs $(HSSRC)
 		   -hidir $(call canonname,$<) \
 		   -o $@ \
 		   -main-is $(call modname,$<) \
-		-i$(call dir,$<) --make $< >/dev/null
+		   -i$(call dir,$<) --make -XFlexibleInstances $< >/dev/null
 
 # User targets
 
