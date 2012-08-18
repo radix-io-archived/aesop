@@ -5,12 +5,19 @@
 # Patches it with Aesop modifications, making package language-aesop
 # Installs it with cabal
 
-MAINT_HS=$(echo $0|sed -e "s|^\(.*\)/[^/]*$|\1|")
+# broken for ./setup-aesop
+#MAINT_HS=$(echo $0|sed -e "s|^\(.*\)/[^/]*$|\1|")
+
+pushd $(dirname $0)
+MAINT_HS=$PWD
+popd
+
+echo ${MAINT_HS}
 
 VERSION=0.4.2
 
 pushd ${MAINT_HS}
-wget --connect-timeout=2 --read-timeout=2 --tries=1 http://hackage.haskell.org/packages/archive/language-c/${VERSION}/language-c-${VERSION}.tar.gz
+wget -c --connect-timeout=2 --read-timeout=2 --tries=1 http://hackage.haskell.org/packages/archive/language-c/${VERSION}/language-c-${VERSION}.tar.gz
 popd
 
 # Put happy and alex in the path
