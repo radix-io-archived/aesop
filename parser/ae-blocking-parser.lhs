@@ -74,7 +74,7 @@ Aesop Blocking Parser trace:
 
 > mkBlockingParamsForStruct :: CFunDef -> WalkerT [CDecl]
 > mkBlockingParamsForStruct fdef = do
->	let ni = nodeInfo fdef
+>       let ni = nodeInfo fdef
 >           ret = fromJust $ getFunDefReturnMaybe fdef
 >       ds <- mkDeclsFromBlocking "AE_MK_BFUN_PARAMS_FOR_STRUCT_DECLS" [] ni
 >       return $ ds
@@ -83,12 +83,12 @@ Aesop Blocking Parser trace:
 
 > mkBlockingParamsForFunction :: (CTypeSpec, [CDerivedDeclr]) -> NodeInfo -> WalkerT [CDecl]
 > mkBlockingParamsForFunction retType ni = do
->	ds <- mkDeclsFromBlocking "AE_MK_BFUN_PARAMS_DECLS" [] ni
+>       ds <- mkDeclsFromBlocking "AE_MK_BFUN_PARAMS_DECLS" [] ni
 >       -- callback parameter:  void (*callback) (void *user_ptr, [, __ret_type __ae_ret])
 >       let cbParam = mkCBParam retType ni
 >           retParam = mkRetParam retType ni
 >       return $ cbParam ++ ds ++ retParam
-                
+ 
 > mkWorkerParams :: String -> NodeInfo -> WalkerT [CDecl]
 > mkWorkerParams n ni = do
 >       ds <- mkDeclsFromBlocking "AE_MK_WORKER_PARAMS" [n] ni
@@ -96,12 +96,12 @@ Aesop Blocking Parser trace:
 
 > mkBlockingParamsFromFunPtrDecl :: CDecl -> WalkerT [CDecl]
 > mkBlockingParamsFromFunPtrDecl c@(CDecl _ declrs ni) = do
->	let retType = getReturn c
->	ds <- mkDeclsFromBlocking "AE_MK_BFUN_PARAMS_FUN_PTR_DECLS" [returnToString retType] ni
+>       let retType = getReturn c
+>       ds <- mkDeclsFromBlocking "AE_MK_BFUN_PARAMS_FUN_PTR_DECLS" [returnToString retType] ni
 >       return $ (mkCBParam retType ni) ++ ds
 
 > mkBlockingRetType :: NodeInfo -> WalkerT CTypeSpec
-> mkBlockingRetType ni = do 
+> mkBlockingRetType ni = do
 >       prd <- mkBlockingRetDecl ni
 >       return $ fst $ getReturn prd
 
@@ -109,7 +109,7 @@ Aesop Blocking Parser trace:
 > mkBlockingRetDecl ni = liftM head $ mkDeclsFromBlocking "AE_MK_BFUN_RET_DECL" [] ni
 
 > getLastStmtInCompounds :: CStat -> Maybe CStat
-> getLastStmtInCompounds (CCompound _ bitems _) 
+> getLastStmtInCompounds (CCompound _ bitems _)
 >       | null bitems = Nothing
 >       | isJust s = getLastStmtInCompounds $ fromJust s
 >       | otherwise = s
@@ -119,13 +119,13 @@ Aesop Blocking Parser trace:
 > checkForReturn :: CFunDef -> WalkerT CFunDef
 > checkForReturn f@(CFunDef specs declarator decls c@(CCompound idents stmts cni) ni)
 
->	| isVoidReturn $ fromJust $ getFunDefReturnMaybe f =
+>       | isVoidReturn $ fromJust $ getFunDefReturnMaybe f =
 >               if null stmts then addVoidReturn
 >                 else if isNothing $ getBlockStmt $ last stmts then addVoidReturn
 >                   else if not $ isReturnStmt $ fromJust $ getBlockStmt $ last stmts then addVoidReturn
 >                     else return f
 
->	| otherwise = do
+>       | otherwise = do
 >               when (null stmts) $ errorNonVoidReturn
 >               when (isNothing $ getLastStmtInCompounds c) $ errorNonVoidReturn
 >               when (not $ isReturnStmt $ fromJust $ getLastStmtInCompounds c) $ errorNonVoidReturn
@@ -144,7 +144,7 @@ Aesop Blocking Parser trace:
 > mkAnonStructName :: NodeInfo -> Ident
 > mkAnonStructName ni = newIdent n ni
 >       where n = "anonstruct_" ++ (show $ posRow $ posOfNode $ ni) ++ "_" ++
->	          (show $ posColumn $ posOfNode $ ni)
+>                 (show $ posColumn $ posOfNode $ ni)
 
 > lookupAndRegBlocking :: Maybe Ident -> CDecl -> WalkerT ()
 > lookupAndRegBlocking sname d@(CDecl s i n) = do
@@ -152,8 +152,8 @@ Aesop Blocking Parser trace:
 >           t = if isJust typeName then fromJust typeName else mkAnonStructName $ nodeInfo d
 >       assert (isJust sname) return ()
 >       lookupAndRegisterBlockingStruct (fromJust sname)
->			                (getCDeclName d)
->			                t
+>                                       (getCDeclName d)
+>                                       t
 
 > regBlockingStruct :: Maybe Ident -> CDecl -> WalkerT ()
 > regBlockingStruct sname d = do
@@ -178,11 +178,11 @@ Aesop Blocking Parser trace:
 
 > registerTypedefStruct :: CDecl -> Maybe Ident -> WalkerT ()
 > registerTypedefStruct d altSname = do
->	let t = getStructTypeDefInfo d
->	    (Just (sn, tname)) = t
->	    sname = if isJust sn then sn else altSname
->	assert (isJust t && isJust sname) return ()
-> 	lookupAndRegisterBlockingTypedef (fromJust sname) tname
+>       let t = getStructTypeDefInfo d
+>           (Just (sn, tname)) = t
+>           sname = if isJust sn then sn else altSname
+>       assert (isJust t && isJust sname) return ()
+>       lookupAndRegisterBlockingTypedef (fromJust sname) tname
 
 > registerTypedefTypedef :: CDecl -> WalkerT ()
 > registerTypedefTypedef d = do
@@ -195,18 +195,18 @@ Aesop Blocking Parser trace:
 > registerBlockingDecl ph e@(CDeclExt d@(CDecl specifiers initdecls ni))
 
 >     | isTypeDefOfInlineStruct d = do
->	    let name = mkAnonStructName (nodeInfo d)
->	    registerStruct d (Just name)
->	    registerTypedefStruct d (Just name)
->	    if ph then
->		return [e]
->	      else return []
+>           let name = mkAnonStructName (nodeInfo d)
+>           registerStruct d (Just name)
+>           registerTypedefStruct d (Just name)
+>           if ph then
+>               return [e]
+>             else return []
 
 >     | isTypeDefOfPredefStruct d = do
->	    registerTypedefStruct d Nothing
->	    if ph then
->		return [e]
->	      else return []
+>           registerTypedefStruct d Nothing
+>           if ph then
+>               return [e]
+>             else return []
 
 >     | isTypeDefOfTypeDef d = do
 >           registerTypedefTypedef d
@@ -220,43 +220,43 @@ etc. etc.
 
 >     | isStructDecl d = do
 >           addGlobals [d]
->	    registerStruct d Nothing
->	    if ph then 
->		liftM ((:[]) . CDeclExt) $ everywhereM (mkM translateBlockingFunParam) d
->	      else return []
+>           registerStruct d Nothing
+>           if ph then
+>               liftM ((:[]) . CDeclExt) $ everywhereM (mkM translateBlockingFunParam) d
+>             else return []
 
 Register global variable declarations.  This is necessary to map variable names to types (structs, typedefs, etc.)
 allowing us to determine if a function pointer is being called within a particular variable.
 
 >     | isVarDecl d = do
->		addGlobals [d]
->		let name = mkAnonStructName $ nodeInfo d
->		when (isStructDecl d) (registerStruct (removeVarFromDecl d) (Just name))
->		if ph then return [e] else return []
+>               addGlobals [d]
+>               let name = mkAnonStructName $ nodeInfo d
+>               when (isStructDecl d) (registerStruct (removeVarFromDecl d) (Just name))
+>               if ph then return [e] else return []
 
 Register blocking function declarations:  __blocking int myfun();
 
->     | isFunDecl d && (any isBlockingSpec specifiers) = do 
->	  let function = splitFunDecl (CDecl specifiers initdecls ni)
+>     | isFunDecl d && (any isBlockingSpec specifiers) = do
+>         let function = splitFunDecl (CDecl specifiers initdecls ni)
 >         registerBlocking function
 >         pDecl <- mkBlockingDecl function specifiers
 >         -- pPtrDecl <- mkBlockingPtrDecl True function specifiers
-> 	  return $ [CDeclExt pDecl]
+>         return $ [CDeclExt pDecl]
 
 Transform function declarations that take blocking function pointers as parameters:  int myfun(__blocking int (*fnp)(void));
 We only need to do the transformation here to get the type signature right, we don't generate anything else.
 
 >     | isFunDecl d = do
->	  if ph then 
->	      liftM ((:[]) . CDeclExt) $ everywhereM (mkM translateBlockingFunParam) d
->	    else return []
+>         if ph then
+>             liftM ((:[]) . CDeclExt) $ everywhereM (mkM translateBlockingFunParam) d
+>           else return []
 
          let (fname, (rtype, derived), ps) = splitFunDecl d
          newps <- mapM translateBlockingFunParam ps
          let newd = mkFunDeclWithDeclSpecs fname rtype derived specifiers newps
          if ph then return [CDeclExt newd]
            else return []
-        
+ 
 > registerBlockingDecl True c = do
 >       return [c]
 > registerBlockingDecl False c = do
@@ -266,13 +266,13 @@ Registers all the blocking declarations present in the CTranslUnit
 
 > registerBlockingFunDecls :: CTranslUnit -> WalkerT CTranslUnit
 > registerBlockingFunDecls (CTranslUnit decls ni) = do
->	newdecls <- liftM concat $ sequence $ map (registerBlockingDecl True) decls
->	return $ CTranslUnit newdecls ni
+>       newdecls <- liftM concat $ sequence $ map (registerBlockingDecl True) decls
+>       return $ CTranslUnit newdecls ni
 
 > getBlockingHeaderDecls :: CTranslUnit -> WalkerT [([CExtDecl], CExtDecl)]
 > getBlockingHeaderDecls (CTranslUnit decls ni) = do
->	newdecls <- sequence $ map (registerBlockingDecl False) decls
->	return $ zip newdecls decls
+>       newdecls <- sequence $ map (registerBlockingDecl False) decls
+>       return $ zip newdecls decls
 
 Registers blocking function pointers passed to a blocking function.
 
@@ -287,15 +287,15 @@ gets called in the blocking function myblockingfun.
 
 > registerBlockingFunParam :: CDecl -> WalkerT ()
 > registerBlockingFunParam (CDecl specifiers initdecls ni)
->	| (any isBlockingSpec specifiers) = do
->		let retType = getTypeSpec specifiers
->		    (Just declr, _, _) = head initdecls
->		    (CDeclr (Just f) derivedDeclrs _ _ _)  = declr
->		    (Just funDeclr) = find isFunDeclr derivedDeclrs
+>       | (any isBlockingSpec specifiers) = do
+>               let retType = getTypeSpec specifiers
+>                   (Just declr, _, _) = head initdecls
+>                   (CDeclr (Just f) derivedDeclrs _ _ _)  = declr
+>                   (Just funDeclr) = find isFunDeclr derivedDeclrs
 >                   deriveds = filter (not . (\d -> isFunDeclr d || isDerivedPtr d)) derivedDeclrs
->		    params = removeVoid $ getCFunDeclrParams funDeclr
->	        registerLocalBlocking (f, (retType, deriveds), params)
->	| otherwise = return ()
+>                   params = removeVoid $ getCFunDeclrParams funDeclr
+>               registerLocalBlocking (f, (retType, deriveds), params)
+>       | otherwise = return ()
 
 > declHasBlockingFunPtrParam :: CDecl -> Bool
 > declHasBlockingFunPtrParam d =
@@ -316,13 +316,13 @@ gets called in the blocking function myblockingfun.
 >   | isBlockingFunDecl fptr = do
 >       bParams <- mkBlockingParamsFromFunPtrDecl fptr
 >       ret <- mkBlockingRetType ni
->	let specs = filter (not . isBlockingSpec) specifiers 	
->	    (Just declr, _, _) = head initdecls
->	    (CDeclr (Just (Ident fname _ _)) _ _ _ _) = declr
->	    funDeclr = getDerivedFun declr
->	    params = removeVoid $ getCFunDeclrParams funDeclr
->	    postParams = bParams ++ params
->	return $ mkFunPtrDecl fname ret postParams
+>       let specs = filter (not . isBlockingSpec) specifiers
+>           (Just declr, _, _) = head initdecls
+>           (CDeclr (Just (Ident fname _ _)) _ _ _ _) = declr
+>           funDeclr = getDerivedFun declr
+>           params = removeVoid $ getCFunDeclrParams funDeclr
+>           postParams = bParams ++ params
+>       return $ mkFunPtrDecl fname ret postParams
 
 >   | otherwise = return fptr
 
@@ -345,13 +345,13 @@ gets called in the blocking function myblockingfun.
 
 > invalid :: String -> NodeInfo -> WalkerT ()
 > invalid msg ni = do
->	fstr <- getFilePosStr ni
->	error (fstr ++ ":  Invalid aesop usage: " ++ msg)
+>       fstr <- getFilePosStr ni
+>       error (fstr ++ ":  Invalid aesop usage: " ++ msg)
 
 > gspWarn :: String -> NodeInfo -> WalkerT ()
 > gspWarn msg ni = do
->	fstr <- getFilePosStr ni
->	putStrLnW $ fstr ++ ": warning: " ++ msg
+>       fstr <- getFilePosStr ni
+>       putStrLnW $ fstr ++ ": warning: " ++ msg
 
 > isValidBlockingFunDef :: CFunDef -> WalkerT ()
 > isValidBlockingFunDef f@(CFunDef specs (CDeclr _ derivedDeclrs _ _ _) _ _ _) = do
@@ -364,40 +364,40 @@ gets called in the blocking function myblockingfun.
 > isValidBlockingFor :: CStat -> WalkerT ()
 > isValidBlockingFor (CFor (Right _) _ _ _ ni) = invalid "declaration in blocking for loop" ni
 > isValidBlockingFor (CFor (Left init) expr1 expr2 stmts ni) = do
->	binit <- containsBlockingCall (CExpr init ni)
->	when binit $ invalid "init expression in for loop cannot contain a blocking call" ni
->	bexpr1 <- containsBlockingCall (CExpr expr1 ni)
->	when bexpr1 $ invalid "conditional expression in for loop cannot contain a blocking call" ni
->	bexpr2 <- containsBlockingCall (CExpr expr2 ni)
->	when bexpr2 $ invalid "update expression in for loop cannot contain a blocking call" ni
->	when (not $ isCompound stmts)
->	     $ invalid "blocking for loop requires curly brackets" ni
->	when (fst $ stmtsHaveDecl stmts)
->	     $ invalid "blocking for loop cannot contain local declarations" (snd $ stmtsHaveDecl stmts)
->	return ()
+>       binit <- containsBlockingCall (CExpr init ni)
+>       when binit $ invalid "init expression in for loop cannot contain a blocking call" ni
+>       bexpr1 <- containsBlockingCall (CExpr expr1 ni)
+>       when bexpr1 $ invalid "conditional expression in for loop cannot contain a blocking call" ni
+>       bexpr2 <- containsBlockingCall (CExpr expr2 ni)
+>       when bexpr2 $ invalid "update expression in for loop cannot contain a blocking call" ni
+>       when (not $ isCompound stmts)
+>            $ invalid "blocking for loop requires curly brackets" ni
+>       when (fst $ stmtsHaveDecl stmts)
+>            $ invalid "blocking for loop cannot contain local declarations" (snd $ stmtsHaveDecl stmts)
+>       return ()
 
 > isValidBlockingWhile :: CStat -> WalkerT ()
 > isValidBlockingWhile (CWhile expr stmts isDoWhile ni) = do
->	bexpr <- containsBlockingCall (CExpr (Just expr) ni)
->	when bexpr $ invalid "conditional expression in while loop cannot contain a blocking call" ni
->	when (not $ isCompound stmts)
->	     $ invalid "blocking while loop requires curly brackets" ni
->	when (fst $ stmtsHaveDecl stmts)
->		$ invalid "blocking while loop cannot contain local declarations" (snd $ stmtsHaveDecl stmts)
->	return ()
+>       bexpr <- containsBlockingCall (CExpr (Just expr) ni)
+>       when bexpr $ invalid "conditional expression in while loop cannot contain a blocking call" ni
+>       when (not $ isCompound stmts)
+>            $ invalid "blocking while loop requires curly brackets" ni
+>       when (fst $ stmtsHaveDecl stmts)
+>               $ invalid "blocking while loop cannot contain local declarations" (snd $ stmtsHaveDecl stmts)
+>       return ()
 
 
 > isValidBlockingIf :: CStat -> WalkerT ()
 > isValidBlockingIf (CIf expr ifStmts elseStmts ni) = do
->	bexpr <- containsBlockingCall (CExpr (Just expr) ni)
->	when bexpr $ invalid "if expression cannot contain a blocking call" ni
->	when (not $ isCompound ifStmts)
->	    $ invalid "blocking if requires curly brackets" ni
->	when (fst $ stmtsHaveDecl $ ifStmts)
->	    $ invalid "if block with blocking calls cannot contain local declarations" (snd $ stmtsHaveDecl $ ifStmts)
->	when ((isJust elseStmts) && (isCompound $ fromJust elseStmts) && (fst $ stmtsHaveDecl $ fromJust elseStmts))
->	    $ invalid "else block with blocking calls cannot contain local declarations" (snd $ stmtsHaveDecl $ fromJust elseStmts)
->	return ()
+>       bexpr <- containsBlockingCall (CExpr (Just expr) ni)
+>       when bexpr $ invalid "if expression cannot contain a blocking call" ni
+>       when (not $ isCompound ifStmts)
+>           $ invalid "blocking if requires curly brackets" ni
+>       when (fst $ stmtsHaveDecl $ ifStmts)
+>           $ invalid "if block with blocking calls cannot contain local declarations" (snd $ stmtsHaveDecl $ ifStmts)
+>       when ((isJust elseStmts) && (isCompound $ fromJust elseStmts) && (fst $ stmtsHaveDecl $ fromJust elseStmts))
+>           $ invalid "else block with blocking calls cannot contain local declarations" (snd $ stmtsHaveDecl $ fromJust elseStmts)
+>       return ()
 
 > isValidPWait :: CStat -> WalkerT ()
 > isValidPWait (CPWait stmts ni) = do
@@ -413,23 +413,23 @@ gets called in the blocking function myblockingfun.
 
 > getBlockingCallName :: CExpr -> WalkerT (Maybe Ident)
 > getBlockingCallName (CCall e args _) =  do
->	res <- lookupBlocking e 
->	case res of { (Just (bname, _, _)) -> return $ Just bname ; Nothing -> return Nothing }
+>       res <- lookupBlocking e
+>       case res of { (Just (bname, _, _)) -> return $ Just bname ; Nothing -> return Nothing }
 > getBlockingCallName _ = return Nothing
 
 > findBlockingCallName :: CStat -> WalkerT (Maybe Ident)
-> findBlockingCallName stmt = 
-> 	everything orElseMMaybe (mkQ (return Nothing) getBlockingCallName) $ stmt
+> findBlockingCallName stmt =
+>       everything orElseMMaybe (mkQ (return Nothing) getBlockingCallName) $ stmt
 
 > getBlockingCallExpr :: CExpr -> WalkerT (Maybe CExpr)
 > getBlockingCallExpr call@(CCall e _ _) = do
->	res <- lookupBlocking e
->	if isJust res then return $ Just call else return Nothing
+>       res <- lookupBlocking e
+>       if isJust res then return $ Just call else return Nothing
 > getBlockingCallExpr _ = return Nothing
 
 > findBlockingCallExpr :: CStat -> WalkerT (Maybe CExpr)
-> findBlockingCallExpr stmt = 
->	everything orElseMMaybe (mkQ (return Nothing) getBlockingCallExpr) $ stmt
+> findBlockingCallExpr stmt =
+>       everything orElseMMaybe (mkQ (return Nothing) getBlockingCallExpr) $ stmt
 
 > getBlockingCall :: CExpr -> WalkerT (Maybe (CExpr, FunDecl))
 > getBlockingCall call@(CCall e _ _) = do
@@ -446,18 +446,18 @@ function replaces the blocking call with a variable "ret", and returns that as t
 
 > replaceCallWithExpr :: CExpr -> CExpr -> WalkerT CExpr
 > replaceCallWithExpr newe call@(CCall e _ ni) = do
->	res <- lookupBlocking e
->	if isJust res then return newe else return call
+>       res <- lookupBlocking e
+>       if isJust res then return newe else return call
 > replaceCallWithExpr _ c = return c
 
 > findAndReplaceBlockingCall :: CExpr -> CStat -> WalkerT CStat
 
 > -- if the statement is just the blocking call (the return value is ignored), we don't replace
 > findAndReplaceBlockingCall newe (CExpr (Just call@(CCall e _ _)) ni) = do
->	res <- lookupBlocking e 
->	if isJust res then return (mkCompoundStmt (Just $ "__ae_result_expr_" ++ (mkLineColStr ni)) [] ni) else do
->		expr <- replaceCallWithExpr newe call
->		return (CExpr (Just expr) ni)
+>       res <- lookupBlocking e
+>       if isJust res then return (mkCompoundStmt (Just $ "__ae_result_expr_" ++ (mkLineColStr ni)) [] ni) else do
+>               expr <- replaceCallWithExpr newe call
+>               return (CExpr (Just expr) ni)
 
 > findAndReplaceBlockingCall newe stmt = everywhereM (mkM $ replaceCallWithExpr newe) stmt
 
@@ -507,18 +507,18 @@ From a blocking function definition, Construct an external declaration parameter
 
 > mkBlockingParamsStruct :: CFunDef -> WalkerT CExtDecl
 > mkBlockingParamsStruct funDef = do
->	let decls = getFunDefParams funDef
->	    ni = nodeInfo funDef
+>       let decls = getFunDefParams funDef
+>           ni = nodeInfo funDef
 >       bParams <- sequence $ map translateBlockingFunParam $ removeVoid decls
->	let params = bParams ++ (map removeInitFromDecl $ getFunLocalDeclarations funDef)
->	return $ genStructExtDecl (mkStructParamsName $ getFunDefName funDef) params ni
+>       let params = bParams ++ (map removeInitFromDecl $ getFunLocalDeclarations funDef)
+>       return $ genStructExtDecl (mkStructParamsName $ getFunDefName funDef) params ni
 
 > mkBlockingRetParamDecl :: CExpr -> WalkerT [CDecl]
 > mkBlockingRetParamDecl e = do
->       bfun <- lookupBlocking e 
+>       bfun <- lookupBlocking e
 >       assert (isJust bfun) $ return ()
 >       let (Just (bname, (retSpec, retDerives), params)) = bfun
->           ni = nodeInfo e 
+>           ni = nodeInfo e
 >       case (retSpec, retDerives) of
 >           (CVoidType _, []) -> return []
 >           _ -> return $ [mkCDecl retSpec retDerives (mkCallbackRetParam (getCallName e) ni) ni]
@@ -527,32 +527,32 @@ From a blocking function definition, Construct an external declaration parameter
 > mkBlockingRetParamsStruct funDef blockingCalls = do
 >       params <- liftM concat $ sequence $ map mkBlockingRetParamDecl blockingCalls
 >       return $ genStructExtDecl (mkStructRetParamsName $ getFunDefName funDef) params (nodeInfo funDef)
-       
+ 
 > removeInits :: (String, [CDecl]) -> (String, [CDecl])
 > removeInits (pwaitName, pwaitDecls) = (pwaitName, (map removeInitFromDecl pwaitDecls))
 
 > mkPWaitExtDecl :: (String -> String) -> (String, [CDecl]) -> NodeInfo -> CExtDecl
 > mkPWaitExtDecl snamef (pwaitName, pwaitDecls) ni =
->	genStructExtDecl (snamef pwaitName) pwaitDecls ni
+>       genStructExtDecl (snamef pwaitName) pwaitDecls ni
 
 > mkBlockingPBranchStructs :: CFunDef -> (String, CStat) -> WalkerT [CExtDecl]
 > mkBlockingPBranchStructs funDef (pwaitName, pwaitStmt) = do
->	let fname = getFunDefName funDef
->	    ni = nodeInfo funDef
->	    pbranches = getPBranches pwaitStmt
->	    pbranchDecls = zip (map (getPBranchId funDef) pbranches) (map getPBranchDecls pbranches)
->	    params = map removeInits pbranchDecls
->	return $ map (\p -> mkPBranchExtDecl fname pwaitName p ni) params
+>       let fname = getFunDefName funDef
+>           ni = nodeInfo funDef
+>           pbranches = getPBranches pwaitStmt
+>           pbranchDecls = zip (map (getPBranchId funDef) pbranches) (map getPBranchDecls pbranches)
+>           params = map removeInits pbranchDecls
+>       return $ map (\p -> mkPBranchExtDecl fname pwaitName p ni) params
 
 > addPBranchParams :: CFunDef -> CStat -> (String, [CDecl]) -> (String, [CDecl])
-> addPBranchParams funDef pwait (pwaitId, pWaitDecls) = 
->	let fname = getFunDefName funDef
->	    ni = nodeInfo funDef
->	    pbranchDecls = 
+> addPBranchParams funDef pwait (pwaitId, pWaitDecls) =
+>       let fname = getFunDefName funDef
+>           ni = nodeInfo funDef
+>           pbranchDecls =
 >             map (\p -> mkStructDecl
->		           (mkStructPBranchName fname pwaitId (getPBranchId funDef p))
->			   (mkParamPBranchName (getPBranchId funDef p)) ni) $ getPBranches pwait
->	in (pwaitId, (pWaitDecls ++ pbranchDecls))
+>                          (mkStructPBranchName fname pwaitId (getPBranchId funDef p))
+>                          (mkParamPBranchName (getPBranchId funDef p)) ni) $ getPBranches pwait
+>       in (pwaitId, (pWaitDecls ++ pbranchDecls))
 
 > containsPWait :: CFunDef -> Bool
 > containsPWait funDef = everything (||) (mkQ False isPWaitStmt) funDef
@@ -573,52 +573,52 @@ From a blocking function definition, Construct an external declaration parameter
 > mkBlockingPWaitStructs funDef
 >    | containsPWait funDef = do
 >        let fname = getFunDefName funDef
->	     ni = nodeInfo funDef
+>            ni = nodeInfo funDef
 >            pwaits = getPWaits funDef
 >            ids = map (getPWaitId funDef) pwaits
 >            privatePWaitDecls = zip ids (map getPWaitPrivateDecls pwaits) -- :: [(pwait_id, [private_decl])]
 >            sharedPWaitDecls = zip ids (map getPWaitSharedDecls pwaits) -- :: [(pwait_id, [shared_decl])]
 >            private = map removeInits privatePWaitDecls -- :: [(pwait_id, [private_decl_no_inits])]
 >            shared = map removeInits sharedPWaitDecls -- :: [(pwait_id, [shared_decl_no_inits])]
->	     privateWithPBranch = zipWith (addPBranchParams funDef) pwaits private -- :: [(pwait_id, [shared_decl_no_inits] ++ [pbranch_struct_decl])]
+>            privateWithPBranch = zipWith (addPBranchParams funDef) pwaits private -- :: [(pwait_id, [shared_decl_no_inits] ++ [pbranch_struct_decl])]
 >            privatePWaitStructs = map (\p -> mkPWaitExtDecl (mkPrivateParamPWaitName fname) p ni) privateWithPBranch
 >            sharedPWaitStructs = map (\p -> mkPWaitExtDecl (mkSharedParamPWaitName fname) p ni) shared
 >            pwaitParams = map (\id -> (id, [mkStructDecl (mkPrivateParamPWaitName fname id) mkPrivateName ni,
 >                                            mkStructDecl (mkSharedParamPWaitName fname id) mkSharedName ni,
 >                                            mkStructPtrDecl (mkSharedParamPWaitName fname id) mkSharedPtrName ni])) ids  -- [(pwait_id, [private_struct, shared_struct])]
 >            pwaitStructs = map (\p -> mkPWaitExtDecl (mkStructPWaitName fname) p ni) pwaitParams
->	     pwaitNamePairs = zip (map (getPWaitId funDef) pwaits) pwaits
->	 pbranchStructs <- liftM concat $ mapM (mkBlockingPBranchStructs funDef) pwaitNamePairs
->	 return $ pbranchStructs ++ privatePWaitStructs ++ sharedPWaitStructs ++ pwaitStructs
+>            pwaitNamePairs = zip (map (getPWaitId funDef) pwaits) pwaits
+>        pbranchStructs <- liftM concat $ mapM (mkBlockingPBranchStructs funDef) pwaitNamePairs
+>        return $ pbranchStructs ++ privatePWaitStructs ++ sharedPWaitStructs ++ pwaitStructs
 >    | otherwise = return []
 
 > mkPBranchExtDecl :: String -> String -> (String, [CDecl]) -> NodeInfo -> CExtDecl
 > mkPBranchExtDecl fname pwaitName (pbranchName, pbranchDecls) ni =
->	genStructExtDecl (mkStructPBranchName fname pwaitName pbranchName) pbranchDecls ni
+>       genStructExtDecl (mkStructPBranchName fname pwaitName pbranchName) pbranchDecls ni
 
 > mkBlockingCtlStruct :: CFunDef -> Bool -> WalkerT CExtDecl
 > mkBlockingCtlStruct funDef pblock = do
->	let ni = nodeInfo funDef
->	    fname = getFunDefName funDef
->	    ctlName = mkStructCtlName fname
->	    spName = mkStructParamsName fname
+>       let ni = nodeInfo funDef
+>           fname = getFunDefName funDef
+>           ctlName = mkStructCtlName fname
+>           spName = mkStructParamsName fname
 >           retSPName = mkStructRetParamsName fname
->	    fieldsDecl = mkStructDecl spName "fields" ni
->	    paramsDecl = mkStructPtrDecl spName "params" ni
+>           fieldsDecl = mkStructDecl spName "fields" ni
+>           paramsDecl = mkStructPtrDecl spName "params" ni
 >           returnsDecl = mkStructDecl retSPName "return_params" ni
->	    pwaitDecls = map (\p -> mkStructDecl (mkStructPWaitName fname (getPWaitId funDef p))
->						 (mkPWaitName (getPWaitId funDef p)) ni)
->			     $ getPWaits funDef
+>           pwaitDecls = map (\p -> mkStructDecl (mkStructPWaitName fname (getPWaitId funDef p))
+>                                                (mkPWaitName (getPWaitId funDef p)) ni)
+>                            $ getPWaits funDef
 
 >           fret = fromJust $ getFunDefReturnMaybe funDef
 >           retValDecl = if isVoidReturn fret then [] else [mkCDecl (fst fret) (snd fret) "return_value" ni]
->               
->	bparams <- mkBlockingParamsForStruct funDef
->	pparams <- mkBlockingParamsParallelFields (getFunDefName funDef) pblock ni
+>
+>       bparams <- mkBlockingParamsForStruct funDef
+>       pparams <- mkBlockingParamsParallelFields (getFunDefName funDef) pblock ni
 
->	return $ genStructExtDecl ctlName 
->			          (bparams ++ pparams ++
->			           [fieldsDecl, paramsDecl, returnsDecl] ++ retValDecl ++ pwaitDecls) ni
+>       return $ genStructExtDecl ctlName
+>                                 (bparams ++ pparams ++
+>                                  [fieldsDecl, paramsDecl, returnsDecl] ++ retValDecl ++ pwaitDecls) ni
 
 > mkBlockingFunName :: String -> String -> String
 > mkBlockingFunName ctlName name = name
@@ -651,37 +651,37 @@ Each callback function defined for a given blocking function must have a unique 
 
 > addParamsPtrPrefixToExpr :: String -> String -> [Ident] -> CExpr -> CExpr
 > addParamsPtrPrefixToExpr ctlPrefix paramsPrefix locals expr
->	| isVarIn locals expr = addStructPtrPrefix ctlPrefix paramsPrefix expr
+>       | isVarIn locals expr = addStructPtrPrefix ctlPrefix paramsPrefix expr
 >       | isCallIn locals expr = addStructPtrPrefix ctlPrefix paramsPrefix expr
->	| otherwise = expr
+>       | otherwise = expr
 
 > addParamsPtrPrefixes :: String -> String -> [Ident] -> CStat -> CStat
 > addParamsPtrPrefixes ctlPrefix paramsPrefix idents stmt = everywhere (mkT $ addParamsPtrPrefixToExpr ctlPrefix paramsPrefix idents) stmt
 
 > addParamsPrefixToExpr :: String -> String -> [Ident] -> CExpr -> CExpr
 > addParamsPrefixToExpr ctlPrefix paramsPrefix locals expr
->	| isVarIn locals expr = addStructPrefix ctlPrefix paramsPrefix expr
+>       | isVarIn locals expr = addStructPrefix ctlPrefix paramsPrefix expr
 >       | isCallIn locals expr = addStructPrefix ctlPrefix paramsPrefix expr
->	| otherwise = expr
+>       | otherwise = expr
 
 > addParamsPrefixes :: String -> String -> [Ident] -> CStat -> CStat
 > addParamsPrefixes ctlPrefix paramsPrefix idents stmt = everywhere (mkT $ addParamsPrefixToExpr ctlPrefix paramsPrefix idents) stmt
 
 > addParams2PrefixToExpr :: String -> String -> String -> [Ident] -> CExpr -> CExpr
 > addParams2PrefixToExpr ctlPrefix p1Prefix p2Prefix locals expr
->	| isVarIn locals expr = addStructPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
+>       | isVarIn locals expr = addStructPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
 >       | isCallIn locals expr = addStructPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
->	| otherwise = expr
+>       | otherwise = expr
 
 > addParams2Prefixes :: String -> String -> String -> [Ident] -> CStat -> CStat
 > addParams2Prefixes ctlPrefix p1Prefix p2Prefix idents stmt =
->	everywhere (mkT $ addParams2PrefixToExpr ctlPrefix p1Prefix p2Prefix idents) stmt
+>       everywhere (mkT $ addParams2PrefixToExpr ctlPrefix p1Prefix p2Prefix idents) stmt
 
 > addParams2PtrPrefixToExpr :: String -> String -> String -> [Ident] -> CExpr -> CExpr
 > addParams2PtrPrefixToExpr ctlPrefix p1Prefix p2Prefix locals expr
->	| isVarIn locals expr = addStructPtrPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
+>       | isVarIn locals expr = addStructPtrPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
 >       | isCallIn locals expr = addStructPtrPrefixPrefix ctlPrefix p1Prefix p2Prefix expr
->	| otherwise = expr
+>       | otherwise = expr
 
 addParams2PtrPrefixes "foo" "bar" "baz" [locals] localvar
 
@@ -705,20 +705,20 @@ runfun(ctl->fields.a, ctl->fields.b, ctl->fields.c, ctl->fields.d);
 > trPBranchLocals :: BlockingContext -> CStat -> CStat
 > trPBranchLocals bctx stmt
 >    | isPBranchContext bctx =
->	let locals = join $ map getCDeclNames $ getPBranchDecls (pbranchStmt bctx)
+>       let locals = join $ map getCDeclNames $ getPBranchDecls (pbranchStmt bctx)
 >           pwaitCtx = parent bctx
 >           fdef = funDef $ getParent bctx
 >           pwaitName = mkPWaitName $ "pwait_" ++ (mkLineColStr $ nodeInfo $ pwaitStmt pwaitCtx)
 >           pbranchName = mkParamPBranchName $ getPBranchId fdef $ pbranchStmt bctx
 
 >       in if parentIsPWait bctx then
->          
+>
 >              -- pbranch has a parameter struct in the pwait struct for the control struct
 >              -- myvar becomes:  ctl->pwait_100_23.pbranch_123_10.myvar
->	       addParams2Prefixes aesopCtlPrefix
->	   	                  (pwaitName ++ "." ++ mkPrivateName)
->		                  pbranchName
->			          locals
+>              addParams2Prefixes aesopCtlPrefix
+>                                 (pwaitName ++ "." ++ mkPrivateName)
+>                                 pbranchName
+>                                 locals
 >                                 stmt
 
 >          else
@@ -732,16 +732,16 @@ runfun(ctl->fields.a, ctl->fields.b, ctl->fields.c, ctl->fields.d);
 >    | otherwise = stmt
 
 > trPWaitLocals :: BlockingContext -> CStat -> CStat
-> trPWaitLocals bctx stmt 
+> trPWaitLocals bctx stmt
 >    | isPWaitContext bctx || parentIsPWait bctx =
->	let pwaitCtx = if isPWaitContext bctx then bctx else parent bctx
+>       let pwaitCtx = if isPWaitContext bctx then bctx else parent bctx
 >           mkLocals f = join $ map getCDeclNames $ f $ pwaitStmt pwaitCtx
 >           fdef = funDef $ getParent bctx
->	    privateLocals = mkLocals getPWaitPrivateDecls
+>           privateLocals = mkLocals getPWaitPrivateDecls
 >           sharedLocals = mkLocals getPWaitSharedDecls
 >           privatePWaitName = mkPrivatePWaitName $ getPWaitId  fdef $ pwaitStmt pwaitCtx
 >           sharedPWaitName = mkSharedPWaitName $ getPWaitId fdef $ pwaitStmt pwaitCtx
->           privatePrefixedStmt = addParamsPrefixes 
+>           privatePrefixedStmt = addParamsPrefixes
 >                                     aesopCtlPrefix
 >                                     privatePWaitName
 >                                     privateLocals
@@ -751,20 +751,20 @@ runfun(ctl->fields.a, ctl->fields.b, ctl->fields.c, ctl->fields.d);
 >                                 sharedPWaitName
 >                                 sharedLocals
 >                                 privatePrefixedStmt
->	in allPrefixedStmt
+>       in allPrefixedStmt
 >    | otherwise = stmt
 
 > trFunLocals :: BlockingContext -> CStat -> CStat
-> trFunLocals bctx stmt = 
-> 	let locals = join $ map getCDeclNames $ getLocals bctx
->	in (addParamsPtrPrefixes aesopCtlPrefix aesopParamsPrefix locals) stmt
+> trFunLocals bctx stmt =
+>       let locals = join $ map getCDeclNames $ getLocals bctx
+>       in (addParamsPtrPrefixes aesopCtlPrefix aesopParamsPrefix locals) stmt
 
 > trLocals :: BlockingContext -> CStat -> CStat
 > trLocals b = (trFunLocals b) . (trPWaitLocals b) . (trPBranchLocals b)
 
 > trExpr :: BlockingContext -> Maybe CExpr -> Maybe CExpr
 > trExpr bctx expr = if isJust expr then resExpr else expr
->	where ni = nodeInfo $ fromJust expr
+>       where ni = nodeInfo $ fromJust expr
 >             (CExpr resExpr _) = trLocals bctx (CExpr expr ni)
 
 > getFuncLocalDecls :: CFunDef -> [CDecl]
@@ -786,9 +786,9 @@ params->val = val;
 >       -- get the function parameters, and set the parameters in the
 >       -- params struct to the values passed in
 >       let withPrefix name ni = addStructPtrToAssign aesopCtlPrefix
->                                                     aesopParamsPrefix 
+>                                                     aesopParamsPrefix
 >                                                     name
->                                                     (CVar name ni) 
+>                                                     (CVar name ni)
 >           genParam decl = withPrefix (getCDeclName decl) (nodeInfo decl)
 >           funParams = map genParam $ concat (map splitDecls fdecls)
 
@@ -827,7 +827,7 @@ This is the case where the function returns void (no second paramter for the cal
 > mkBlockingStmts bctx funDef (CVoidType _, []) ni = do
 >     let (fname, retType, params) = getFunInfo funDef
 >         locals = getFunLocalDeclarations funDef
->     inits <- mkStmtsFromBlocking 
+>     inits <- mkStmtsFromBlocking
 >                  "AE_MK_BFUN_INIT_BLOCK" [identToString fname] ni
 >     workerInvoke <- mkStmtsFromBlocking
 >                         "AE_MK_BFUN_INVOKE_WORKER_VOIDFN" [identToString fname] ni
@@ -839,7 +839,7 @@ Normal non-void function
 > mkBlockingStmts bctx funDef (ret, derived) ni = do
 >     let (fname, retType, params) = getFunInfo funDef
 >         locals = getFunLocalDeclarations funDef
->     inits <- mkStmtsFromBlocking 
+>     inits <- mkStmtsFromBlocking
 >                  "AE_MK_BFUN_INIT_BLOCK" [identToString fname] ni
 >     workerInvoke <- mkStmtsFromBlocking
 >                  "AE_MK_BFUN_INVOKE_WORKER" [identToString fname, returnToString retType] ni
@@ -861,58 +861,58 @@ Normal non-void function
 > mkRetParam (ret, derived) ni = [mkCDecl ret ((CPtrDeclr [] ni) : derived) "__ae_retvalue" ni]
 
 > mkCBParam :: (CTypeSpec, [CDerivedDeclr]) -> NodeInfo -> [CDecl]
-> mkCBParam (CVoidType _, []) ni = 
->	[mkVoidFunPtr "__ae_callback" [constructDeclFromC ni "void *user_ptr;"]]
-> mkCBParam return ni = 
->	[mkVoidFunPtr "__ae_callback"
->		[constructDeclFromC ni "void *user_ptr;", mkCDecl (fst return) (snd return) "__ae_ret" ni]]
+> mkCBParam (CVoidType _, []) ni =
+>       [mkVoidFunPtr "__ae_callback" [constructDeclFromC ni "void *user_ptr;"]]
+> mkCBParam return ni =
+>       [mkVoidFunPtr "__ae_callback"
+>               [constructDeclFromC ni "void *user_ptr;", mkCDecl (fst return) (snd return) "__ae_ret" ni]]
 
 > mkBlockingParams :: (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> WalkerT [CDecl]
 > mkBlockingParams ((,,) fname ret params) = do
->	let ni = nodeInfo $ fst ret
+>       let ni = nodeInfo $ fst ret
 
->       txParams <- sequence $ map translateBlockingFunParam $ removeVoid params 
+>       txParams <- sequence $ map translateBlockingFunParam $ removeVoid params
 >       bParams <- mkBlockingParamsForFunction ret ni
 
->	return $ bParams ++ txParams
+>       return $ bParams ++ txParams
 
 > mkBlockingDecl :: (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> [CDeclSpec] -> WalkerT CDecl
 > mkBlockingDecl f@((,,) fname ret params) declspecs = do
->	let ni = nodeInfo $ fst ret
->	fparams <- mkBlockingParams f
+>       let ni = nodeInfo $ fst ret
+>       fparams <- mkBlockingParams f
 >       ret <- mkBlockingRetType ni
->	return $ mkFunDeclWithDeclSpecs
->		   (identToString fname)
->		   ret []
->		   (filterStdDeclSpecs declspecs)
->	           fparams
+>       return $ mkFunDeclWithDeclSpecs
+>                  (identToString fname)
+>                  ret []
+>                  (filterStdDeclSpecs declspecs)
+>                  fparams
 
 > mkBlockingPtrDecl :: Bool -> (Ident, (CTypeSpec, [CDerivedDeclr]), [CDecl]) -> [CDeclSpec] -> WalkerT CDecl
 > mkBlockingPtrDecl extern f@((,,) fname ret params) declspecs = do
->	let ni = nodeInfo $ fst ret
->	fparams <- mkBlockingParams f
+>       let ni = nodeInfo $ fst ret
+>       fparams <- mkBlockingParams f
 >       ret <- mkBlockingRetType ni
->	return $ mkFunPtrDeclWithDeclSpecs
->		    (identToString fname)
->		    ret []
->		    ((filterStdDeclSpecs declspecs) ++
->		     (if extern then [CStorageSpec $ CExtern ni] else []))
->		    fparams
->		    (if not extern then Just (identToString $ fname) else Nothing)
+>       return $ mkFunPtrDeclWithDeclSpecs
+>                   (identToString fname)
+>                   ret []
+>                   ((filterStdDeclSpecs declspecs) ++
+>                    (if extern then [CStorageSpec $ CExtern ni] else []))
+>                   fparams
+>                   (if not extern then Just (identToString $ fname) else Nothing)
 
 > mkBlockingFunction :: BlockingContext -> CFunDef -> WalkerT CExtDecl
 > mkBlockingFunction bctx funDef = do
->	let decls = getFunDefParams funDef
->	    ni = nodeInfo funDef
+>       let decls = getFunDefParams funDef
+>           ni = nodeInfo funDef
 >       params <- sequence $ map translateBlockingFunParam $ removeVoid decls
 >       blockingParams <- mkBlockingParamsForFunction (fromJust $ getFunDefReturnMaybe funDef) (nodeInfo funDef)
 >       body <- mkBlockingBody bctx funDef
 >       ret <- mkBlockingRetType ni
->	return $ mkFunDef (ret, []) -- return type
->		    (getStdDeclSpecs funDef) -- get the storage specifiers for the function
->	            (mkBlockingFunName aesopParamsPrefix $ getFunDefName funDef) -- function name
->	            (blockingParams ++ params)
->	            body -- statements
+>       return $ mkFunDef (ret, []) -- return type
+>                   (getStdDeclSpecs funDef) -- get the storage specifiers for the function
+>                   (mkBlockingFunName aesopParamsPrefix $ getFunDefName funDef) -- function name
+>                   (blockingParams ++ params)
+>                   body -- statements
 
 > removeDerivedFun :: [CDerivedDeclr] -> [CDerivedDeclr]
 > removeDerivedFun (d:ds) | isDerivedFun d = ds
@@ -937,26 +937,26 @@ Normal non-void function
 
 > generateCallbackDeclForBlocking :: BlockingContext -> CExpr -> WalkerT CExtDecl
 > generateCallbackDeclForBlocking b blockingCall = do
-	
+
 >       wdebug $ "[generateCallbackDeclForBlocking]: call: " ++ (show $ getCallName $ blockingCall)
->	blockingFun <- lookupBlocking $ blockingCall
->	assert (isJust blockingFun) $ return ()
+>       blockingFun <- lookupBlocking $ blockingCall
+>       assert (isJust blockingFun) $ return ()
 >
->	let (Just ((,,) bname retType params)) = blockingFun
+>       let (Just ((,,) bname retType params)) = blockingFun
 >       wdebug $ "[generateCallbackDeclForBlocking]: fun: " ++ (show bname)
->	return $ mkCallbackDecl b blockingCall retType
+>       return $ mkCallbackDecl b blockingCall retType
 
 > generateCallbackDecls :: BlockingContext -> [CExpr] -> WalkerT [CExtDecl]
-> generateCallbackDecls b blockingCalls = do 
+> generateCallbackDecls b blockingCalls = do
 >        sequence $ map (generateCallbackDeclForBlocking b) blockingCalls
 
 > generateCallbackForBlocking :: BlockingContext -> CExpr -> WalkerT [CExtDecl]
 > generateCallbackForBlocking b blockingCall = do
->	-- lookup the declaration of the blocking function call
+>       -- lookup the declaration of the blocking function call
 >       -- to get the return type and parameter types
->	blockingFun <- lookupBlocking $ blockingCall
->	assert (isJust blockingFun) $ return ()
->	let (Just ((,,) bname retType params)) = blockingFun
+>       blockingFun <- lookupBlocking $ blockingCall
+>       assert (isJust blockingFun) $ return ()
+>       let (Just ((,,) bname retType params)) = blockingFun
 >           ni = getCallNodeInfo blockingCall
 >           fname = getCallName blockingCall
 >           cbFunName = mkCallbackFunName (getParentName b) fname ni
@@ -1074,7 +1074,7 @@ a BlockingContext as we go along
 >         everywhereM (mkM $ swapReturn b) tx
 >       else return rstmt
 > transformCall _ s = return s
-            
+
 > addPBranchStmts :: BlockingContext -> CStat -> WalkerT CStat
 
 > addPBranchStmts bctx pb@(CPBranch stmt ni) = do
@@ -1138,7 +1138,7 @@ a BlockingContext as we go along
 > addPWaitStmts bctx s = return s
 
 > mkWorkerRetType :: NodeInfo -> WalkerT CTypeSpec
-> mkWorkerRetType ni = do 
+> mkWorkerRetType ni = do
 >       prd <- mkWorkerRetDecl ni
 >       return $ fst $ getReturn prd
 
@@ -1196,16 +1196,16 @@ a BlockingContext as we go along
 > generateWorkerDecl fname ni declspecs = do
 >       ret <- mkWorkerRetType ni
 >       fparams <- mkWorkerParams fname ni
->	return $ mkFunDeclWithDeclSpecs
+>       return $ mkFunDeclWithDeclSpecs
 >                  ("__ae_worker_" ++ fname)
->		   ret []
->		   (filterStdDeclSpecs declspecs)
->	           fparams
+>                  ret []
+>                  (filterStdDeclSpecs declspecs)
+>                  fparams
 
 > generateWorker :: CFunDef -> WalkerT CExtDecl
 > generateWorker funDef@(CFunDef specs declr decls stmt ni) = do
 
->       let bctx = FunContext funDef 
+>       let bctx = FunContext funDef
 >           fname = getFunDefName funDef
 
 >           -- filter decls out of inits so that just init statements remain
@@ -1229,7 +1229,7 @@ a BlockingContext as we go along
 >           --        see (AE_MK_WORKER_PWAIT_START_STMTS, AE_MK_WORKER_PWAIT_END_STMTS)
 >           --     5) swap all pbreaks with the transformed statements
 >           --        see (AE_MK_WORKER_PBREAK)
->           --     6) swap the return statement with 
+>           --     6) swap the return statement with
 >           --        the transformed statements (see AE_MK_WORKER_RETURN)
 
 >       let combinedTransform b = (trLocalsM b) <=<
@@ -1258,7 +1258,7 @@ a BlockingContext as we go along
 > transformBlocking fdefext@(CFDefExt funDef)
 
 >   -- A blocking function definition, so we transform it
->   | isBlockingFunDef funDef = do 
+>   | isBlockingFunDef funDef = do
 
 >       isValidBlockingFunDef funDef
 
@@ -1269,70 +1269,70 @@ a BlockingContext as we go along
 >                return []
 >       else do
 
->	-- register a blocking function with its parameters and return type
->	registerBlocking ((getFunDefIdent funDef),
+>        -- register a blocking function with its parameters and return type
+>               registerBlocking ((getFunDefIdent funDef),
 >                           (fromJust $ getFunDefReturnMaybe funDef),
->                         (getFunDefParams funDef))
+>                           (getFunDefParams funDef))
 
->	-- Find any blocking function pointers as parameters to the blocking function,
->	-- and register them
->	mapM_ registerBlockingFunParam $ getFunDefParams funDef
+>       -- Find any blocking function pointers as parameters to the blocking function,
+>       -- and register them
+>               mapM_ registerBlockingFunParam $ getFunDefParams funDef
 
->	-- Register function parameters as local variables
->	addLocals $ getFunDefParams funDef
+>       -- Register function parameters as local variables
+>               addLocals $ getFunDefParams funDef
 
->	-- Register function local variables
->	addLocals $ getFunLocalDeclarations funDef
+>       -- Register function local variables
+>               addLocals $ getFunLocalDeclarations funDef
 
->	-- before generating the context, we add a return; statement at the end if its
->	-- a void function and doesn't have a return
+>       -- before generating the context, we add a return; statement at the end if its
+>       -- a void function and doesn't have a return
 
->	fDefWReturn <- checkForReturn funDef
+>               fDefWReturn <- checkForReturn funDef
 
->	-- Generate the blocking tree of BlockingContext nodes
->	bcalls <- getAllBlockingCalls fDefWReturn
+>               -- Generate the blocking tree of BlockingContext nodes
+>               bcalls <- getAllBlockingCalls fDefWReturn
 
->       let bctx = FunContext fDefWReturn
+>               let bctx = FunContext fDefWReturn
 
->	-- Walk the tree, and generate the callback function declarations
->	callbackDecls <- generateCallbackDecls bctx bcalls
+>       -- Walk the tree, and generate the callback function declarations
+>               callbackDecls <- generateCallbackDecls bctx bcalls
 
->	-- Walk the tree, and generate the callback function definitions
->       callbackDefs <- generateCallbackDefs bctx bcalls
+>       -- Walk the tree, and generate the callback function definitions
+>               callbackDefs <- generateCallbackDefs bctx bcalls
 
->       workerDecl <- generateWorkerDecl
+>               workerDecl <- generateWorkerDecl
 >                       (getFunDefName fDefWReturn)
 >                       (nodeInfo fDefWReturn)
 >                       (getDeclSpecs fDefWReturn)
 
->       workerDef <- generateWorker fDefWReturn
+>               workerDef <- generateWorker fDefWReturn
 
->	-- Make the blocking params structure declaration
->	paramsStruct <- mkBlockingParamsStruct fDefWReturn
->       returnParamsStruct <- mkBlockingRetParamsStruct fDefWReturn bcalls
->	pwaitStructs <- mkBlockingPWaitStructs fDefWReturn
->	ctlStruct <- mkBlockingCtlStruct fDefWReturn True
+>       -- Make the blocking params structure declaration
+>               paramsStruct <- mkBlockingParamsStruct fDefWReturn
+>               returnParamsStruct <- mkBlockingRetParamsStruct fDefWReturn bcalls
+>               pwaitStructs <- mkBlockingPWaitStructs fDefWReturn
+>               ctlStruct <- mkBlockingCtlStruct fDefWReturn True
 
->	let ni = nodeInfo fDefWReturn
->	    fi = getFunInfo fDefWReturn
->	    specs = map CStorageSpec (getStorageSpecs fDefWReturn)
+>               let ni = nodeInfo fDefWReturn
+>                   fi = getFunInfo fDefWReturn
+>                   specs = map CStorageSpec (getStorageSpecs fDefWReturn)
 
->       blockingFun <- mkBlockingFunction bctx fDefWReturn
->       blockingDecl <- mkBlockingDecl fi specs
->       -- pPtrDecl <- mkBlockingPtrDecl False fi specs 
+>               blockingFun <- mkBlockingFunction bctx fDefWReturn
+>               blockingDecl <- mkBlockingDecl fi specs
+>       -- pPtrDecl <- mkBlockingPtrDecl False fi specs
 
->	-- Construct the external declarations of parameters, callback functions, and post function
->	let transformedDecls = pwaitStructs ++ [paramsStruct, returnParamsStruct, ctlStruct] ++ callbackDecls ++
->			       [CDeclExt workerDecl, CDeclExt blockingDecl] ++
->                              callbackDefs ++ [workerDef, blockingFun]
+>       -- Construct the external declarations of parameters, callback functions, and post function
+>               let transformedDecls = pwaitStructs ++ [paramsStruct, returnParamsStruct, ctlStruct] ++ callbackDecls ++
+>                                      [CDeclExt workerDecl, CDeclExt blockingDecl] ++
+>                                      callbackDefs ++ [workerDef, blockingFun]
 
->	-- Clear the blocking function parameters registry
->	resetLocals
->	clearLocalFunPtrRegistry
+>       -- Clear the blocking function parameters registry
+>               resetLocals
+>               clearLocalFunPtrRegistry
 
->       wdebug $ "[transform end]: " ++ (getFunDefName funDef)
+>               wdebug $ "[transform end]: " ++ (getFunDefName funDef)
 
->	return transformedDecls
+>               return transformedDecls
 
    | defHasBlockingFunPtrParam funDef = do
        let (fname, (rtype, derived), ps) = getFunInfo funDef
@@ -1342,55 +1342,55 @@ a BlockingContext as we go along
        let newDef = mkFunDef (rtype, derived) specs fname newps stmt
        return [newDef]
 
->   | otherwise = 
+>   | otherwise =
 >      liftM ((:[]) . CFDefExt) $ everywhereM (mkM translateBlockingFunParam) funDef
 
 > transformBlocking c = return [c]
 
-> transform :: CTranslUnit -> WalkerT CTranslUnit 
+> transform :: CTranslUnit -> WalkerT CTranslUnit
 > transform (CTranslUnit decls ni) = do
 >       -- map transformBlockingDef decls returns: [WalkerT [CExtDecl]]
 >       -- sequence of that returns: WalkerT [[CExtDecl]]
 >       -- so we lift concat into a monad so that we end up with WalkerT [CExtDecl]
->	newdecls <- liftM concat $ sequence $ map transformBlocking decls
->	return $ CTranslUnit newdecls ni
+>       newdecls <- liftM concat $ sequence $ map transformBlocking decls
+>       return $ CTranslUnit newdecls ni
 
 > printBlocking :: Int -> FPType -> WalkerT ()
 > printBlocking l (FPFun n f) = do
->	let (bname, (rettype, derives), params) = f
+>       let (bname, (rettype, derives), params) = f
 >           pstr = if null params then "" else (foldl1 ((++) . (++ ", ")) $ map (show . pretty) params)
->	liftIO $ print $ (take l $ repeat ' ') ++ (show bname) ++ "( " ++ pstr ++ " ) = " ++ (show . pretty $ rettype)
+>       liftIO $ print $ (take l $ repeat ' ') ++ (show bname) ++ "( " ++ pstr ++ " ) = " ++ (show . pretty $ rettype)
 > printBlocking l (FPStruct n f i) = do
->	liftIO $ print $ (take l $ repeat ' ') ++ "( " ++ (show n) ++ " )->" ++ (show f)
->	printBlocking (l + 4) i
+>       liftIO $ print $ (take l $ repeat ' ') ++ "( " ++ (show n) ++ " )->" ++ (show f)
+>       printBlocking (l + 4) i
 
 > printRegisteredBlockingCalls :: WalkerT ()
 > printRegisteredBlockingCalls = do
-> 	blocking <- getAllBlocking
-> 	liftIO $ print "BLOCKING FUNCTIONS:"
-> 	mapM_ (printBlocking 0) blocking
+>       blocking <- getAllBlocking
+>       liftIO $ print "BLOCKING FUNCTIONS:"
+>       mapM_ (printBlocking 0) blocking
 
 > generateAST :: FilePath -> IO CTranslUnit
 > generateAST input_file = do
->	input_stream <- readInputStream input_file
->	let parse_result = parseC input_stream (position 0 input_file 1 1)
+>       input_stream <- readInputStream input_file
+>       let parse_result = parseC input_stream (position 0 input_file 1 1)
 >       case parse_result of
 >         Left parse_err -> error $ "Parse failed for input file: " ++ input_file ++ ": " ++ (show parse_err)
 >         Right ast      -> return ast
 
 > parseHeader :: Bool -> String -> FilePath -> Maybe FilePath  -> FilePath -> [String]-> IO ()
 > parseHeader debug compiler headerfile report outfile gccopts = do
->	let r = if isJust report then fromJust report else headerfile
->	ctu <- generateAST headerfile
+>       let r = if isJust report then fromJust report else headerfile
+>       ctu <- generateAST headerfile
 >       let tdIdents = getTypeDefIdents ctu
->	w <- newWalkerState debug r compiler "aesop/ae-blocking-parser.h" gccopts tdIdents
->	(pairs, w) <- runStateT (getBlockingHeaderDecls ctu) w
->	writeFile outfile "\n\n/* This is an auto-generated file created by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
->	outputHeader r outfile pairs
->	appendFile outfile "\n\n"
+>       w <- newWalkerState debug r compiler "aesop/ae-blocking-parser.h" gccopts tdIdents
+>       (pairs, w) <- runStateT (getBlockingHeaderDecls ctu) w
+>       writeFile outfile "\n\n/* This is an auto-generated file created by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
+>       outputHeader r outfile pairs
+>       appendFile outfile "\n\n"
 >       assert (isJust $ blockingParser w) return ()
 >       removeFile $ macheader $ fromJust $ blockingParser w
->	return ()
+>       return ()
 
 > isAesopInit :: CExtDecl -> Bool
 > isAesopInit (CDeclExt d) = any ((== "aesop_init") . identToString) $ getCDeclNames d
@@ -1406,27 +1406,27 @@ a BlockingContext as we go along
 
 > parseFile :: Bool -> Bool -> String -> FilePath -> Maybe FilePath -> [String] -> FilePath -> IO ()
 > parseFile debug p compiler outfile report gccopts f = do
->	let r = if isJust report then fromJust report else f
-> 	ctu <- generateAST f
+>       let r = if isJust report then fromJust report else f
+>       ctu <- generateAST f
 >       let typeDefIdents = getTypeDefIdents ctu
-> 	w <- newWalkerState debug r compiler "aesop/ae-blocking-parser.h" gccopts typeDefIdents
+>       w <- newWalkerState debug r compiler "aesop/ae-blocking-parser.h" gccopts typeDefIdents
 >       let extDecls (CTranslUnit d _) = d
 >       let (preBlockingCTU, mainCTU) = splitExtDeclsAtAesop ctu
 >       let (CTranslUnit mainExtDecls _) = mainCTU
 >       when (null mainExtDecls) $
 >           error $ "Parse failed for " ++ f ++ ": missing aesop_init() function.  " ++
 >                   "Must include aesop.h in all aesop source and header files.\n"
->	(ctuWithPostDecls, w) <- runStateT (registerBlockingFunDecls mainCTU) w
+>       (ctuWithPostDecls, w) <- runStateT (registerBlockingFunDecls mainCTU) w
 >       -- runStateT (printRegisteredBlockingCalls) w
->	(transCTU, w) <- runStateT (transform ctuWithPostDecls) w
+>       (transCTU, w) <- runStateT (transform ctuWithPostDecls) w
 >       writeFile outfile $ "\n\n\
 >                           \/* This is an auto-generated source file create by the ae-blocking-parser tool.  DO NOT MODIFY! */\n\n"
->	if p then ((appendFile outfile) . show . pretty) (mergeCTUs preBlockingCTU transCTU)
->	  else ((appendFile outfile) . show . serialize) (mergeCTUs preBlockingCTU transCTU)
->	appendFile outfile "\n\n"
+>       if p then ((appendFile outfile) . show . pretty) (mergeCTUs preBlockingCTU transCTU)
+>         else ((appendFile outfile) . show . serialize) (mergeCTUs preBlockingCTU transCTU)
+>       appendFile outfile "\n\n"
 >       assert (isJust $ blockingParser w) return ()
 >       removeFile $ macheader $ fromJust $ blockingParser w
-> 	return ()
+>       return ()
 
 > data ParserOpts = Debug | Pretty | Help | Report String | Outfile String | Infile String | Header | Compiler String
 
@@ -1453,19 +1453,19 @@ a BlockingContext as we go along
 > parserOpts :: [OptDescr ParserOpts]
 > parserOpts =
 >    [ Option ['p'] ["pretty"] (NoArg Pretty)
->		"output in pretty form without source line macros"
+>               "output in pretty form without source line macros"
 >    , Option ['h','?'] ["help"] (NoArg Help)
->		"help text"
+>               "help text"
 >    , Option ['r'] ["report"] (ReqArg (\s -> Report s) "<report filename>")
->		"filename to use when reporting errors"
+>               "filename to use when reporting errors"
 >    , Option ['o'] ["outfile"] (ReqArg (\s -> Outfile s) "<output file>")
->		"filename to write translated C code"
+>               "filename to write translated C code"
 >    , Option ['i'] ["infile"] (ReqArg (\s -> Infile s) "<input file>")
->		"input filename to translate"
+>               "input filename to translate"
 >    , Option ['c'] ["compiler"] (ReqArg (\s -> Compiler s) "<compiler>")
 >               "compiler"
 >    , Option ['j'] ["header"] (NoArg Header)
->		"parse header file instead of source"
+>               "parse header file instead of source"
 >    , Option ['d'] ["debug"] (NoArg Debug)
 >               "output debugging info (very verbose!)"
 >    ]
@@ -1489,19 +1489,19 @@ a BlockingContext as we go along
 > main :: IO ()
 > main = do
 >   args <- getArgs
->   let (opts, gccopts, errs) = getOpt RequireOrder parserOpts args 
->	pretty = any optPretty opts
->	help = any optHelp opts
->	report = getReportFilename opts
->	outfile = getOutfile opts
+>   let (opts, gccopts, errs) = getOpt RequireOrder parserOpts args
+>       pretty = any optPretty opts
+>       help = any optHelp opts
+>       report = getReportFilename opts
+>       outfile = getOutfile opts
 >       input = getInfile opts
->	pheader = any optHeader opts
+>       pheader = any optHeader opts
 >       debug = any optDebug opts
 >       compiler = getCompiler opts
->	header = "Usage: ae-blocking-parser [OPTIONS...] files..."
+>       header = "Usage: ae-blocking-parser [OPTIONS...] files..."
 >   when (not $ null errs) $ ioError $ userError ((concat errs) ++
->			     	                  (usageInfo header parserOpts))
->   when help $ do { putStrLn $ usageInfo header parserOpts ; exitWith (ExitFailure 1) } 
+>                                                 (usageInfo header parserOpts))
+>   when help $ do { putStrLn $ usageInfo header parserOpts ; exitWith (ExitFailure 1) }
 >   when (isNothing input) $ ioError $ userError "No input file specified."
 >   when (isNothing outfile) $ ioError $ userError "No output file specified."
 
