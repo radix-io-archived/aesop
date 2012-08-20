@@ -100,6 +100,8 @@ static void * aesocket_thread_main (void * arg)
       aesocket_check_queue ();
       ev_loop (socket_ev_loop, EVLOOP_ONESHOT);
    }
+
+   return(NULL);
 }
 
 int aesocket_init (void)
@@ -232,7 +234,7 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
    rb_slot_destroy (&entry.slot);
    *err = 0;
 
-   return ret;
+   return(ret);
 }
 
 
