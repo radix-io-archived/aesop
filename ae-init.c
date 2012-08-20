@@ -14,6 +14,8 @@ int ae_init (void)
    /* Call the constructor functions here */
    aesop_timer_init_register ();
    triton_aethread_init_register ();
+
+   return(0);
 }
 
 /*
