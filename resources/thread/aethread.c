@@ -165,9 +165,6 @@ ae_define_post(int, aethread_hint, struct aethread_group *group)
 {
     struct ae_op *op;
     struct aethread_op *a_op;
-    pthread_t tid;
-    pthread_attr_t attr;
-    int ret;
  
     assert(initialized && group);
 
@@ -198,7 +195,7 @@ ae_define_post(int, aethread_hint, struct aethread_group *group)
     return AE_SUCCESS;
 }
 
-static int triton_aethread_poll(ae_context_t context)
+static int triton_aethread_poll(ae_context_t context, void *user_data)
 {
     return AE_SUCCESS;
 }
@@ -208,7 +205,6 @@ static int triton_aethread_cancel(ae_context_t triton_ctx, ae_op_id_t op_id)
     int resource_id;
     struct ae_op *op;
     struct aethread_op *aop;
-    ae_context_t ctx;
     struct aethread_group *group, *tmpgroup;
     int found = 0;
         
