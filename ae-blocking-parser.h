@@ -208,6 +208,7 @@ fake_label_to_please_clang:                             \
     if(*__ae_state == AE_CTL_CALL_COMPLETE)             \
     {                                                   \
         void* foo = &&fake_label_to_please_clang;       \
+        (void)foo;                                      \
         assert(__ae_ctl->gen.state_label);              \
         goto *__ae_ctl->gen.state_label;                \
     }
