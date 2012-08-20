@@ -134,7 +134,7 @@ __blocking int aesop_main(int argc, char **argv)
 }
 
 
-aesop_main_set_with_init(NULL, "timer", aesop_main, "timer");
+aesop_main_set(aesop_main);
 
 /*
  * Local variables:
