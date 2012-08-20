@@ -124,7 +124,7 @@ static int rb_callback (rb_slot_t * slot, int success)
          return AE_ERR_NOT_FOUND;
       }
 
-      if (status == STATUS_COMPLETED_SUCCESS | status == STATUS_COMPLETED_CANCEL)
+      if (status == STATUS_COMPLETED_SUCCESS || status == STATUS_COMPLETED_CANCEL)
       {
          /* was already completed */
          return AE_ERR_INVALID;
@@ -136,7 +136,6 @@ static int rb_callback (rb_slot_t * slot, int success)
 
          /* some internal checks */
          int resource_id;
-         struct ae_op * op = &slot->op;
 
          assert (slot == (rb_slot_t *) intptr2op (ae_id_lookup (slot->op_id,
                      &resource_id)));
@@ -181,7 +180,7 @@ void rb_slot_destroy (rb_slot_t * slot)
 {
    /* make sure the slot has been properly completed (or cancelled) */
    const int status = OPA_load_int (&slot->status);
-   assert (status == STATUS_COMPLETED_CANCEL |
+   assert (status == STATUS_COMPLETED_CANCEL ||
          status == STATUS_COMPLETED_SUCCESS);
    OPA_store_int (&slot->status, STATUS_UNINITIALIZED);
 }
