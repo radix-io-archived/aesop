@@ -54,7 +54,6 @@ static ae_ops_t cancel_oplist;
 ae_define_post(int, aesop_timer, int millisecs)
 {
     struct timeval adjust, now;
-    int ret;
     struct timer_op *top;
     struct ae_op *op;
     struct ae_op *iter, *safe, *holder;
@@ -265,9 +264,6 @@ static void timer_cb(EV_P_ ev_timer *w, int revents)
     struct timer_op *top;
     struct timeval now;
     struct timeval diff;
-    int did_something = 0;
-    ae_context_t ctx;
-    int ret;
     ev_tstamp tstamp;
     
     triton_mutex_lock(&timer_mutex);
@@ -285,7 +281,6 @@ static void timer_cb(EV_P_ ev_timer *w, int revents)
         top = ae_op_entry(gop, struct timer_op, op);
         triton_mutex_unlock(&timer_mutex);
 
-        ctx = gop->ctx;
         ae_opcache_complete_op(timer_opcache, gop, int, 0);
 	/* setup for next iteration */
         triton_mutex_lock(&timer_mutex);
