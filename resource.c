@@ -156,7 +156,6 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
                                    void *user_data)
 {
     int reindex = -1;
-    int ret;
     int i;
 
     if(ae_resource_count == 0)
@@ -565,8 +564,6 @@ static void timeout_cb(EV_P_ ev_timer *w, int revents)
 int ae_poll(ae_context_t context, int millisecs)
 {
     struct ev_loop* target_loop;
-    int ret;
-    int i;
     ev_timer timeout;
     int hit_timeout = 0;
 
@@ -1012,6 +1009,8 @@ int ae_resource_cleanup (void)
    ae_resource_init_register_cleanup ();
    ev_async_stop (eloop, &eloop_breaker);
    ev_default_destroy ();
+
+   return(0);
 }
 
 /*
