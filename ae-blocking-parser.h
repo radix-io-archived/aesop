@@ -613,8 +613,6 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
                                                                       \
     __fname##_immediate_completion:                                   \
     {                                                                 \
-        void (* __ae_local_cb)(void *);                               \
-        AE_MK_DONE_DECLS();                                           \
         AE_MK_END_OF_BLOCKING(__fname, " (IC)");                      \
         ae_debug_pbranch("ctl_done: bfun ic: %p\n", __ae_ctl);        \
         ae_ctl_done(&__ae_ctl->gen);                                  \
