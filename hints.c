@@ -228,7 +228,6 @@ int ae_hints_del(ae_hints_t *hints, const char *key)
 
     struct ae_hint_info *info;
     struct ae_hint_entry *entry, *tmpentry;
-    int ret;
 
     info = ae_hints_get_info_by_key(key);
     if(!info)
@@ -266,7 +265,6 @@ int ae_hints_modify(ae_hints_t * hints,
 
     struct ae_hint_info *info;
     struct ae_hint_entry *entry, *tmpentry;
-    int ret;
 
     info = ae_hints_get_info_by_key(key);
     if(!info)
@@ -384,7 +382,6 @@ int ae_hints_get(ae_hints_t *hints,
 {
     struct ae_hint_entry *entry, *tmpentry;
     struct ae_hint_info *info;
-    ae_hints_t *p;
 
     assert(hints);
 
@@ -544,6 +541,7 @@ done:
     return ret;
 }
 
+#if 0
 int ae_hints_check(ae_hints_t *hints, int type)
 {
     struct ae_hint_entry *entry, *tmpentry;
@@ -564,7 +562,6 @@ int ae_hints_check(ae_hints_t *hints, int type)
 static uint32_t count_transferable_hints(struct ae_hints *h)
 {
     uint64_t count = 0;
-    struct ae_hints_entry *entry, *tmpentry;
 
     while(h)
     {
@@ -573,6 +570,7 @@ static uint32_t count_transferable_hints(struct ae_hints *h)
     }
     return count;
 }
+#endif
 
 /*
  * Local variables:

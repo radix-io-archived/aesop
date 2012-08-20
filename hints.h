@@ -110,10 +110,12 @@ int ae_hints_clone(ae_hints_t *oldh, ae_hints_t ** newh);
  */
 int ae_hints_dup(ae_hints_t *oldh, ae_hints_t ** newh);
 
+#if 0
 /**
  * Check that hints hold a value for a particular hint type.
  */
 int ae_hints_check(ae_hints_t *hints, int type);
+#endif
 
 /**
  * Initialize members of hint structure.
