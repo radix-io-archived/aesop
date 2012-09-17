@@ -53,6 +53,8 @@ int aesop_sem_destroy (aesop_sem_t * sem)
     * being waited on or is being use in another call.
     */
    assert (ae_ops_empty (&sem->wait_queue));
+
+   return AE_SUCCESS;
 }
 
 
@@ -132,6 +134,7 @@ ae_define_post(int, aesop_sem_down, aesop_sem_t * sem)
    sem_wait_t * newwait = malloc (sizeof (sem_wait_t));
    newwait->sem = sem;
    ae_op_fill (&newwait->op);
+   ae_ops_link_init (&newwait->op);
    *__ae_op_id = ae_id_gen (sem_resource_id, (uintptr_t) newwait);
    ae_ops_enqueue (&newwait->op, &sem->wait_queue);
 
@@ -236,6 +239,8 @@ static int sem_poll (ae_context_t ctx, void * arg)
       free (wait);
    }
    triton_mutex_unlock (&sem_cancel_lock);
+
+   return AE_SUCCESS;
 }
 
 
