@@ -72,6 +72,14 @@ typedef triton_list_t ae_ops_t;
 
 #define ae_ops_enqueue(_op, _queue) triton_queue_enqueue(&(_op)->link, _queue)
 
+/**
+ * Initialize the ae op link
+ */
+static inline void ae_ops_link_init (ae_op_t * op)
+{
+   triton_list_link_clear (&op->link);
+}
+
 static inline ae_op_t *ae_ops_dequeue(ae_ops_t *queue)
 {
     triton_list_link_t *llink;
