@@ -5,7 +5,6 @@
  */
 
 #include "aesocket.hae"
-#include "resources/resourcebuilder/resourcebuilder.hae"
 
 #include <unistd.h>
 #include <assert.h>
@@ -13,6 +12,7 @@
 #include <signal.h>
 #include <errno.h>
 #include "libev/ev.h"
+#include "resourcebuilder/resourcebuilder.hae"
 
 /**
  * If true, before testing if the socket is ready, try to read/write under the
@@ -114,6 +114,8 @@ int aesocket_init (void)
       ev_async_init (&socket_thread_wake, &socket_thread_wake_cb);
 
       pthread_create (&socket_thread, 0, aesocket_thread_main, 0);
+
+      rb_init ();
    }
    triton_mutex_unlock (&mutex);
    return AE_SUCCESS;
@@ -127,6 +129,8 @@ int aesocket_finalize (void)
       socket_thread_done = 1;
       aesocket_thread_wakeup ();
       pthread_join (socket_thread, 0);
+
+      rb_finalize ();
 
       ev_loop_destroy (socket_ev_loop);
    }
