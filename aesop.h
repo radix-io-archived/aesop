@@ -7,14 +7,18 @@
 #ifndef __AESOP_H__
 #define __AESOP_H__
 
-#include <aesop/triton-base.h>
-#include <aesop/triton-list.h>
-#include <aesop/triton-thread.h>
+// This causes problems- includes c-utils-config.h .
+// Not sure why this was here anyway. -Justin
+// #include <triton-base.h>
+
+#include <triton-list.h>
+#include <triton-thread.h>
+#include <triton-uint128.h>
+
 #include <aesop/ae-error.h>
 #include <aesop/ae-log.h>
 #include <aesop/ae-debug.h>
 #include <aesop/ae-ctl.h>
-#include <aesop/triton-uint128.h>
 
 int aesop_init(const char *resource_list);
 void aesop_finalize(void);

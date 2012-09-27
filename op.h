@@ -9,7 +9,7 @@
 #define __OP_H__
 
 #include "aesop.h"
-#include "src/c-utils/triton-list.h"
+#include <triton-list.h>
 
 #include <stdint.h>
 
