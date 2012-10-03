@@ -63,14 +63,35 @@ int ae_cancel_branches(struct ae_ctl *ctl);
 int ae_count_branches(struct ae_ctl *ctl);
 
 #ifdef AESOP_PARSER
+
 #define aesop_cancel_branches() ae_cancel_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
 #define aesop_count_branches() ae_count_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
 #define aesop_clear_cancel () ae_clear_cancel (__ae_ctl ? &__ae_ctl->gen : NULL)
+
 #else
+
+/**
+ * This function tries to cancel the enclosing pwait. (it can only be called
+ * from within a pbranch of a pwait).
+ *
+ * It returns AE_SUCCESS if all resource cancel functions returned success,
+ * and returns the last error returned by a cancel function otherwise.
+ *
+ * In addition, it marks each pbranch (and children) as cancelled, meaning
+ * that every new posted operation should return immediately indicating
+ * cancellation.
+ */
 static inline int aesop_cancel_branches(void) { return AE_ERR_SYSTEM; }
+
 static inline int aesop_count_branches(void) { return -1; }
+
+/**
+ * This function clears the cancelled state of the caller.
+ * It should not be called from within a pbranch.
+ */
 static inline void aesop_clear_cancel(void) { }
-#endif
+
+#endif /* AESOP_PARSER */
 
 /* Set this to zero to cause the main_set macros to busy spin on ae_poll(),
  * although this probably is not a good idea.

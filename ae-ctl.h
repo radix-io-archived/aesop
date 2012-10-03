@@ -62,13 +62,39 @@ enum ae_pwait_command
 
 typedef struct ae_context *ae_context_t;
 
+enum op_state
+{
+   /** This context is cancelled, all ops should return immediately */
+   OP_CANCELLED   = 0x01,
+
+   /** Indicates that the op logically completed even though
+    * callback might not have been called yet.
+    * It does mean it can no longer be cancelled. */
+   OP_COMPLETED_NORMAL = 0x02,
+   
+   /**
+    * A cancel request for the op was made; This does not mean that the
+    * resource->cancel has been called, simply that it will be called in the
+    * near future and that any attempt to normally complete this op will fail.
+    */
+   OP_COMPLETED_CANCELLED = 0x04,
+
+   /**
+    * Indicates if the op logically completed (either normal or cancel).
+    */
+   OP_COMPLETED = OP_COMPLETED_NORMAL | OP_COMPLETED_CANCELLED,
+
+   /**
+    * This flag indicates that the ctl structure is in a cancelled state,
+    * meaning any newly posted operations should cancel immediately.
+    */
+   OP_REQUEST_CANCEL = 0x08
+};
+
 /* The ae_ctl structure is used by the aesop generated code to manage parallel and
  * nested operations.  This structure is not needed by resource writers or aesop
  * code.
  * TODO: move these to a separate header
- *
- * The cancelled field needs to be in here since it is accessed from the
- * resources, at which point the function might or might not be in a pbranch.
  */
 struct ae_ctl
 {
@@ -87,7 +113,7 @@ struct ae_ctl
     ae_hints_t *hints;
     ae_context_t context;
     OPA_int_t refcount;
-    int cancelled;
+    int op_state;
 };
 
 /**
@@ -115,7 +141,7 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
     ctl->completed = 0;
     ctl->allposted = 0;
     ctl->in_pwait = 0;
-    ctl->cancelled = 0;
+    ctl->op_state = 0;
 
     /* by default, we just set the hints pointer, assuming the lifetime
      * of the hint pointer passed in will live for the entire blocking call
@@ -136,8 +162,8 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
 
     ctl->spec_ctl = fctl;
 
-    fprintf (stderr, "ae_ctl_init(%s) parent=(%s) ref=1\n",
-          ctl->name, ctl->parent ? ctl->parent->name : "none");
+    //printf (stderr, "ae_ctl_init(%s) parent=(%s) ref=1\n",
+    //      ctl->name, ctl->parent ? ctl->parent->name : "none");
 }
 
 static inline void ae_ctl_destroy(struct ae_ctl *ctl)
@@ -159,8 +185,8 @@ static inline int ae_ctl_refinc(struct ae_ctl *ctl)
 {
     int rc;
     rc = OPA_fetch_and_incr_int (&ctl->refcount) + 1;
-    fprintf (stderr, "ae_ctl_addref(%s): new ref: %i\n",
-         ctl->name, rc);
+    //fprintf (stderr, "ae_ctl_addref(%s): new ref: %i\n",
+     //    ctl->name, rc);
     return rc;
 }
 
@@ -179,15 +205,15 @@ static inline int ae_ctl_refdec(struct ae_ctl *ctl)
 {
     int rc;
     rc = OPA_fetch_and_decr_int (&ctl->refcount) - 1;
-    fprintf (stderr, "ae_ctl_refdec(%s): new ref: %i\n",
-          ctl->name, rc);
+    //fprintf (stderr, "ae_ctl_refdec(%s): new ref: %i\n",
+    //      ctl->name, rc);
     return rc;
 }
 
 static inline void ae_ctl_done(struct ae_ctl *ctl)
 {
    int refcount;
-   void *fctl = ctl->spec_ctl;
+   //void *fctl = ctl->spec_ctl;
 
    refcount = ae_ctl_refdec(ctl);
    assert(refcount >= 0);
@@ -238,7 +264,7 @@ static inline void ae_ctl_pbranch_start(struct ae_ctl *ctl)
 
     /* take over cancelled status from parent, in case we're creating a branch
      * at the same time a cancel is ongoing */
-    ctl->cancelled = ctl->parent->cancelled;
+    ctl->op_state |= (ctl->parent->op_state & OP_REQUEST_CANCEL);
 
     ctl->parent->posted++;
     triton_list_link_clear(&ctl->link);

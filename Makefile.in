@@ -78,6 +78,8 @@ ifeq ($(BUILD_SSM),1)
    LIBS += -lssm_ref -lssmp_mpi
 endif
 
+CPPFLAGS += -I$(srcdir)/src
+
 CFLAGS= -I$(srcdir)/src/c-utils -I$(srcdir)/include -I. -Iinclude -I src/c-utils -I$(srcdir) @CFLAGS@ $(CPPFLAGS)
 
 # enable relocatable

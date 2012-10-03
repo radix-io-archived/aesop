@@ -50,23 +50,27 @@
  * to check if the function should fail immediately.
  *
  * This function assumes that, within a resource post call,
- * __ae_user_ptr points to the ctl structure of the caller.
+ * __ae_user_ptr points to the ctl structure of the caller
+ * (which is the case for resource post functions called by aesop).
  *
- * Should be true as long as __ae_internal is set to true?
+ * No lock is needed as the post function is called with the ctl lock held.
  */
-#define ae_resource_is_cancelled() ((struct ae_ctl *) __ae_user_ptr)->cancelled
+#define ae_resource_is_cancelled() \
+   ((struct ae_ctl *) __ae_user_ptr)->op_state & OP_REQUEST_CANCEL
 
 
 /**
  * This function can be called from within a blocking function to clear the
- * cancelled state.
- * It should not be called from within a pbranch (but it should work there as
- * well).
+ * cancelled state. It is a user function, and should not be called from
+ * within a resource.
+ *
+ * Though this function will function when called from within a pbranch,
+ * due to current convention this should not be done.
  */
 static inline void ae_clear_cancel (struct ae_ctl * ctl)
 {
    triton_mutex_lock (&ctl->mutex);
-   ctl->cancelled = 0;
+   ctl->op_state &= ~OP_REQUEST_CANCEL;
    triton_mutex_unlock (&ctl->mutex);
 }
 
@@ -145,6 +149,27 @@ struct ev_loop * ae_resource_get_eloop(ae_context_t context);
 
 /* Cancel an operation */
 int ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
+
+
+/**
+ * This function should be called by resources when they are about to complete
+ * the op and call the callback. It marks the op as completed, so it can no
+ * longer be cancelled (or returns 0 if the op was already cancelled or
+ * completed).
+ *
+ * This function assumes that the user_ptr field of ae_op points to the parent
+ * ctl structure (as is the case for resource post functions called by aesop.
+ *
+ * Return non-zero if the op was marked as completed, 0 otherwise.
+ *
+ * This function locks the ctl structure.
+ */
+
+struct ae_op;
+
+int ae_op_complete (struct ae_op * op);
+
+
 
 void ae_backtrace(void);
 

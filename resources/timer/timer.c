@@ -307,6 +307,7 @@ static void timer_cb(EV_P_ ev_timer *w, int revents)
    ev_tstamp tstamp;
    int cancelled;
    int need_poll = 0;
+   ae_context_t ctx;
 
    triton_mutex_lock(&timer_mutex);
 
@@ -338,15 +339,12 @@ static void timer_cb(EV_P_ ev_timer *w, int revents)
        * cancelled list here and request a poll.
        */
 
-      triton_mutex_lock (&timer_mutex);
-
       if (!cancelled)
       {
          ctx = gop->ctx;
          ae_opcache_complete_op(timer_opcache, gop, int, 0);
       }
-
-      if (cancelled)
+      else
       {
          need_poll = 1;
          ctx = gop->ctx;
@@ -355,6 +353,9 @@ static void timer_cb(EV_P_ ev_timer *w, int revents)
       }
 
       /* setup for next iteration */
+
+      triton_mutex_lock (&timer_mutex);
+
       gop = ae_ops_peek(&timer_oplist);
       top = ae_op_entry(gop, struct timer_op, op);
    }

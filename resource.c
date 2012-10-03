@@ -12,6 +12,7 @@
 #include "resource.h"
 #include "aesop.h"
 #include "ae-debug.h"
+#include "op.h"
 
 struct ae_poll_data
 {
@@ -68,9 +69,6 @@ struct ae_context
 static int ae_context_count = 0;
 static struct ae_context ae_context_entries[AE_MAX_CONTEXTS];
 
-static ae_op_id_t * ae_children_get(ae_context_t context, struct ae_ctl *ctl, int *count);
-static void ae_children_put(ae_op_id_t* children, int count);
-static inline void ae_op_id_addref(ae_op_id_t id);
 
 static void ev_break_cb(EV_P_ ev_async *w, int revents)
 {
@@ -331,100 +329,6 @@ void ae_resource_request_poll(ae_context_t context, int resource_id)
     return;
 }
 
-/**
- * ae_cancel_op tries to cancel the operation with the given id.  This
- * function returns AE_SUCCESS if the operation was successfully cancelled,
- * the callback for the operation is responsible for returning
- * TRITON_ERR_CANCELLED
- * in the callback or somehow notifying through the callback that the
- * operation was
- * cancelled.
- */
-int ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
-{
-    struct ae_ctl *ctl;
-    int resource_id, ridx;
-    int ret;
-    int error;
-
-    ae_debug_cancel("ae_cancel_op: %llu:%llu\n", llu(op_id.u), llu(op_id.l));
-
-    if(triton_uint128_iszero(op_id))
-    {
-        return AE_SUCCESS;
-    }
-
-    ae_id_lookup(op_id, &resource_id);
-
-    if(resource_id == 0)
-    {
-        intptr_t tmp = ae_id_lookup (op_id, NULL);
-	ctl = (struct ae_ctl *) tmp;
-        if(!ctl)
-        {
-            /* No blocking operation associated with this op_id.  Nothing to
-             * cancel. */
-            return AE_SUCCESS;
-        }
-
-	error = triton_mutex_lock(&ctl->mutex);
-        assert(!error);
-
-	if(ctl->in_pwait)
-	{
-            ae_op_id_t *children_ids;
-            int count, ind;
-      
-            children_ids = ae_children_get(context, ctl, &count);
-            error = triton_mutex_unlock(&ctl->mutex);
-            assert(!error);
-
-            for(ind = 0; children_ids && ind < count; ++ind)
-            {
-                ret = ae_cancel_op(context, children_ids[ind]);
-                if(ret != AE_SUCCESS)
-                {
-                    /* cancel failed */
-                    ae_children_put(children_ids, count);
-                    return ret;
-                }
-            }
-            ae_children_put(children_ids, count);
-            return AE_SUCCESS;
-	}
-	else
-	{
-            ae_op_id_t tmpid;
-            triton_uint128_set(ctl->current_op_id, tmpid);
-            triton_uint128_setzero(ctl->current_op_id);
-            error = triton_mutex_unlock(&ctl->mutex);
-            assert(!error);
-
-	    ret = ae_cancel_op(context, tmpid);
-            return ret;
-	}
-    }
-    else
-    {
-        ridx = AE_RESOURCE_ID2IDX(resource_id);
-        assert(ridx > -1 && ridx < MAX_RESOURCES);
-
-        if(ae_resource_entries[ridx].id != resource_id)
-        {
-            return AE_ERR_INVALID;
-        }
-
-        if(ae_resource_entries[ridx].resource->cancel)
-        {
-            return ae_resource_entries[ridx].resource->cancel(context, op_id);
-        }
-        else
-        {
-            return AE_SUCCESS;
-        }
-    }
-}
-
 ae_op_id_t ae_id_gen(int resource_id, intptr_t ptr)
 {
     ae_op_id_t newid;
@@ -449,94 +353,6 @@ struct op_id_entry
     triton_list_link_t link;
 };
 
-/** 
- * ae_children_get() retrieves a list of all children in this context and
- * increments their reference counts.  The caller is responsible for calling
- * ae_children_put() once it has finished operating on the children.
- *
- * NOTE: this function assumes that the caller is holding the parent ctrl
- * mutex while calling this function.
- */
-static ae_op_id_t * ae_children_get(ae_context_t context, struct ae_ctl *ctl, int *count)
-{
-    struct ae_ctl *child_ctl;
-    struct triton_list_link *entry, *safe;
-    ae_op_id_t *op_ids;
-    int ind, c;
-
-    ae_debug_cancel("ae_children_get: %p\n", ctl);
-
-    if(triton_list_empty(&ctl->children))
-    {
-        /* don't do anything here because there are no children
-         * to cancel
-         */
-        *count = 0;
-	return NULL;
-    }
-
-    /* need to allocate space here for op ids, since the entire control
-     * structure could go away while we're cancelling
-     */
-    c = triton_list_count(&ctl->children);
-    op_ids = malloc(sizeof(*op_ids) * c);
-    if(!op_ids)
-    {
-        *count = 0;
-        return NULL;
-    }
-    *count = c;
-
-    ind = 0;
-    triton_list_for_each(entry, safe, &ctl->children)
-    {
-	child_ctl = triton_list_get_entry(entry, struct ae_ctl, link);
-        triton_uint128_set(child_ctl->current_op_id, op_ids[ind]);
-        triton_uint128_setzero(child_ctl->current_op_id);
-        ae_op_id_addref(op_ids[ind]);
-        ++ind;
-    }
-
-    assert(ind == c);
-    *count = c;
-    return op_ids;
-}
-
-static inline void ae_op_id_addref(ae_op_id_t id)
-{
-    intptr_t tmp;
-    struct ae_ctl *ctl;
-
-    if(triton_uint128_iszero(id))
-        return;
-
-    tmp = ae_id_lookup (id, NULL);
-    ctl = (struct ae_ctl *) tmp;
-    ae_ctl_addref(ctl);
-}
-
-static void ae_children_put(ae_op_id_t* children, int count)
-{
-    int i;
-    intptr_t tmp;
-    struct ae_ctl *ctl;
-
-    for(i=0; i<count; i++)
-    {
-
-        tmp = ae_id_lookup (children[i], NULL);
-	ctl = (struct ae_ctl *) tmp;
-        if(ctl)
-        {
-            ae_ctl_done(ctl);
-        }
-    }
-
-    if(children)
-       free(children);
-
-    return;
-}
 
 #include <execinfo.h>
 #include <stdio.h>
@@ -726,19 +542,66 @@ int ae_context_destroy(ae_context_t context)
     return AE_SUCCESS;
 }
 
-/**
- * Set the cancel flag for this ae_ctl and all of its child ae_ctl.
- */
-void ae_cancel_ctl (struct ae_ctl * ctl);
 
-void ae_cancel_ctl (struct ae_ctl * ctl)
+/**
+ * Given an op_id and a context, try to call the resource to cancel
+ * the operation if it was generated by a resource.
+ * Otherwise, do nothing.
+ */
+static int ae_cancel_resource_op (ae_context_t context, ae_op_id_t op)
 {
+   int resource_id;
+
+   intptr_t data = ae_id_lookup (op, &resource_id);
+   data;
+
+   if (!resource_id)
+      return 0;
+
+   int ridx = AE_RESOURCE_ID2IDX(resource_id);
+
+   assert(ridx > -1 && ridx < MAX_RESOURCES);
+
+   assert (ae_resource_entries[ridx].id == resource_id);
+
+   if(ae_resource_entries[ridx].resource->cancel)
+   {
+      return ae_resource_entries[ridx].resource->cancel(context, op);
+   }
+   else
+   {
+      /**
+       * If the resource has no cancel function, we have to assume the
+       * operation can wait indefinitely. Return error.
+       */
+      return AE_ERR_INVALID;
+   }
+}
+
+/**
+ * Set the cancel flag for this ae_ctl and all of its child ae_ctl,
+ * and tries to cancel each active resource operation along the way.
+ *
+ * Returns AE_SUCCESS if all ongoing operations were signalled to cancel,
+ * and an AE_ERR_ code if one of the operations could not be cancelled.
+ */
+int ae_cancel_ctl (struct ae_ctl * ctl);
+
+int ae_cancel_ctl (struct ae_ctl * ctl)
+{
+   int finalret = AE_SUCCESS;
+
    triton_mutex_lock (&ctl->mutex);
 
-   ctl->cancelled = 1;
+   ctl->op_state != OP_REQUEST_CANCEL;
 
    /* since this ctl is locked, we know that no pbranch can start/stop while
     * we have the lock (and thus no children created).
+    *
+    * Also, since we locked the ctl, no new operation can be posted.
+    *
+    * We set the cancel flag and cancel and send a request to cancel any
+    * ongoing operations.
     */
    struct triton_list_link * entry;
    struct triton_list_link * safe;
@@ -747,9 +610,34 @@ void ae_cancel_ctl (struct ae_ctl * ctl)
    {
       struct ae_ctl * child_ctl = triton_list_get_entry(entry,
             struct ae_ctl, link);
-      ae_cancel_ctl (child_ctl);
+
+      int ret = ae_cancel_ctl (child_ctl);
+
+      if (ret != AE_SUCCESS)
+         finalret = ret;
+
+      // Request a cancellation of each resource function
+      // if it didn't complete yet  / wasn't cancelled
+      if (!(child_ctl->op_state & OP_COMPLETED))
+      {
+         ret = ae_cancel_resource_op (child_ctl->context,
+               child_ctl->current_op_id);
+         if (ret == AE_SUCCESS)
+         {
+            /* only mark as cancelled if there was no problem with the
+             * cancellation; if there was, we return the error and leave it up
+             * to the programmer to try again by calling cancel_branches
+             * again.
+             */
+            child_ctl->op_state &= OP_COMPLETED_CANCELLED;
+         }
+      }
+
+      if (ret != AE_SUCCESS)
+         finalret = ret;
    }
    triton_mutex_unlock (&ctl->mutex);
+   return finalret;
 }
 
 /**
@@ -757,6 +645,7 @@ void ae_cancel_ctl (struct ae_ctl * ctl)
  */
 int ae_cancel_branches(struct ae_ctl *ctl)
 {
+
     int ret;
     ae_op_id_t *children_ids;
     int ind, count, error;
@@ -764,46 +653,13 @@ int ae_cancel_branches(struct ae_ctl *ctl)
 
     ae_debug_cancel("ae_cancel_branches: %p\n", ctl);
 
-    ae_cancel_ctl (ctl);
-
     if(!ctl)
     {
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
         assert(ctl);
     }
 
-    error = triton_mutex_lock(&ctl->mutex);
-    assert(!error);
-
-    context = ctl->context;
-
-    /*
-     * TODO: Check:
-     *   isn't it possible here for the child to disappear while the parent
-     *   ctl is locked? (i.e. and this function returns an invalid child?)
-     *
-     *  - pbranch start/stop locks parent ctl first, so we should be good
-     *  there?
-     */
-
-    /** Increases refcount for all of the children */
-    children_ids = ae_children_get(context, ctl, &count);
-
-    error = triton_mutex_unlock(&ctl->mutex);
-    assert(!error);
-
-    for(ind = 0; children_ids && ind < count; ++ind)
-    {
-        ret = ae_cancel_op(context, children_ids[ind]);
-        if(ret != AE_SUCCESS)
-        {
-            ae_children_put(children_ids, count);
-            return ret;
-        }
-    }
-    /** Decrements refcount for all of the specified ids */
-    ae_children_put(children_ids, count);
-    return AE_SUCCESS;
+    return ae_cancel_ctl (ctl);
 }
 
 int ae_count_branches(struct ae_ctl *ctl)
@@ -1058,6 +914,25 @@ int ae_resource_cleanup (void)
    ev_default_destroy ();
 
    return(0);
+}
+
+
+int ae_op_complete (struct ae_op * op)
+{
+   int ret = 0;
+   struct ae_ctl * ctl = op->user_ptr;
+
+   triton_mutex_lock (&ctl->mutex);
+
+   if (!(ctl->op_state & OP_COMPLETED))
+   {
+      ctl->op_state |= OP_COMPLETED_NORMAL;
+      ret = 1;
+   }
+
+   triton_mutex_unlock (&ctl->mutex);
+
+   return ret;
 }
 
 /*

@@ -36,6 +36,7 @@ static __blocking int receiver()
                 {
                     exit_loop = 1;
                 }
+                printf("iter=%i\n", i);
             }
         }
     }
