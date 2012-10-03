@@ -84,9 +84,41 @@ __blocking int test_immediate_completion ()
    return 0;
 }
 
+unsigned int getvalue (aesop_sem_t * sem)
+{
+   unsigned int val;
+   always_assert (aesop_sem_get (sem, &val) == AE_SUCCESS, "getvalue");
+   return val;
+}
+
+__blocking int test_simple ()
+{
+   aesop_sem_t sem;
+   int ret;
+
+   aesop_sem_init (&sem, 0);
+
+   unsigned int value;
+   always_assert (getvalue (&sem) == 0, "get");
+   always_assert (aesop_sem_up (&sem) == AE_SUCCESS, "up");
+   always_assert (getvalue (&sem) == 1, "get");
+
+   ret = aesop_sem_down (&sem);
+   always_assert (getvalue (&sem) == 0, "down");
+
+   always_assert (aesop_sem_set (&sem, 10) == AE_SUCCESS, "set");
+   always_assert (getvalue (&sem) == 10, "get");
+
+   always_assert (aesop_sem_destroy (&sem) == AE_SUCCESS, "destroy");
+
+   return 0;
+
+}
+
 __blocking int test_main (int argc, char ** args)
 {
    aesop_sem_module_init ();
+   test_simple ();
    dotest ();
    test_immediate_completion ();
    aesop_sem_module_finalize ();

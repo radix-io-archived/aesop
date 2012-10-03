@@ -58,6 +58,40 @@ int aesop_sem_destroy (aesop_sem_t * sem)
 }
 
 
+int aesop_sem_get (aesop_sem_t * sem, unsigned int * value)
+{
+   assert (sem_module_refcount);
+
+   triton_mutex_lock (&sem->lock);
+   *value = sem->value;
+   triton_mutex_unlock (&sem->lock);
+
+   return AE_SUCCESS;
+}
+
+
+int aesop_sem_set (aesop_sem_t * sem, unsigned int value)
+{
+   int ret = AE_SUCCESS;
+
+   assert (sem_module_refcount);
+
+   triton_mutex_lock (&sem->lock);
+   if (!ae_ops_empty (&sem->wait_queue))
+   {
+      assert (0 && "aesop_sem_set in the presence of waiters!");
+      ret = AE_ERR_EXIST;
+   }
+   else
+   {
+      ret = AE_SUCCESS;
+      sem->value = value;
+   }
+   triton_mutex_unlock (&sem->lock);
+
+   return ret;
+}
+
 int aesop_sem_up (aesop_sem_t * sem)
 {
    assert (sem_module_refcount);

@@ -55,6 +55,21 @@ int aesop_sem_up (aesop_sem_t * sem);
 __blocking int aesop_sem_down (aesop_sem_t * sem);
 
 
+/**
+ * Set the semaphore to a certain value.
+ * There should not be any callers blockin in aesop_sem_down when calling this
+ * function.
+ */
+int aesop_sem_set (aesop_sem_t * sem, unsigned int value);
+
+
+/**
+ * Retrieve current value of semaphore
+ */
+int aesop_sem_get (aesop_sem_t * sem, unsigned int * value);
+
+
+
 #endif
 
 /*
