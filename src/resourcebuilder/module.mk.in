@@ -1,0 +1,9 @@
+DIR := src/resourcebuilder
+
+AESOP_HDR += $(DIR)/resourcebuilder.hae
+
+INSTALL_HDR += $(DIR)/resourcebuilder.hae
+
+AELIBSRC += $(DIR)/resourcebuilder.ae
+
+

@@ -1,0 +1,84 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <stdio.h>
+#include "aesop.h"
+#include "resourcebuilder/resourcebuilder.hae"
+
+static int errors = 0;
+
+static void optputs (const char * s)
+{
+   if (getenv ("DEBUG"))
+      puts (s);
+}
+
+static void always_assert (int expr, const char * msg)
+{
+   if (!expr)
+   {
+      fprintf (stderr, "Assertion failed: %s\n", msg);
+      ++errors;
+   }
+}
+
+static __blocking int dotest (void)
+{
+   rb_slot_t slot;
+   rb_slot_t slot2;
+
+   rb_slot_initialize (&slot);
+   rb_slot_initialize (&slot2);
+
+   pwait
+   {
+      pprivate int ret = 0;
+
+      pbranch
+      {
+         ret = rb_slot_capture (&slot);
+         always_assert (ret != AE_SUCCESS, "cancel");
+         optputs ("pbranch 1 completed");
+      }
+
+      pbranch
+      {
+         ret = rb_slot_capture (&slot2);
+         always_assert (ret != AE_SUCCESS, "cancel");
+         optputs ("pbranch 2 completed");
+      }
+
+      pbranch
+      {
+         optputs ("cancelling branches");
+         aesop_cancel_branches ();
+      }
+   }
+   optputs ("pwait completed");
+
+   rb_slot_destroy (&slot);
+   rb_slot_destroy (&slot2);
+   return 0;
+}
+
+__blocking int test_main (int argc, char ** args)
+{
+   rb_init ();
+   dotest ();
+   rb_finalize ();
+   return 0;
+}
+
+aesop_main_set (test_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

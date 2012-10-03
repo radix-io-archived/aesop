@@ -1,0 +1,5 @@
+DIR := src/resourcebuilder/test
+
+AETESTSRC += $(DIR)/simple.ae \
+	     $(DIR)/cancel.ae
+
