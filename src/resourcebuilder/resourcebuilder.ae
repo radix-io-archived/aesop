@@ -6,8 +6,6 @@
 
 #include "resourcebuilder.hae"
 
-// #define RB_NO_OPA
-
 
 /**
  * Initialize the ResourceBuilder component.
@@ -81,7 +79,9 @@ void rb_slot_destroy (rb_slot_t * slot)
  */
 __blocking int rb_slot_capture (rb_slot_t * slot)
 {
-   return aesop_sem_down (&slot->sem);
+   int ret;
+   ret = aesop_sem_down (&slot->sem);
+   return ret;
 }
 
 
