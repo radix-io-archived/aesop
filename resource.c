@@ -805,16 +805,19 @@ int aesop_set_debugging(const char* resource, int value)
     }
 
     /* check for matching resources and set their debugging value */
-    for(i=0; i<MAX_RESOURCES; i++)
+    if (ae_resource_count)
     {
-        if(ae_resource_entries[i].id == -1)
-            continue;
+       for(i=0; i<MAX_RESOURCES; i++)
+       {
+          if(ae_resource_entries[i].id == -1 || !ae_resource_entries[i].resource)
+             continue;
 
-        if(!strcmp(ae_resource_entries[i].resource->resource_name, resource))
-        {
-            ae_resource_entries[i].debug = value;
-            return(0);
-        }
+          if(!strcmp(ae_resource_entries[i].resource->resource_name, resource))
+          {
+             ae_resource_entries[i].debug = value;
+             return(0);
+          }
+       }
     }
 
     return(AE_ERR_NOT_FOUND);
