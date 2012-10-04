@@ -553,10 +553,17 @@ static int ae_cancel_resource_op (ae_context_t context, ae_op_id_t op)
    int resource_id;
 
    intptr_t data = ae_id_lookup (op, &resource_id);
-   data;
+   
+   ae_debug_cancel(" ae_cancel_resource_op: %lu,%i\n", (long unsigned) data,
+         resource_id);
+
+   /** if !resource_id, then this is not a resource op */
+   assert (resource_id);
 
    if (!resource_id)
-      return 0;
+   {
+      return AE_ERR_INVALID;
+   }
 
    int ridx = AE_RESOURCE_ID2IDX(resource_id);
 
@@ -589,11 +596,13 @@ int ae_cancel_ctl (struct ae_ctl * ctl);
 
 int ae_cancel_ctl (struct ae_ctl * ctl)
 {
-   int finalret = AE_SUCCESS;
-
+   int finalret;
+    
    triton_mutex_lock (&ctl->mutex);
 
-   ctl->op_state != OP_REQUEST_CANCEL;
+   ae_debug_cancel("ae_cancel_ctl: %p\n (%s)", ctl, ctl->name);
+
+   ctl->op_state |= OP_REQUEST_CANCEL;
 
    /* since this ctl is locked, we know that no pbranch can start/stop while
     * we have the lock (and thus no children created).
@@ -606,6 +615,9 @@ int ae_cancel_ctl (struct ae_ctl * ctl)
    struct triton_list_link * entry;
    struct triton_list_link * safe;
 
+   finalret = AE_SUCCESS;
+
+   /* First do all the children */
    triton_list_for_each (entry, safe, &ctl->children)
    {
       struct ae_ctl * child_ctl = triton_list_get_entry(entry,
@@ -616,12 +628,43 @@ int ae_cancel_ctl (struct ae_ctl * ctl)
       if (ret != AE_SUCCESS)
          finalret = ret;
 
+   }
+
+
+   /* Check if we have something going on */
+   int resource_id;
+   intptr_t data = ae_id_lookup (ctl->current_op_id,
+         &resource_id);
+
+   if (!resource_id)
+   {
+      int ret = AE_SUCCESS;
+      /* We're in a context that called another blocking
+       * function or is currently calling a non-blocking function;
+       * Recurse if there is another context */
+      if (data)
+      {
+         ret = ae_cancel_ctl ((struct ae_ctl *) data);
+      }
+
+      if (ret != AE_SUCCESS)
+         finalret = ret;
+   }
+   else
+   {
+      /* we actually called a true resource function from this context */
       // Request a cancellation of each resource function
       // if it didn't complete yet  / wasn't cancelled
-      if (!(child_ctl->op_state & OP_COMPLETED))
+      if (!(ctl->op_state & OP_COMPLETED))
       {
-         ret = ae_cancel_resource_op (child_ctl->context,
-               child_ctl->current_op_id);
+         int ret = AE_SUCCESS;
+
+         assert (resource_id);
+         /* We're in a context that actually called a resource function */
+         ret = ae_cancel_resource_op (ctl->context,
+               ctl->current_op_id);
+
+
          if (ret == AE_SUCCESS)
          {
             /* only mark as cancelled if there was no problem with the
@@ -629,13 +672,14 @@ int ae_cancel_ctl (struct ae_ctl * ctl)
              * to the programmer to try again by calling cancel_branches
              * again.
              */
-            child_ctl->op_state &= OP_COMPLETED_CANCELLED;
+            ctl->op_state &= OP_COMPLETED_CANCELLED;
          }
-      }
 
-      if (ret != AE_SUCCESS)
-         finalret = ret;
+         if (ret != AE_SUCCESS)
+            finalret = ret;
+      }
    }
+
    triton_mutex_unlock (&ctl->mutex);
    return finalret;
 }
@@ -646,14 +690,14 @@ int ae_cancel_ctl (struct ae_ctl * ctl)
 int ae_cancel_branches(struct ae_ctl *ctl)
 {
 
-    int ret;
-    ae_op_id_t *children_ids;
-    int ind, count, error;
-    ae_context_t context;
+    //int ret;
+    //ae_op_id_t *children_ids;
+    //int ind, count, error;
+    //ae_context_t context;
 
     ae_debug_cancel("ae_cancel_branches: %p\n", ctl);
 
-    if(!ctl)
+    if(!ctl || !ctl->in_pwait)
     {
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
         assert(ctl);
@@ -665,7 +709,7 @@ int ae_cancel_branches(struct ae_ctl *ctl)
 int ae_count_branches(struct ae_ctl *ctl)
 {
     int r, error;
-    if(!ctl)
+    if(!ctl || !ctl->in_pwait)
     {
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
         assert(ctl);
