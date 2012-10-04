@@ -21,6 +21,7 @@ void aesop_finalize(void);
 
 int aesop_set_config(const char* key, const char* value);
 int aesop_set_debugging(const char* resource, int value);
+int aesop_debug_from_env (void);
 
 /* ae_post_blocking allows us to post a blocking function from normal C code and if we're doing a syntax
  * check with the normal compiler (GCC), we don't get a 'too many arguments to function' error.

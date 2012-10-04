@@ -750,6 +750,32 @@ int aesop_dbg_blocking = 0;
 int aesop_dbg_cancel = 0;
 int aesop_dbg_pbranch = 0;
 
+
+int aesop_debug_from_env (void)
+{
+   const char * SPLIT = ",";
+   const char * d = getenv ("AESOP_DEBUG");
+   if (!d)
+   {
+      return AE_SUCCESS;
+   }
+
+   char * token = strdup (d);
+
+   char * saveptr;
+   const char * current = strtok_r (token, SPLIT, &saveptr);
+
+   while (current)
+   {
+      aesop_set_debugging (current, 1);
+      current = strtok_r (0, SPLIT, &saveptr);
+   }
+
+   free (token);
+
+   return AE_SUCCESS;
+}
+
 int aesop_set_debugging(const char* resource, int value)
 {
     int i;

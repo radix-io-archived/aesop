@@ -22,6 +22,8 @@ int aesop_init(const char* resource_list)
     /* call __constructor__ functions */
     ae_init ();
 
+    aesop_debug_from_env ();
+
     tmp_resource_list = strdup(resource_list);
     if(!tmp_resource_list)
     {
