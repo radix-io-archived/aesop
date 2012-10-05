@@ -75,6 +75,14 @@ void aesop_finalize(void)
    if(initialized)
       return;
 
+
+   int count = ae_lone_pbranches_count ();
+   if (count)
+   {
+      fprintf (stderr, "\n\n!!!!WARNING!!!!!\n"
+            "Still %i lone pbranches active!\n\n", count);
+   }
+
    ae_resource_finalize_active ();
    ae_hints_component_finalize();
 

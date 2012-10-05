@@ -247,6 +247,8 @@ static inline void ae_ctl_lone_pbranch_start(struct ae_ctl *ctl)
     /* parent context disappears, we need to copy the hint
      *   ^^^ is this correct? parent ref is incremented? */
     ae_hints_dup(ctl->parent->hints, &ctl->hints);
+
+    /* Make sure parent stack frame stays alive */
     ae_ctl_refinc(ctl->parent);
 }
 
