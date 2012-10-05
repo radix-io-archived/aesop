@@ -94,6 +94,13 @@ enum op_state
 /* The ae_ctl structure is used by the aesop generated code to manage parallel and
  * nested operations.  This structure is not needed by resource writers or aesop
  * code.
+ *
+ * This structure gets extended into blocking method specific ae_ctl
+ * structures, where the 'gen' member is this structure.
+ *
+ * NOTE: It needs to be the first element, as free (ae_ctl *) and
+ * free (&ae_ctl_specific->gen) need to be equivalent.
+ *
  * TODO: move these to a separate header
  */
 struct ae_ctl
