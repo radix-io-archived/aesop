@@ -443,13 +443,13 @@ __ae_pbranch_##__pbranch_pos_str##_start:                                 \
     }                                                                     \
     ae_ctl_init(&__ae_ctl->gen,                                           \
                 __ae_ctl,                                                 \
-                #__fname "_ctl:pbranch_" #__pbranch_pos_str,              \
+                #__fname "_ctl:[L]pbranch_" #__pbranch_pos_str,              \
                 NULL,                                                     \
                 __ae_ctl_parent->gen.context,                             \
                 1,                                                        \
                 __ae_ctl_parent);                                         \
     ae_debug_pbranch("starting lone pbranch: %s (ctl=%p, parent=%p)\n",   \
-                     #__fname "_ctl:pbranch_" #__pbranch_pos_str,         \
+                     __ae_ctl->gen.name,         \
                      __ae_ctl,                                            \
                      __ae_ctl_parent);                                    \
     __ae_ctl->parent = __ae_ctl_parent;                                   \
