@@ -258,11 +258,12 @@ __ae_blocking_function_done:     \
     }                                                        \
     __fname##_##__bcall##_##__pos_str##_after_label: {}
 
+
 #define AE_MK_WORKER_BEFORE_POST_IN_PBRANCH(__fname, __bcall, __pos_str, __pbranch_pos_str) \
     __fname##_##__bcall##_##__pos_str##_before_label:                                       \
     __ae_ctl->gen.state_label =                                                             \
         &&__fname##_##__bcall##_##__pos_str##_after_label;                                  \
-    ae_debug_pbranch("ctl_addref: before post: %p\n", __ae_ctl);                            \
+    /*ae_debug_pbranch("ctl_addref: before post: %p (gen=%s)\n", __ae_ctl, __ae_ctl->gen.name); */      \
     ae_ctl_addref(&__ae_ctl->gen); \
     triton_mutex_lock (&__ae_ctl->gen.mutex);
 
@@ -276,7 +277,7 @@ __ae_blocking_function_done:     \
    }                                                                                       \
    else if(__ae_postret == AE_IMMEDIATE_COMPLETION)                                        \
    {                                                                                       \
-       ae_debug_pbranch("ctl_done: post ic: %p\n", __ae_ctl);                              \
+       ae_debug_pbranch("ctl_done: post ic: %p (gen=%s)\n", __ae_ctl, __ae_ctl->gen.name);                              \
        ae_ctl_done(&__ae_ctl->gen);                                                        \
    }                                                                                       \
    else                                                                                    \

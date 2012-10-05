@@ -185,6 +185,9 @@ static inline int ae_ctl_refinc(struct ae_ctl *ctl)
 {
     int rc;
     rc = OPA_fetch_and_incr_int (&ctl->refcount) + 1;
+    ae_debug_pbranch("ctl_addref: new=%i %p (%s)\n",
+          OPA_load_int (&ctl->refcount), ctl, ctl->name);
+
     //fprintf (stderr, "ae_ctl_addref(%s): new ref: %i\n",
      //    ctl->name, rc);
     return rc;
@@ -205,8 +208,8 @@ static inline int ae_ctl_refdec(struct ae_ctl *ctl)
 {
     int rc;
     rc = OPA_fetch_and_decr_int (&ctl->refcount) - 1;
-    //fprintf (stderr, "ae_ctl_refdec(%s): new ref: %i\n",
-    //      ctl->name, rc);
+    ae_debug_pbranch("ctl_removeref: new=%i %p (%s)\n",
+          OPA_load_int (&ctl->refcount), ctl, ctl->name);
     return rc;
 }
 
