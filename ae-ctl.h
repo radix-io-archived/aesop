@@ -202,9 +202,6 @@ static inline int ae_ctl_refinc(struct ae_ctl *ctl)
 
 static inline void ae_ctl_addref(struct ae_ctl *ctl)
 {
-#if 0
-   OPA_incr_int (&ctl->refcount);
-#endif
    ae_ctl_refinc (ctl);
 }
 
