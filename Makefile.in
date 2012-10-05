@@ -521,7 +521,7 @@ $(AEDEPS): %.ae.d: %.ae include/aesop/.done
 # version of the .hae file that defines the resource interface
 $(AESOP_TRHDR): %.h: %.hae $(HSBIN)
 
-	$(Q) "  AECC		$*.hae"
+	$(Q) "  AECC [H]	$*.hae"
 	$(E)$(builddir)/bin/aecc -o $(builddir)/$*.h $(srcdir)/$*.hae \
                 -j $(VA) $(DA) $(AEPRETTY) \
                 -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
