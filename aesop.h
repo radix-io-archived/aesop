@@ -174,6 +174,18 @@ int main(int argc, char **argv)                                   \
             aesop_error_assert(ret);                              \
         }                                                         \
     }                                                             \
+    if (ae_lone_pbranches_count ())                               \
+    {                                                               \
+       fprintf (stderr,"\n\n!! WARNING !!"                          \
+             "Waiting for %i lonely pbranches!!\n\n",       \
+             ae_lone_pbranches_count ());      \
+       while(ae_lone_pbranches_count ())                             \
+       {                                                               \
+          ret = ae_poll(__main_ctx, AESOP_MAIN_SET_POLL_TIMEOUT);     \
+          if(ret == AE_ERR_TIMEDOUT) continue;                         \
+          aesop_error_assert(ret);                                    \
+       }                                                               \
+    }                                                         \
     aesop_error_assert(ret);                                      \
     ae_hints_destroy(&__main_hints);                              \
     if(COUNT_ARGS(__VA_ARGS__) > 0)                               \
