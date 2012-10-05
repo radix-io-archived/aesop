@@ -110,58 +110,7 @@ static inline void aesop_clear_cancel(void) { }
  * aesop_main_set(aesop_main, "timer", "bdb", "sched");
  */
 #define aesop_main_set(__main_blocking_function__, ...)        \
-static int __main_done=0;                                      \
-static int __main_ret;                                         \
-static void __main_cb(void *user_ptr, int t)                   \
-{                                                              \
-      ae_context_t ctx = (ae_context_t)user_ptr;               \
-      __main_done = 1;                                         \
-      __main_ret = t;                                          \
-      ae_poll_break(ctx);                                      \
-}                                                              \
-int main(int argc, char **argv)                                \
-{                                                              \
-    ae_context_t __main_ctx = NULL;                            \
-    ae_hints_t __main_hints;                                   \
-    ae_op_id_t __main_opid;                                    \
-    int ret;                                                   \
-    ret = aesop_init("");                                      \
-    aesop_error_assert(ret);                                   \
-    if(COUNT_ARGS(__VA_ARGS__) > 0)                            \
-    {                                                          \
-        ret = ae_context_create(&__main_ctx, ##__VA_ARGS__);   \
-        aesop_error_assert(ret);                              \
-    }                                                          \
-    ret = ae_hints_init(&__main_hints);                       \
-    assert(ret == 0); \
-    ret = ae_post_blocking(                                    \
-        __main_blocking_function__,                            \
-        __main_cb,                                             \
-        __main_ctx,                                            \
-        &__main_hints,                                         \
-        __main_ctx,                                            \
-        &__main_opid,                                          \
-        &__main_ret,                                           \
-        argc,                                                  \
-        argv);                                                 \
-    if(ret == AE_SUCCESS)                                      \
-    {                                                          \
-        while(!__main_done)                                    \
-        {                                                      \
-            ret = ae_poll(__main_ctx, AESOP_MAIN_SET_POLL_TIMEOUT); \
-            if(ret == AE_ERR_TIMEDOUT) continue;               \
-            aesop_error_assert(ret);                           \
-        }                                                      \
-    }                                                          \
-    aesop_error_assert(ret);                                   \
-    ae_hints_destroy(&__main_hints);                           \
-    if(COUNT_ARGS(__VA_ARGS__) > 0)                            \
-    {                                                          \
-        ae_context_destroy(__main_ctx);                        \
-    }                                                          \
-    aesop_finalize();                                          \
-    return __main_ret;                                         \
-}
+   aesop_main_set_with_init (0, "", __main_blocking_function__, ##__VA_ARGS__);
 
 /* Similar to above, but this one takes an initialization function
  * that gets called before ae_init,
