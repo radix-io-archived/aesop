@@ -2,6 +2,7 @@ DIR := parser/tests/blocking
 
 
 AETESTSRC +=  \
+	      $(DIR)/empty-blocking.ae \
 	      $(DIR)/cancel-pbranch1.ae \
 	      $(DIR)/cancel-pbranch2.ae \
 	      $(DIR)/cancel-pbranch3.ae \
