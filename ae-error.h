@@ -4,8 +4,12 @@
  * See COPYRIGHT in top-level directory.
  */
 
+// #warning reading aesop/ae-error.h
+
 #ifndef AE_ERROR_H
 #define AE_ERROR_H
+
+#warning AESOP ae-error.h
 
 #include <assert.h>
 
@@ -15,7 +19,7 @@
 
 #define AE_SUCCESS 0           /* success */
 /* not an error, just means that function completed without blocking */
-#define AE_IMMEDIATE_COMPLETION 1  
+#define AE_IMMEDIATE_COMPLETION 1
 
 #define AE_ERR_NOT_FOUND (-1)  /* object or entity not found */
 #define AE_ERR_INVALID (-2)    /* invalid argument */
@@ -25,6 +29,8 @@
 #define AE_ERR_OVERFLOW (-6)   /* overflow of some resource limitation */
 #define AE_ERR_CANCELLED (-7)  /* Call was cancelled. */
 #define AE_ERR_OTHER     (-8)  /* Other error */
+#define AE_ERR_NOMEM     (-9)  /* Out of memory */
+#define AE_ERR_UNKNOWN  (-10)  /* Unknown problem */
 
 #endif
 

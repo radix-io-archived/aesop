@@ -8,6 +8,7 @@
 #define __AESOP_SUPPORT_HAE__
 
 #include <aesop/aesop.h>
+// #include <aesop/resource.h>
 #include <aesop/timer.hae>
 
 /** TODO: need to fix this. depends on timer */

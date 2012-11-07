@@ -9,6 +9,7 @@
 
 #include <aesop/triton-thread.h>
 #include <aesop/triton-list.h>
+#include <aesop/ae-debug.h>
 #include <aesop/ae-types.h>
 #include <aesop/ae-error.h>
 #include <aesop/hints.h>

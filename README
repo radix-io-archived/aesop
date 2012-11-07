@@ -2,3 +2,15 @@ For the latest version and for bug reports, please go to
 http://trac.mcs.anl.gov/projects/aesop
 
 
+
+ENVIRONMENT VARIABLES
+
+AESOP_DEBUG:
+  if 1:
+    Increase verbosity
+    Enables printVerbose() output
+    Sets verbose=yes
+
+AESOP_CLEAN
+  if 1:
+    Do not remove Aesop intermediate files

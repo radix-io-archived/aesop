@@ -1,9 +1,13 @@
 
+# AECC-UTILS
+
+echo SOURCING AESOP aecc-utils
+
 # print MSG if verbose=yes
 printVerbose()
 {
     local MSG=$1
-    if [[ $verbose == "yes" ]]; then 
+    if [[ "$AESOP_DEBUG" == 1 ]]; then
         echo "aecc verbose: $MSG"
     fi
 }
@@ -13,7 +17,7 @@ checkError()
 {
     local CODE=$1
     local MSG=$2
-    if (( $CODE )); then 
+    if (( $CODE )); then
         echo "aecc: $MSG"
         exit $CODE
     fi
@@ -25,7 +29,7 @@ fail()
     local MSG=$1
     echo "aecc: $MSG"
     exit 1
-}   
+}
 
 # find the location of this aecc script
 AESOP_HOME=$( cd $( dirname "$BASH_SOURCE" ) && cd .. && pwd )
@@ -33,24 +37,21 @@ checkError $? "AESOP_HOME not found!"
 
 printVerbose "AESOP_HOME: $AESOP_HOME"
 
-AECC_CFLAGS="@AECC_CFLAGS@ -I$AESOP_HOME/../include"
+AECC_CFLAGS="@AECC_CFLAGS@ -I$AESOP_HOME/include"
 
-# the parsers can be in one of two locations; either in the same directory
-# as this script (if the tools have been installed) or in the ../parser
-# directory (if we are building in tree)
+# The parsers can be in one of two locations; the installed location or the
+# in-build-tree location
+if [[ -x ${AESOP_HOME}/bin/ae-blocking-parser ]] ; then
+    # Running from installed location
+    AEPARSER=${AESOP_HOME}/bin/ae-blocking-parser
+elif [[ -x ${AESOP_HOME}/parser/ae-blocking-parser ]] ; then
+    # Running from build tree
+    AEPARSER=${AESOP_HOME}/parser/ae-blocking-parser
+else
+    fail "Unable to find ae-blocking-parser!"
+fi
+printVerbose "AEPARSER: $AEPARSER"
 
-AEPARSER=${AESOP_HOME}/bin/ae-blocking-parser
-[[ -x $AEPARSER ]] || fail "Unable to find ae-blocking-parser!"
-
-# if [ -x ${AESOP_HOME}/ae-blocking-parser ]; then
-#     AEPARSER=${AESOP_HOME}/ae-blocking-parser
-# elif [ -x ${AESOP_HOME}/../parser/ae-blocking-parser ]; then
-#     AEPARSER=${AESOP_HOME}/../parser/ae-blocking-parser
-# else
-#     echo Unable to find ae-blocking-parser
-#     exit 1
-# fi
-    
 SPACES="                                                      "
 optind=0
 
@@ -76,7 +77,7 @@ addOption()
     argString="$1" ; shift
     callback="$1" ; shift
     message="$1" ; shift
-    
+
     eval optionInd${optind}="${shortopt}"
     eval optionCB${optind}=${callback}
     eval optionArg${optind}=${takesArg}
@@ -124,7 +125,7 @@ showUsage()
     echo ""
     exit $res
 }
-    
+
 setHelpStart()
 {
     HELPSTART="$@"
@@ -165,7 +166,7 @@ hasArg()
       *)
     esac
 }
-   
+
 # Parses the options based on previous calls to addOption.
 # If an option is found, the variable hasOpt_<canon_long>
 # will be set to yes.  For example, if --my-opt is
@@ -527,7 +528,7 @@ parseOpts()
                 ;;
         esac
     done
-        
+
     while test -n "$1"; do
         COMPILEROPTS="${COMPILEROPTS} $1"
         shift
@@ -540,9 +541,7 @@ runCmd()
     error="$1" ; shift
     cmd=$@
     compilerout=$(mktemp tmp.XXXXXXXX)
-    if test "$verbose" = "yes"; then
-        echo "runCmd(): $cmd"
-    fi
+    printVerbose "runCmd(): $cmd"
     $cmd > ${compilerout} 2>&1
     res=$?
     if test $res -ne 0; then
@@ -570,9 +569,7 @@ doCPP()
     precompile="$1" ; shift
     ccopts=$@
 
-    if test "$verbose" = "yes"; then
-        echo "doCPP(): $cppinput"
-    fi
+    printVerbose "doCPP(): $cppinput"
 
     jcppopt="-E"
     if test "${precompile}" = "yes"; then
@@ -581,7 +578,7 @@ doCPP()
     runCmd $verbose "Preprocessing step failed:" \
            "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${AECC_CFLAGS} ${ccopts} ${cppinput}"
     return $?
-} 
+}
 
 # parseAesopSource <verbose> <compiler> <input file> <output file> <named input> <parser opts> <compiler opts>
 parseAesopSource()
@@ -600,15 +597,13 @@ parseAesopSource()
         compileropts=""
     fi
 
-    if test "$verbose" = "yes"; then
-        echo "parseAesopSource(): $input"
-    fi
+    printVerbose "parseAesopSource(): $input"
 
     runCmd $verbose "Aesop parsing step failed: " \
            "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${AECC_CFLAGS} ${compileropts}"
     return $?
 }
-    
+
 # parseAesopHeader <verbose> <compiler> <input file> <output file> <named input> <parser opts> <compiler opts>
 parseAesopHeader()
 {
@@ -671,11 +666,11 @@ parseRemoteSource()
         inputopt="${inputopt} -i ${_ifile}"
     done
 
-    if test "$verbose" = "yes"; then
-        echo "parseRemoteSource(): $input $AEPARSER"
-    fi
+    printVerbose "parseRemoteSource(): $input $AEPARSER"
 
-    set -x
+    printVerbose "serviceopts: $serviceopts"
+
+    # set -x
     runCmd $verbose "Aesop remote parsing failed: " \
            "${AERPARSER} ${serviceopts} ${regopts} -c ${compiler} ${popts} ${namedopt} ${outopt} ${inputopt} -- ${AECC_CFLAGS} ${compileropts}"
     return $?
@@ -693,6 +688,8 @@ doCompile()
         compileropts=""
     fi
 
+    printVerbose "doCompile()"
+
     runCmd $verbose "Compilation step failed: " \
            "${compiler} -x c -c -o ${outfile} ${AECC_CFLAGS} ${compileropts} ${infile}"
     return $?
@@ -703,16 +700,15 @@ doClean()
 # Removes files as 'rm -f' w/o overriding permissions
 # Respects AESOP_CLEAN=0
 {
-    echo DOCLEAN $AESOP_CLEAN
+    printVerbose "doClean()..."
+    printVerbose "AESOP_CLEAN=$AESOP_CLEAN"
     for F in ${*}; do
         if test "${AESOP_CLEAN}" != 0 ; then
             if test -w ${F} ; then
                 rm ${F}
             fi
         else
-            if test "${AESOP_DEBUG}" = 1; then
-                echo "doClean: leaving ${F}"
-            fi
+            printVerbose "doClean: leaving ${F}"
         fi
     done
 }

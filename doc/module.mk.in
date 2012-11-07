@@ -7,3 +7,9 @@ doc/aesop-user-guide.pdf: doc/aug_preface.txt \
 			  doc/aug_language.txt \
 			  doc/aug_external.txt \
 			  doc/aug_standard.txt
+
+doc/aesop-user-guide.html: doc/aug_preface.txt \
+			   doc/aug_introduction.txt \
+			   doc/aug_language.txt \
+			   doc/aug_external.txt \
+			   doc/aug_standard.txt

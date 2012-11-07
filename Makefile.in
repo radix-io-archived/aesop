@@ -78,9 +78,9 @@ ifeq ($(BUILD_SSM),1)
    LIBS += -lssm_ref -lssmp_mpi
 endif
 
-CPPFLAGS += -I$(srcdir)/src
-
-CFLAGS= -I$(srcdir)/src/c-utils -I$(srcdir)/include -I. -Iinclude -I src/c-utils -I$(srcdir) @CFLAGS@ $(CPPFLAGS)
+CFLAGS= -I$(srcdir)/src/c-utils -I$(srcdir)/include -I. -Iinclude -I src/c-utils \
+ -I$(srcdir) \
+ @CFLAGS@ $(CPPFLAGS)
 
 # enable relocatable
 #CFLAGS += -fPIC
@@ -109,12 +109,12 @@ CWARNS += -Wno-format-security
 CWARNS += -Wno-format-zero-length
 # ... or when we have unused labels, which are common in generated aesop
 # code
-CWARNS += -Wno-unused-label 
+CWARNS += -Wno-unused-label
 
 LDSHARED = $(TCC) -shared
 
 LIBCFLAGS=@LIBCFLAGS@
-LDFLAGS += @LDFLAGS@ -Lsrc/c-utils 
+LDFLAGS += @LDFLAGS@ -Lsrc/c-utils
 LIBS += @LIBS@ -lc-utils -lm -lpthread
 
 DEPLIBS += @THREAD_LIB@
@@ -195,7 +195,7 @@ endif
 #    of a file that has the same name as the target.  Listing them
 #    here keeps make from accidentally doing too much work (see GNU
 #    make manual).
-.PHONY: all clean parserclean test_results 
+.PHONY: all clean parserclean test_results
 
 ################################################################
 # Find project subdirectories
@@ -687,7 +687,7 @@ doc: $(DOCPDF)
 docshtml: $(DOCHTML)
 dochtml: $(DOCHTML)
 
-# manually add some c-utils headers to the install list 
+# manually add some c-utils headers to the install list
 
 INSTALL_HDR += src/c-utils/triton-list.h \
  src/c-utils/triton-thread.h \
@@ -696,12 +696,19 @@ INSTALL_HDR += src/c-utils/triton-list.h \
 
 INSTALL_HDR_SRC=$(patsubst %,$(abs_srcdir)/%,$(INSTALL_HDR))
 
+ifeq ($(AESOP_DEBUG), 1)
+# If debugging Aesop, make shell tools verbose
+	LN_V = v
+	MKDIR_V = v
+endif
+
 include/aesop/.done:
-	mkdir -p include/aesop
-	for hdr in $(INSTALL_HDR_SRC); do \
-		ln -s $$hdr include/aesop 2> /dev/null; \
+	$(Q) "  constructing include/aesop..."
+	@mkdir -p$(MKDIR_V) include/aesop
+	@for hdr in $(INSTALL_HDR_SRC); do \
+		ln -s$(LN_V) $$hdr include/aesop 2> /dev/null; \
 	done
-	touch include/aesop/.done
+	$(E) touch include/aesop/.done
 
 install:: all
 	install -d $(bindir)

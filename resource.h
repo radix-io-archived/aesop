@@ -11,10 +11,10 @@
 #include "ae-error.h"
 #include "ae-ctl.h"
 #include "hints.h"
-#include "src/c-utils/triton-uint128.h"
-#include "src/c-utils/triton-thread.h"
-#include "src/c-utils/triton-list.h"
-#include "src/c-utils/triton-string.h"
+#include "triton-uint128.h"
+#include "triton-thread.h"
+#include "triton-list.h"
+#include "triton-string.h"
 
 #define AE_MAX_RESOURCES 255
 #define AE_MAX_CONTEXTS 1024

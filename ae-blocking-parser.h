@@ -19,6 +19,11 @@
 #include <aesop/ae-log.h>
 #include <aesop/ae-debug.h>
 
+#warning AESOP ae-blocking-parser.h
+
+typedef triton_list_t* triton_state_table_list_t;
+typedef triton_list_t* triton_state_data_list_t;
+
 #define AE_MK_START_OF_BLOCKING(__fname__) \
     ae_debug_blocking("[START]: %s (%p)\n", #__fname__, __ae_ctl);
 
@@ -80,12 +85,12 @@
         ae_ctl_done(&__ae_ctl->gen);                          \
         return;                                               \
     }
- 
+
 #define AE_MK_DONE_DECLS()                       \
         void * __ae_local_up;                    \
         __ae_local_cb = __ae_ctl->__ae_callback; \
         __ae_local_up = __ae_ctl->user_ptr;
- 
+
 #define AE_MK_CALLBACK_FN(__bfun, __fname, __pos_str, __fret_type, __cb_ret_type, __cb_ret_param)     \
 static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr, __cb_ret_type __cb_ret_param) \
 {                                                                                                     \

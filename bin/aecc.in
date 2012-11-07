@@ -7,8 +7,9 @@ if [[ $? != 0 ]]; then
     exit 1
 fi
 
-if [[ -n ${AESOP_DEBUG} ]]; then 
+if [[ -n ${AESOP_DEBUG} ]]; then
     echo "AESOP_HOME: $AESOP_HOME"
+    verbose="yes"
 fi
 
 # aecc-utils should be in the same dir as aecc
@@ -76,13 +77,13 @@ if test "${hasOpt_parse_hae}" = "yes"; then
         showUsage 1
     fi
 fi
- 
+
 if test "${hasOpt_from_interm}" != "yes"; then
-    
+
     buildifile=$(echo "${INPUTFILES}" | sed -e "s|^ *${SRCDIR}||" | sed -e "s|^/||")
     cppout=${buildifile}.i
     addToClean ${cppout}
- 
+
     if test -z "${INPUTFILES}"; then
         echo "No input file specified!"
         showUsage 1
@@ -101,7 +102,7 @@ if test "${hasOpt_from_interm}" != "yes"; then
         poutfile=${buildifile}.s
         addToClean ${poutfile}
     fi
-        
+
     if test "${hasOpt_parse_hae}" = "yes"; then
         parseAesopHeader ${verbose} ${compiler} ${cppout} ${poutfile} "${INPUTFILES}" "${parseropts}" ${COMPILEROPTS}
         exitIfFailed $?

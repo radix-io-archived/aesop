@@ -17,4 +17,6 @@ INSTALL_HDR += ae-types.h \
  ae-init.h \
  ae-debug.h \
  aesop-support.hae \
- op.h
+ op.h \
+ opcache.h \
+ resource.h
