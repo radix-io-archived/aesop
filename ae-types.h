@@ -13,7 +13,7 @@
  * want to use Triton.
  */
 
-#include <triton-uint128.h>
+#include <aesop/triton-uint128.h>
 
 #define ae_op_id_t uint128_t
 #define ae_op_id_clear triton_uint128_setzero

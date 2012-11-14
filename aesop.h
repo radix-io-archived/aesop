@@ -12,11 +12,11 @@
 // This causes problems- includes c-utils-config.h .
 // Not sure why this was here anyway. -Justin
 
-#include <triton-base.h>
+#include <aesop/triton-base.h>
 
-#include <triton-list.h>
-#include <triton-thread.h>
-#include <triton-uint128.h>
+#include <aesop/triton-list.h>
+#include <aesop/triton-thread.h>
+#include <aesop/triton-uint128.h>
 
 #include <aesop/ae-error.h>
 #include <aesop/ae-log.h>
@@ -52,7 +52,7 @@ void ae_poll_break(ae_context_t context);
  */
 int _ae_context_create(ae_context_t *context, const char *format, int resource_count, ...) __attribute__((format (printf, 2, 4))) ;
 
-/* macro to calculate the number of resources passed in as string 
+/* macro to calculate the number of resources passed in as string
  * arguments so we don't have to pass in the count explicitly. */
 #define ae_context_create(_context, ...) \
     _ae_context_create(_context, FORMAT_ARGS(__VA_ARGS__) , ##__VA_ARGS__)

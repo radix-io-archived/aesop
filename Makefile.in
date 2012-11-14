@@ -215,7 +215,7 @@ all:: subdirs
 
 ###############################################################
 # HACK for broken .hae headers
-.PHONY: 
+.PHONY:
 headers: resources/timer/timer.h resources/sem/sem.h \
    resources/thread/aethread.h parser/tests/blocking/btest.h
 
@@ -692,7 +692,10 @@ dochtml: $(DOCHTML)
 INSTALL_HDR += src/c-utils/triton-list.h \
  src/c-utils/triton-thread.h \
  src/c-utils/triton-base.h \
- src/c-utils/triton-uint128.h
+ src/c-utils/triton-hash.h \
+ src/c-utils/triton-string.h \
+ src/c-utils/triton-uint128.h \
+ src/c-utils/jenkins-hash.h
 
 INSTALL_HDR_SRC=$(patsubst %,$(abs_srcdir)/%,$(INSTALL_HDR))
 

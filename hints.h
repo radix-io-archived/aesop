@@ -8,8 +8,8 @@
 #define __AE_HINTS_H__
 
 // #include <triton-base.h>
-#include <triton-list.h>
-#include <triton-thread.h>
+#include <aesop/triton-list.h>
+#include <aesop/triton-thread.h>
 
 struct ae_hints
 {
@@ -59,7 +59,7 @@ static inline int aesop_hints_del(ae_hints_t *hints, const char *key)
  */
 int ae_hints_component_init(void);
 
-/** 
+/**
  * Shut down the hints framework
  */
 void ae_hints_component_finalize(void);
@@ -78,7 +78,7 @@ int ae_hints_get(ae_hints_t *hints,
                           int length,
                           void *value);
 
-/* This is different from a put() with overwrite, because it will walk 
+/* This is different from a put() with overwrite, because it will walk
  * up to
  * parent hints, and it will return ENOENT if the hint in question is not
  * found.  It is intended for lower level components that need to modify a
