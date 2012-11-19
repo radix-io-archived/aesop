@@ -1,7 +1,7 @@
 
 # AECC-UTILS
 
-echo SOURCING AESOP aecc-utils
+# echo SOURCING AESOP aecc-utils
 
 # print MSG if verbose=yes
 printVerbose()
