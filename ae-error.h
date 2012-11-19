@@ -9,8 +9,6 @@
 #ifndef AE_ERROR_H
 #define AE_ERROR_H
 
-#warning AESOP ae-error.h
-
 #include <assert.h>
 
 /* pre-defined error codes used by aesop */

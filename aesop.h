@@ -7,11 +7,6 @@
 #ifndef __AESOP_H__
 #define __AESOP_H__
 
-#warning AESOP aesop.h
-
-// This causes problems- includes c-utils-config.h .
-// Not sure why this was here anyway. -Justin
-
 #include <aesop/triton-base.h>
 
 #include <aesop/triton-list.h>
