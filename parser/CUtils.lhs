@@ -96,4 +96,4 @@ Aesop Blocking Parser debug:
 > abp_debug :: String -> IO ()
 > abp_debug s =
 >       if abp_debug_enabled then putStrLn ("aecc: debug: " ++ s) 
->       else putStr ""
+>       else return ()
