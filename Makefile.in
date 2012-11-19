@@ -714,11 +714,11 @@ include/aesop/.done:
 	$(E) touch include/aesop/.done
 
 install:: all
-	install -d $(bindir)
-	install -d $(libdir)
-	install -d $(includedir)
-	install -m 755 parser/ae-blocking-parser $(bindir)
-	install -m 755 bin/aecc $(bindir)
-	install -m 755 bin/aecc-utils $(bindir)
-	install -m 644 lib/libaesop.* $(libdir)
-	install -m 644 $(INSTALL_HDR_SRC) $(includedir)
+	install -Cv -d $(bindir)
+	install -Cv -d $(libdir)
+	install -Cv -d $(includedir)
+	install -Cv -m 755 parser/ae-blocking-parser $(bindir)
+	install -Cv -m 755 bin/aecc $(bindir)
+	install -Cv -m 755 bin/aecc-utils $(bindir)
+	install -Cv -m 644 lib/libaesop.* $(libdir)
+	install -Cv -m 644 $(INSTALL_HDR_SRC) $(includedir)
