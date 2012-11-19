@@ -82,3 +82,18 @@ will return:
 >	l:ls <- splitM p xs
 >	if res then case l of { Right as -> return $ (Right (x:as)):ls ; _ -> return $ (Right [x]):(l:ls) } else return $ (Left x):(l:ls)
 
+
+DEBUGGING OUTPUT
+
+Toggle abp_trace:
+
+> abp_debug_enabled = True
+
+-- > abp_debug_enabled = False
+
+Aesop Blocking Parser debug:
+
+> abp_debug :: String -> IO ()
+> abp_debug s =
+>       if abp_debug_enabled then putStrLn ("aecc: debug: " ++ s) 
+>       else putStr ""
