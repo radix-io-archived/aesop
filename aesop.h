@@ -142,10 +142,10 @@ int main(int argc, char **argv)                                   \
     ae_hints_t __main_hints;                                      \
     ae_op_id_t __main_opid;                                       \
     int ret;                                                      \
-    int (*__main_init_func)(void) = __init_before_main__;         \
+    int (*__main_init_func)(int argc, char** argv) = __init_before_main__; \
     if(__main_init_func)                                      \
     {                                                             \
-        ret = __main_init_func();                                 \
+        ret = __main_init_func(argc, argv);                       \
         aesop_error_assert(ret);                                  \
     }                                                             \
     ret = aesop_init(__resource_list__);                          \
