@@ -15,6 +15,8 @@
 int aefile_init(void);
 void aefile_finalize(void);
 
+__blocking int aefile_open(const char *pathname, int flags, mode_t mode);
+__blocking int aefile_fstat(int fd, struct stat *buf);
 __blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t offset);
 __blocking ssize_t aefile_pread(int fd, void *buf, size_t count, off_t offset);
 __blocking int aefile_fsync(int fd);

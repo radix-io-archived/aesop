@@ -51,6 +51,37 @@ void aefile_finalize(void)
     return;
 }
 
+__blocking int aefile_open(const char *pathname, int flags, mode_t mode)
+{
+    int ret;
+
+    AETHREAD_RUN();
+
+    ret = open(pathname, flags, mode);
+
+    if(ret == -1)
+    {
+        ret = -errno;
+    }
+    
+    return ret;
+}
+
+__blocking int aefile_fstat(int fd, struct stat *buf)
+{
+    int ret;
+
+    AETHREAD_RUN();
+
+    ret = fstat(fd, buf);
+
+    if(ret == -1)
+    {
+        ret = -errno;
+    }
+    return ret;
+}
+
 __blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t offset)
 {
     ssize_t ret;
