@@ -20,6 +20,12 @@
 #include "resources/thread/aethread.hae"
 #include "resource.h"
 
+/* TODO:
+ * - make thread pool size configurable
+ * - make operation fairness configurable
+ * - make thread usage in metadata ops configurable 
+ */
+
 struct aethread_group* file_threads = NULL;
 
 #define AETHREAD_RUN() \
