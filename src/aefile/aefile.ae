@@ -67,6 +67,23 @@ __blocking int aefile_open(const char *pathname, int flags, mode_t mode)
     return ret;
 }
 
+__blocking int aefile_close(int fd)
+{
+    int ret;
+
+    AETHREAD_RUN();
+
+    ret = close(fd);
+
+    if(ret == -1)
+    {
+        ret = -errno;
+    }
+    
+    return ret;
+}
+
+
 __blocking int aefile_fstat(int fd, struct stat *buf)
 {
     int ret;
