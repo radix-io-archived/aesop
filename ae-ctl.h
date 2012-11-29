@@ -7,6 +7,8 @@
 #ifndef __AE_CTL_H__
 #define __AE_CTL_H__
 
+#include <stdlib.h>
+
 #include <aesop/triton-thread.h>
 #include <aesop/triton-list.h>
 #include <aesop/ae-debug.h>
