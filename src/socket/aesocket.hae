@@ -4,8 +4,8 @@
  * See COPYRIGHT in top-level directory.
  */
 
-#ifndef SOCKET_TRITON_SOCKET_HAE
-#define SOCKET_TRITON_SOCKET_HAE
+#ifndef AESOCKET_HAE
+#define AESOCKET_HAE
 
 #include <sys/types.h>
 #include <aesop/aesop.h>
