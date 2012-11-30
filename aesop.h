@@ -103,16 +103,13 @@ static inline void aesop_clear_cancel(void) { }
 
 /* A macro to implement the boilerplate main function that posts an initial
  * blocking function.  The blocking function should have the same signature as main().
- * The variable parameters are the const char * names of the resources to initialize
- * for the context.  In this macro, ae_init() is called with no parameters, so
- * all modules get initialized.
  *
  * Example:
  * __blocking int aesop_main(int argc, char **argv) { ... }
- * aesop_main_set(aesop_main, "timer", "bdb", "sched");
+ * aesop_main_set(aesop_main);
  */
-#define aesop_main_set(__main_blocking_function__, ...)        \
-   aesop_main_set_with_init (0, "", __main_blocking_function__, ##__VA_ARGS__);
+#define aesop_main_set(__main_blocking_function__)        \
+   aesop_main_set_with_init (0, "", __main_blocking_function__);
 
 /* Similar to above, but this one takes an initialization function
  * that gets called before ae_init,
