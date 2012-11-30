@@ -39,11 +39,18 @@ static __blocking int dotimer(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
-    int dotimer_ret;
+    int ret;
 
-    dotimer_ret = dotimer();
+    ret = aesop_timer_init();
+    if(ret != 0)
+    {
+        fprintf(stderr, "Error: failed to init.\n");
+        return(ret);
+    }
 
-    return dotimer_ret;
+    ret = dotimer();
+
+    return ret;
 }
 
 aesop_main_set(aesop_main);

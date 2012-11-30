@@ -38,6 +38,9 @@ static void timer_cb(EV_P_ ev_timer *w, int revents);
 static int64_t global_timer_id_seed = 0;
 static int64_t current_timer_id = 0;
 
+static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
+static int module_refcount = 0;
+
 struct timer_op
 {
     struct timeval timer;
@@ -277,25 +280,47 @@ int aesop_timer_init(void)
 {
    int ret;
 
-   ev_init(&timer_watcher, timer_cb);
+   triton_mutex_lock(&module_lock);
 
-   ae_ops_init(&timer_oplist);
-   ae_ops_init(&cancel_oplist);
-
-   ret = AE_OPCACHE_INIT(struct timer_op, op, TIMER_DEFAULT_SIZE, &timer_opcache);
-   if(ret != 0)
+   if(!module_refcount)
    {
-      return AE_ERR_SYSTEM;
-   }
+       ev_init(&timer_watcher, timer_cb);
 
-   return ae_resource_register(&aesop_timer_resource, &aesop_timer_resource_id);
+       ae_ops_init(&timer_oplist);
+       ae_ops_init(&cancel_oplist);
+
+       ret = AE_OPCACHE_INIT(struct timer_op, op, TIMER_DEFAULT_SIZE, &timer_opcache);
+       if(ret != 0)
+       {
+          triton_mutex_unlock(&module_lock);
+          return AE_ERR_SYSTEM;
+       }
+
+       ret = ae_resource_register(&aesop_timer_resource, 
+          &aesop_timer_resource_id);
+       if(ret != 0)
+       {
+          triton_mutex_unlock(&module_lock);
+          return ret;
+       }
+   }
+   module_refcount++;
+   triton_mutex_unlock(&module_lock);
+
+   return AE_SUCCESS;
 }
 
 void aesop_timer_finalize(void)
 {
-   ae_resource_unregister(aesop_timer_resource_id);
+   triton_mutex_lock(&module_lock);
+   module_refcount--;
 
-   ae_opcache_destroy(timer_opcache);
+   if(!module_refcount)
+   {
+      ae_resource_unregister(aesop_timer_resource_id);
+      ae_opcache_destroy(timer_opcache);
+   }
+   triton_mutex_unlock(&module_lock);
 }
 
 static void timer_cb(EV_P_ ev_timer *w, int revents)

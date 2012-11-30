@@ -63,11 +63,18 @@ static void thread_dosleep(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
-    int dosleep_ret;
+    int ret;
     struct timeval t1, t2, diff;
 
+    ret = aesop_timer_init();
+    if(ret != 0)
+    {
+        fprintf(stderr, "Error: failed to init.\n");
+        return(ret);
+    }
+
     gettimeofday(&t1, NULL);
-    dosleep_ret = triton_dosleep();
+    ret = triton_dosleep();
     gettimeofday(&t2, NULL);
     diff.tv_sec = t2.tv_sec - t1.tv_sec;
     diff.tv_usec = t2.tv_usec - t1.tv_usec;
@@ -90,7 +97,7 @@ __blocking int aesop_main(int argc, char **argv)
     }
     printf("thread time: %d.%06d secs\n", (int)diff.tv_sec, (int)diff.tv_usec);
     
-    return dosleep_ret;
+    return ret;
 }
 
 aesop_main_set(aesop_main);

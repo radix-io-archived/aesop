@@ -46,15 +46,19 @@ static __blocking int receiver()
 
 __blocking int aesop_main(int argc, char **argv)
 {
-    int receiver_ret;
+    int ret;
+
+    ret = aesop_timer_init();
+    if(ret != 0)
+        return(ret);
 
     printf("ready\n");
 
-    receiver_ret = receiver();
+    ret = receiver();
 
     printf("done\n");
 
-    return receiver_ret;
+    return ret;
 }
 
 aesop_main_set(aesop_main);
