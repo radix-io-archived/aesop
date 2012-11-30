@@ -45,7 +45,9 @@ static ae_ops_t       aethread_cancel_queue;
 static int aethread_resource_id;
 #define AETHREAD_DEFAULT_OPCACHE_SIZE 1024
 static ae_opcache_t aethread_opcache;
-static int initialized = 0;
+
+static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
+static int module_refcount = 0;
 
 static void* thread_pool_fn(void* foo);
 
@@ -88,7 +90,7 @@ struct aethread_group* aethread_create_group_pool(int size)
     int i;
     int ret;
 
-    assert(initialized);
+    assert(module_refcount);
 
     group = malloc(sizeof(*group));
     if(!group)
@@ -170,11 +172,11 @@ ae_define_post(int, aethread_hint, struct aethread_group *group)
     struct ae_op *op;
     struct aethread_op *a_op;
  
-    assert(initialized && group);
+    assert(module_refcount && group);
 
     if(!aethread_opcache)
     {
-        fprintf(stderr, "Error: thread resource not initialized.\n");
+        fprintf(stderr, "Error: thread resource not module_refcount.\n");
         assert(0);
     }
 
@@ -288,31 +290,46 @@ int aethread_init(void)
 {
     int ret;
 
-    assert(!initialized);
+    triton_mutex_lock(&module_lock);
 
-    ae_ops_init (&aethread_cancel_queue);
-    
-    ret = AE_OPCACHE_INIT(struct aethread_op, op, AETHREAD_DEFAULT_OPCACHE_SIZE, &aethread_opcache);
-    if(ret != 0)
+    if(!module_refcount)
     {
-        return AE_ERR_SYSTEM;
-    }
 
-    initialized = 1;
-    return ae_resource_register(&triton_aethread_resource, &aethread_resource_id);
+        ae_ops_init (&aethread_cancel_queue);
+        
+        ret = AE_OPCACHE_INIT(struct aethread_op, op, AETHREAD_DEFAULT_OPCACHE_SIZE, &aethread_opcache);
+        if(ret != 0)
+        {
+            triton_mutex_unlock(&module_lock);
+            return AE_ERR_SYSTEM;
+        }
+
+        ret = ae_resource_register(&triton_aethread_resource, 
+            &aethread_resource_id);
+        if(ret != 0)
+        {
+            triton_mutex_unlock(&module_lock);
+            return ret;
+        }
+   }
+   module_refcount++;
+   triton_mutex_unlock(&module_lock);
+
+   return AE_SUCCESS;
 }
 
 void aethread_finalize(void)
 {
-    assert(initialized);
+    triton_mutex_lock(&module_lock);
+    module_refcount--;
 
-    ae_resource_unregister(aethread_resource_id);
-
-    ae_opcache_destroy(aethread_opcache);
-
-    ae_ops_destroy (&aethread_cancel_queue);
-
-    initialized = 0;
+    if(!module_refcount)
+    {
+        ae_resource_unregister(aethread_resource_id);
+        ae_opcache_destroy(aethread_opcache);
+        ae_ops_destroy (&aethread_cancel_queue);
+    }
+    triton_mutex_unlock(&module_lock);
 }
 
 /*
