@@ -58,6 +58,7 @@ __blocking int aesop_main(int argc, char **argv)
 
     printf("done\n");
 
+    aesop_timer_finalize();
     return ret;
 }
 

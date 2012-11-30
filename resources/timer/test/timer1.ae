@@ -50,6 +50,7 @@ __blocking int aesop_main(int argc, char **argv)
 
     ret = dotimer();
 
+    aesop_timer_finalize();
     return ret;
 }
 
