@@ -26,7 +26,9 @@
  * - make thread usage in metadata ops configurable 
  */
 
-struct aethread_group* file_threads = NULL;
+static struct aethread_group* file_threads = NULL;
+static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
+static int module_refcount = 0;
 
 #define AETHREAD_RUN() \
 do { \
@@ -40,19 +42,34 @@ do { \
 
 int aefile_init(void)
 {
-    assert(file_threads == NULL);
-    /* TODO: make this configurable */
-    file_threads = aethread_create_group_pool(32);
-    if(!file_threads)
-        return(AE_ERR_SYSTEM);
+    triton_mutex_lock(&module_lock);
+
+    if(!module_refcount)
+    {
+        /* TODO: make this configurable */
+        file_threads = aethread_create_group_pool(32);
+        if(!file_threads)
+        {
+            triton_mutex_unlock(&module_lock);
+            return(AE_ERR_SYSTEM);
+        }
+    }
+    module_refcount++;
+    triton_mutex_unlock(&module_lock);
 
     return(0);
 }
 
 void aefile_finalize(void)
 {
-    assert(file_threads);
-    aethread_destroy_group(file_threads);
+    triton_mutex_lock(&module_lock);
+    module_refcount--;
+
+    if(!module_refcount)
+    {
+        aethread_destroy_group(file_threads);
+    }
+    triton_mutex_unlock(&module_lock);
 
     return;
 }
