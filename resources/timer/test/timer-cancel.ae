@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <aesop/aesop.h>
 #include <aesop/timer.hae>
-#include <aesop/aesop-support.hae>
 
 static __blocking int dotimer(void)
 {
@@ -29,7 +28,7 @@ static __blocking int dotimer(void)
 
             /* shut down the other timer */
             printf("canceling other branch\n");
-            aesop_cancel_branches_wait();
+            aesop_cancel_branches();
             printf("cancel done\n");
 
         }

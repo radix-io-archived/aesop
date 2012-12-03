@@ -5,7 +5,6 @@
  */
 
 #include <aesop/aesop.h>
-#include <aesop/aesop-support.hae>
 #include <aesop/aessm.hae>
 
 #define DATAVAL 0xffbaffabffbaffab
