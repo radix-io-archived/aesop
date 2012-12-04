@@ -168,10 +168,12 @@ static __blocking int test2 ()
 static __blocking int dotest (int argc, char ** args)
 {
    // aesop_set_debugging ("ae_blocking", 1);
+   aesop_timer_init();
    aesocket_init ();
    test1 ();
    test2 ();
    aesocket_finalize ();
+   aesop_timer_finalize();
    return 0;
 }
 

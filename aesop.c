@@ -9,84 +9,53 @@
 #include "aesop.h"
 #include "resource.h"
 #include "hints.h"
-#include "ae-init.h"
 
-static int initialized = 0;
+static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
+static int module_refcount = 0;
 
-int aesop_init(const char* resource_list)
+int aesop_init(void)
 {
     int ret;
     char* rsc;
-    char* tmp_resource_list;
 
-    /* call __constructor__ functions */
-    ae_init ();
-
-    aesop_debug_from_env ();
-
-    tmp_resource_list = strdup(resource_list);
-    if(!tmp_resource_list)
+    triton_mutex_lock(&module_lock);
+    if(!module_refcount)
     {
-        return(AE_ERR_SYSTEM);
-    }
+        aesop_debug_from_env ();
 
-    if(initialized == 0)
-    {
         ret = ae_hints_component_init();
         if(ret < 0)
         {
-            free(tmp_resource_list);
             return(ret);
         }
-
-        if(strlen(resource_list) == 0)
-        {
-            ret = ae_resource_init_all();
-            if(ret < 0)
-            {
-                free(tmp_resource_list);
-                return(ret);
-            }
-        }
-        else
-        {
-            for(rsc = strtok(tmp_resource_list, ",");
-                rsc != NULL;
-                rsc = strtok(NULL, ","))
-            {
-                ret = ae_resource_init(rsc);
-                if(ret < 0)
-                {
-                    free(tmp_resource_list);
-                    return(ret);
-                }
-            }
-        }
     }
-    initialized++;
-    free(tmp_resource_list);
+    module_refcount++;
+    triton_mutex_unlock(&module_lock);
+
     return AE_SUCCESS;
 }
 
 void aesop_finalize(void)
 {
-   initialized--;
+    int count;
 
-   if(initialized)
-      return;
+    triton_mutex_lock(&module_lock);
+    module_refcount--;
 
+    if(!module_refcount)
+    {
+        count = ae_lone_pbranches_count ();
+        if (count)
+        {
+            fprintf (stderr, "\n\n!!!!WARNING!!!!!\n"
+                 "Still %i lone pbranches active!\n\n", count);
+        }
 
-   int count = ae_lone_pbranches_count ();
-   if (count)
-   {
-      fprintf (stderr, "\n\n!!!!WARNING!!!!!\n"
-            "Still %i lone pbranches active!\n\n", count);
-   }
+        ae_hints_component_finalize();
 
-   ae_resource_finalize_active ();
-   ae_hints_component_finalize();
-
-   ae_resource_cleanup ();
+        ae_resource_cleanup ();
+    }
+    triton_mutex_unlock(&module_lock);
 }
 
 

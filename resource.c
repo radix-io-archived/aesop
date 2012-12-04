@@ -22,20 +22,6 @@ struct ae_poll_data
     void *user_data;
 };
 
-/* data structures and tables used to track information for
- * resources that are available to be initialized
- */
-struct ae_resource_init_data
-{
-    char* name;
-    int (*init)(void);
-    void (*finalize)(void);
-    unsigned int count;
-};
-#define MAX_RESOURCES 32
-static struct ae_resource_init_data ae_resource_init_table[MAX_RESOURCES];
-static int ae_resource_init_table_count = 0;
-
 /* data structures and tables used to track information for resources that
  * actually have been initialized and are now active
  */
@@ -48,7 +34,8 @@ struct ae_resource_entry
 };
 
 static int ae_resource_count = 0;
-static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES]; 
+#define MAX_RESOURCES 32
+static struct ae_resource_entry ae_resource_entries[MAX_RESOURCES]; 
 static struct ev_loop *eloop = NULL;
 ev_async eloop_breaker;
 static pthread_t ev_loop_thread;
@@ -98,53 +85,6 @@ static void ev_async_cb(EV_P_ ev_async *w, int revents)
     return;
 }
 
-int ae_resource_init_register(const char* resource_name, 
-    int (*init)(void),
-    void (*finalize)(void))
-{
-    int i;
-
-    /* see if we have already registered this resource */
-    for(i=0; i<ae_resource_init_table_count; i++)
-    {
-        if(strcmp(ae_resource_init_table[i].name, resource_name) == 0)
-        {
-            return(AE_SUCCESS);
-        }
-    }
-
-    if(ae_resource_init_table_count > MAX_RESOURCES)
-    {
-        return(AE_ERR_OVERFLOW);
-    }
-    ae_resource_init_table[ae_resource_init_table_count].name = 
-        strdup(resource_name);
-    if(!ae_resource_init_table[ae_resource_init_table_count].name)
-        return(AE_ERR_SYSTEM);
-
-    ae_resource_init_table[ae_resource_init_table_count].init = init;
-    ae_resource_init_table[ae_resource_init_table_count].finalize = finalize;
-    ae_resource_init_table[ae_resource_init_table_count].finalize = finalize;
-    ae_resource_init_table_count++;
-
-    return(AE_SUCCESS);
-}
-
-
-static int ae_resource_init_register_cleanup (void)
-{
-   int i;
-
-   for(i=0; i<ae_resource_init_table_count; i++)
-   {
-      free (ae_resource_init_table[i].name);
-      ae_resource_init_table[i].name = 0;
-   }
-   ae_resource_init_table_count = 0;
-
-   return AE_SUCCESS;
-}
-
 int ae_resource_register(struct ae_resource *resource, int *newid)
 {
     return ae_resource_register_with_data(resource, newid, NULL);
@@ -180,13 +120,13 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
         ev_async_start(eloop, &eloop_breaker);
     }
 
-    if(ae_resource_count == AE_MAX_RESOURCES)
+    if(ae_resource_count == MAX_RESOURCES)
     {
 	return AE_ERR_INVALID;
     }
 
     /* find a free entry */
-    for(i=0; i<AE_MAX_RESOURCES; i++)
+    for(i=0; i<MAX_RESOURCES; i++)
     {
         if(ae_resource_entries[i].id == -1)
         {
@@ -875,114 +815,8 @@ int ae_check_debug_flag(int resource_id)
     return(ae_resource_entries[idx].debug);
 }
 
-static int ae_resource_init_helper (int i)
-{
-   int ret = AE_SUCCESS;
-
-   if (!ae_resource_init_table[i].count)
-   {
-      ret = ae_resource_init_table[i].init();
-      if (ret != AE_SUCCESS)
-         return ret;
-   }
-
-   ++ae_resource_init_table[i].count;
-
-   return ret;
-}
-
-static int ae_resource_finalize_helper (int i)
-{
-   int ret = AE_SUCCESS;
-
-   assert (ae_resource_init_table[i].count);
-
-   --ae_resource_init_table[i].count;
-
-   if(!ae_resource_init_table[i].count)
-   {
-      ae_resource_init_table[i].finalize();
-   }
-
-   return ret;
-}
-
-static int ae_resource_string_helper (const char* resource, int init)
-{
-    int i;
-
-    for(i=0; i<ae_resource_init_table_count; i++)
-    {
-        if(!strcmp(resource, ae_resource_init_table[i].name))
-        {
-           if (init)
-              ae_resource_init_helper (i);
-           else
-              ae_resource_finalize_helper (i);
-        }
-    }
-
-    return(AE_ERR_NOT_FOUND);
-}
-
-static int ae_resource_all_helper (int init)
-{
-    int i;
-    int ret = AE_SUCCESS;
-
-    for(i=0; i<ae_resource_init_table_count; i++)
-    {
-        ret = (init ? ae_resource_init_helper (i) 
-                    : ae_resource_finalize_helper (i));
-
-        if(ret != AE_SUCCESS)
-           break;
-    }
-
-    return ret;
-}
-
-int ae_resource_init (const char * s)
-{
-   return ae_resource_string_helper (s, 1);
-}
-
-int ae_resource_finalize (const char * s)
-{
-   return ae_resource_string_helper (s, 0);
-}
-
-int ae_resource_finalize_all (void)
-{
-   return ae_resource_all_helper (0);
-}
-
-int ae_resource_init_all (void)
-{
-   return ae_resource_all_helper (1);
-}
-
-int ae_resource_finalize_active (void)
-{
-    int i;
-    int ret = AE_SUCCESS;
-
-    for(i=0; i<ae_resource_init_table_count; i++)
-    {
-       while (ae_resource_init_table[i].count)
-       {
-          ret = ae_resource_finalize_helper (i);
-          if (ret != AE_SUCCESS)
-             return ret;
-       }
-    }
-
-    return ret;
-}
-
 int ae_resource_cleanup (void)
 {
-   ae_resource_init_register_cleanup ();
    ev_async_stop (eloop, &eloop_breaker);
    ev_default_destroy ();
 

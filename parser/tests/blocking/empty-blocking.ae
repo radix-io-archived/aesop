@@ -30,8 +30,10 @@ __blocking void t2 (void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+   btest_init();
    t1 ();
    t2 ();
+   btest_finalize();
    return 0;
 }
 

@@ -19,6 +19,9 @@
  * techniques (queue/polling, threads, immediate completion).
  */
 
+int btest_init(void);
+void btest_finalize(void);
+
 /* These three functions increment the integer pointer by 1, 2, and 3 respectively,
  * by first storing the operation on a queue and completing the operation through
  * a poll call.

@@ -16,7 +16,6 @@
 #include "triton-list.h"
 #include "triton-string.h"
 
-#define AE_MAX_RESOURCES 255
 #define AE_MAX_CONTEXTS 1024
 
 #define AE_RESOURCE_MASK (((uint64_t)0xFF)<<56)
@@ -106,13 +105,6 @@ struct ae_resource
     int (*unregister_context)(ae_context_t context);
     struct ae_resource_config* config_array;  /* terminated by entry with NULL name */
 };
-
-/* called to register the initialization and finalization methods for a
- * resource with the aesop framework.  Does not activate the resource.
- */
-int ae_resource_init_register(const char* resource_name, 
-    int (*init)(void),
-    void (*finalize)(void));
 
 /**
  * Cleanup resource 

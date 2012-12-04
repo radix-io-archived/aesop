@@ -47,7 +47,11 @@ static __blocking void run_test(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
+    aesop_timer_init();
     run_test();
+    aesop_timer_finalize();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

@@ -58,11 +58,15 @@ static __blocking void lonely_pbranch(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
+    aesop_timer_init();
     lonely_pbranch();
     /* start a timer to wait for the lonely pbranch to finish */
     printf("Sleeping 5 seconds to wait for pbranch to finish.\n");
     aesop_timer(5000);
     printf("Test complete.\n");
+    aesop_timer_finalize();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

@@ -55,7 +55,9 @@ static __blocking void run_pbreak(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
     run_pbreak();
+    btest_finalize();
     return 0;
 }
 

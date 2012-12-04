@@ -28,7 +28,9 @@ static __blocking void run_outer(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
     run_outer();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

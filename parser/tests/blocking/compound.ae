@@ -51,7 +51,11 @@ static __blocking int run_compound(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
-    return run_compound();
+    int ret;
+    btest_init();
+    ret = run_compound();
+    btest_finalize();
+    return(ret);
 }
 aesop_main_set(aesop_main);
 

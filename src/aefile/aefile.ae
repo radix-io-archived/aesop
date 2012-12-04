@@ -42,10 +42,20 @@ do { \
 
 int aefile_init(void)
 {
+    int ret;
+
     triton_mutex_lock(&module_lock);
 
     if(!module_refcount)
     {
+        /* initialize required thread resource */
+        ret = aethread_init();
+        if(ret != 0)
+        {
+            triton_mutex_unlock(&module_lock);
+            return(ret);
+        }
+
         /* TODO: make this configurable */
         file_threads = aethread_create_group_pool(32);
         if(!file_threads)
@@ -68,6 +78,7 @@ void aefile_finalize(void)
     if(!module_refcount)
     {
         aethread_destroy_group(file_threads);
+        aethread_finalize();
     }
     triton_mutex_unlock(&module_lock);
 

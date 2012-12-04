@@ -2,8 +2,7 @@ LIBSRC += opcache.c \
 	  aesop.c \
 	  resource.c \
 	  hints.c \
-          ae-ctl.c \
-	  ae-init.c
+          ae-ctl.c
 
 INSTALL_HDR += ae-types.h \
  ae-ctl.h \
@@ -12,7 +11,6 @@ INSTALL_HDR += ae-types.h \
  ae-error.h \
  ae-blocking-parser.h \
  hints.h \
- ae-init.h \
  ae-debug.h \
  op.h \
  opcache.h \

@@ -498,7 +498,7 @@ struct ae_resource btest_resource =
     .config_array = btest_config_array
 };
 
-static int btest_init(void)
+int btest_init(void)
 {
     ae_resource_register(&btest_resource, &btest_resource_id);
 
@@ -518,18 +518,12 @@ static int btest_init(void)
     return AE_SUCCESS;
 }
 
-static void btest_finalize(void)
+void btest_finalize(void)
 {
     ae_resource_unregister(btest_resource_id);
 
     ae_opcache_destroy(sleep_opcache);
     ae_opcache_destroy(test_opcache);
-}
-
-__attribute__((constructor)) void btest_init_register(void);
-__attribute__((constructor)) void btest_init_register(void)
-{
-    ae_resource_init_register("btest", btest_init, btest_finalize);
 }
 
 void btest_enable_immediate_cancel(void)

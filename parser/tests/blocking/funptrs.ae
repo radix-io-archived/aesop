@@ -85,6 +85,8 @@ __blocking int aesop_main(int argc, char **argv)
 {
     struct mystruct s;
     mytype t;
+    
+    btest_init();
 
     s.myfun = blocking1;
 /* see ticket #213 in Triton; aesop doesn't seem to allow function pointers
@@ -107,6 +109,7 @@ __blocking int aesop_main(int argc, char **argv)
     t.p = &s;
     t.b = 100;
     do_atype_blocking(&t);
+    btest_finalize();
 
     return 0;
 }

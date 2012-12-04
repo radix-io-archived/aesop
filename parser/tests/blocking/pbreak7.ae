@@ -78,7 +78,9 @@ static __blocking void run_par1(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
     run_par1();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

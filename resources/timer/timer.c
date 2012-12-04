@@ -269,13 +269,6 @@ struct ae_resource aesop_timer_resource =
    .config_array = NULL
 };
 
-__attribute__((constructor)) void aesop_timer_init_register(void);
-
-__attribute__((constructor)) void aesop_timer_init_register(void)
-{
-   ae_resource_init_register("timer", aesop_timer_init, aesop_timer_finalize);
-}
-
 int aesop_timer_init(void)
 {
    int ret;

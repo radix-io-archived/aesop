@@ -95,6 +95,12 @@ __blocking int aesop_main(int argc, char **argv)
         printf("Failure.\n");
         return(ret);
     }
+    ret = aesop_timer_init();
+    if(ret != 0)
+    {
+        printf("Failure.\n");
+        return(ret);
+    }
 
     ret = dotest();
     if(ret == 0)
@@ -102,6 +108,7 @@ __blocking int aesop_main(int argc, char **argv)
     else
         printf("Failure.\n");
 
+    aesop_timer_finalize();
     aethread_finalize();
 
     return(ret);

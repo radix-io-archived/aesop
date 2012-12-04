@@ -18,7 +18,7 @@
 #include <aesop/ae-debug.h>
 #include <aesop/ae-ctl.h>
 
-int aesop_init(const char *resource_list);
+int aesop_init(void);
 void aesop_finalize(void);
 
 int aesop_set_config(const char* key, const char* value);
@@ -109,20 +109,21 @@ static inline void aesop_clear_cancel(void) { }
  * aesop_main_set(aesop_main);
  */
 #define aesop_main_set(__main_blocking_function__)        \
-   aesop_main_set_with_init (0, "", __main_blocking_function__);
+   aesop_main_set_with_init (0, __main_blocking_function__);
 
 /* Similar to above, but this one takes an initialization function
- * that gets called before ae_init,
- * and a single string to specify the aesop module to initialize.
+ * that gets called before aesop_init, and you can optionally specify 
+ * a comma-separated list of resources to be polled in a separate context.
  *
  * Example:
  *
  * __blocking int aesop_main(int argc, char **argv) { ... }
  * int set_zeroconf_params(void) { ... }
- * aesop_main_set_with_init(set_zeroconf_params, "aesop.client", aesop_main, "bdb", "file");
+ * aesop_main_set_with_init(set_zeroconf_params, aesop_main);
+ *   or
+ * aesop_main_set_with_init(set_zeroconf_params, aesop_main, "bdb", "file");
  */
 #define aesop_main_set_with_init(__init_before_main__,            \
-                                 __resource_list__,               \
                                  __main_blocking_function__, ...) \
 static int __main_done=0;                                         \
 static int __main_ret;                                            \
@@ -145,7 +146,7 @@ int main(int argc, char **argv)                                   \
         ret = __main_init_func(argc, argv);                       \
         aesop_error_assert(ret);                                  \
     }                                                             \
-    ret = aesop_init(__resource_list__);                          \
+    ret = aesop_init();                          \
     aesop_error_assert(ret);                                      \
     if(COUNT_ARGS(__VA_ARGS__) > 0)                               \
     {                                                             \

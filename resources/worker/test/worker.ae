@@ -57,7 +57,14 @@ static __blocking int dotest (void)
 
 __blocking int test_main (int argc, char ** args)
 {
+   int ret;
+
+   ret = aesop_timer_init();
+   assert(ret == 0);
+
    dotest ();
+
+   aesop_timer_finalize();
    return errors;
 }
 

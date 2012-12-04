@@ -279,13 +279,6 @@ struct ae_resource triton_aethread_resource =
     .config_array = NULL
 };
 
-__attribute__((constructor)) void triton_aethread_init_register(void);
-
-__attribute__((constructor)) void triton_aethread_init_register(void)
-{
-    ae_resource_init_register("thread", aethread_init, aethread_finalize);
-}
-
 int aethread_init(void)
 {
     int ret;
