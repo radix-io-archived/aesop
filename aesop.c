@@ -16,7 +16,6 @@ static int module_refcount = 0;
 int aesop_init(void)
 {
     int ret;
-    char* rsc;
 
     triton_mutex_lock(&module_lock);
     if(!module_refcount)
