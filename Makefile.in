@@ -696,6 +696,7 @@ INSTALL_HDR += src/c-utils/triton-list.h \
  src/c-utils/triton-string.h \
  src/c-utils/triton-uint128.h \
  src/c-utils/c-utils-common.h \
+ src/c-utils/c-utils-settings.h \
  src/c-utils/jenkins-hash.h
 
 INSTALL_HDR_SRC=$(patsubst %,$(abs_srcdir)/%,$(INSTALL_HDR))
