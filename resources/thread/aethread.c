@@ -262,13 +262,13 @@ static int triton_aethread_cancel(ae_context_t triton_ctx, ae_op_id_t op_id)
     triton_mutex_unlock(&group_mutex);
 
     if (found)
+    {
        ae_resource_request_poll(triton_ctx, aethread_resource_id);
+       return(AE_SUCCESS);
+    }
 
-    /**
-     * TODO: this needs to be fixed! Return code should depend on result of
-     * cancel.
-     */
-    return AE_SUCCESS;
+    /* If we were not able to cancel the operation then return an error */
+    return(AE_ERR_OTHER);
 }
 
 struct ae_resource triton_aethread_resource =
