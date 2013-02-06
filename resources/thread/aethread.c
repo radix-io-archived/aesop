@@ -173,11 +173,18 @@ static void *thread_pool_fn(
         }
         else
         {
-            /* This operation is already being cancelled by way of the
-             * cancel() function.
-             */
-            /* TODO: implement this path: need to make sure that we don't
-             * interfere with the cancel()
+            /* A return code of 0 here would indicate that a cancel() is
+             * already in progress for this operation.
+             *
+             * In theory we need to skip completing the operation in this
+             * case and allow cancel to complete it.  However, there are
+             * mutex locks preventing both this function and cancel from
+             * finding the same operation.  Both code paths hold a resource
+             * mutex while searching for the operation and removing it from the
+             * queue.  So we should still complete the operation here?
+             *
+             * TODO: need to figure out how to construct a test case that
+             * triggers this specific scenario.
              */
             assert(0);
         }
