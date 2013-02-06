@@ -824,6 +824,10 @@ int ae_resource_cleanup (void)
 }
 
 
+/* Returns 0 if a cancel() operation is already in progress, returns 1 if no
+ * cancel() operation is in progress.  In the latter case the caller is
+ * expected to complete the operation normally.
+ */
 int ae_op_complete (struct ae_op * op)
 {
    int ret = 0;

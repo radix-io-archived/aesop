@@ -133,6 +133,7 @@ static void *thread_pool_fn(
 {
     struct aethread_group *group = (struct aethread_group *) foo;
     struct ae_op *op = NULL;
+    int normal_completion;
 
     while (1)
     {
@@ -163,9 +164,23 @@ static void *thread_pool_fn(
 
         /* no work; just run callback in the context of this thread */
         /* trigger completion of the operation */
-
-        ae_opcache_complete_op(aethread_opcache, op, int,
+        
+        normal_completion = ae_op_complete(op);
+        if(normal_completion)
+        {
+            ae_opcache_complete_op(aethread_opcache, op, int,
                                0);
+        }
+        else
+        {
+            /* This operation is already being cancelled by way of the
+             * cancel() function.
+             */
+            /* TODO: implement this path: need to make sure that we don't
+             * interfere with the cancel()
+             */
+            assert(0);
+        }
     }
 
     return (NULL);
