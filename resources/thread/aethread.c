@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include "aesop.h"
 #include "op.h"
-#include "opcache.h"
 #include "resources/thread/aethread.h"
 #include "resource.h"
 
@@ -44,7 +43,6 @@ static ae_ops_t aethread_cancel_queue;
 #define THREAD_WORK_THRESHOLD 1
 static int aethread_resource_id;
 #define AETHREAD_DEFAULT_OPCACHE_SIZE 1024
-static ae_opcache_t aethread_opcache;
 
 static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
 static int module_refcount = 0;
@@ -168,8 +166,8 @@ static void *thread_pool_fn(
         normal_completion = ae_op_complete(op);
         if(normal_completion)
         {
-            ae_opcache_complete_op(aethread_opcache, op, int,
-                               0);
+            ae_op_execute(op, int, 0);
+            free(ae_op_entry(op, struct aethread_op, op));
         }
         else
         {
@@ -187,6 +185,9 @@ static void *thread_pool_fn(
              * triggers this specific scenario.
              */
             assert(0);
+
+            ae_op_execute(op, int, 0);
+            free(ae_op_entry(op, struct aethread_op, op));
         }
     }
 
@@ -200,20 +201,20 @@ ae_define_post(int, aethread_hint, struct aethread_group * group)
 
     assert(module_refcount && group);
 
-    if (!aethread_opcache)
-    {
-        fprintf(stderr, "Error: thread resource not module_refcount.\n");
-        assert(0);
-    }
-
     if (ae_resource_is_cancelled())
     {
         *__ae_retval = AE_ERR_CANCELLED;
         return AE_IMMEDIATE_COMPLETION;
     }
 
-    op = ae_opcache_get(aethread_opcache);
+    a_op = malloc(sizeof(*a_op));
+    if(!a_op)
+    {
+        return AE_ERR_SYSTEM;
+    }
+    op = &a_op->op;
     ae_op_fill(op);
+    ae_ops_link_init(op);
 
     a_op = ae_op_entry(op, struct aethread_op, op);
     a_op->op_id = ae_id_gen(aethread_resource_id, (intptr_t) op);
@@ -243,8 +244,8 @@ static int triton_aethread_poll(
         ae_op_t *op = ae_ops_dequeue(&aethread_cancel_queue);
 
         triton_mutex_unlock(&aethread_cancel_lock);
-        ae_opcache_complete_op(aethread_opcache, op, int,
-                               AE_ERR_CANCELLED);
+        ae_op_execute(op, int, AE_ERR_CANCELLED);
+        free(ae_op_entry(op, struct aethread_op, op));
         triton_mutex_lock(&aethread_cancel_lock);
     }
     triton_mutex_unlock(&aethread_cancel_lock);
@@ -324,16 +325,6 @@ int aethread_init(
 
         ae_ops_init(&aethread_cancel_queue);
 
-        ret = AE_OPCACHE_INIT(struct aethread_op,
-                              op,
-                              AETHREAD_DEFAULT_OPCACHE_SIZE,
-                              &aethread_opcache);
-        if (ret != 0)
-        {
-            triton_mutex_unlock(&module_lock);
-            return AE_ERR_SYSTEM;
-        }
-
         ret = ae_resource_register(&triton_aethread_resource,
                                    &aethread_resource_id);
         if (ret != 0)
@@ -357,7 +348,6 @@ void aethread_finalize(
     if (!module_refcount)
     {
         ae_resource_unregister(aethread_resource_id);
-        ae_opcache_destroy(aethread_opcache);
         ae_ops_destroy(&aethread_cancel_queue);
     }
     triton_mutex_unlock(&module_lock);
