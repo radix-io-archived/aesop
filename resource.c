@@ -696,14 +696,6 @@ void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
     }
 }
 
-struct ev_loop * ae_resource_get_eloop(ae_context_t context)
-{
-    if(!context)
-        return(eloop);
-    else
-        return(context->eloop);
-}
-
 int aesop_set_config(const char* key, const char* value)
 {
     int i;

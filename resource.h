@@ -134,10 +134,6 @@ void ae_resource_unregister(int resource_id);
 
 /* Called by resources to request polling from the event loop */
 void ae_resource_request_poll(ae_context_t context, int resource_id);
-/* this function is used by resources that want access to the event loop
- * used by aesop for this context
- */
-struct ev_loop * ae_resource_get_eloop(ae_context_t context);
 
 /* Cancel an operation */
 int ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
