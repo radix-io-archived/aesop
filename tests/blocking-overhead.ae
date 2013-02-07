@@ -4,8 +4,8 @@
  * See COPYRIGHT in top-level directory.
  */
 
-#include "aesop.h"
-#include "resources/timer/timer.hae"
+#include <aesop.h>
+#include <aesop/timer.hae>
 
 #include <sys/time.h>
 

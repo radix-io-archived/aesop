@@ -6,9 +6,9 @@
  */
 
 #include <stdio.h>
-#include "aesop.h"
+#include <aesop.h>
 #include "resources/worker/worker.h"
-#include "resources/timer/timer.hae"
+#include <aesop/timer.hae>
 
 static int errors = 0;
 

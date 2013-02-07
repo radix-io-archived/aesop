@@ -322,8 +322,6 @@ AC_CONFIG_FILES([bin/aecc-utils], [])
 AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
 
 AC_OUTPUT([Makefile
-resources/timer/test/module.mk
-resources/timer/module.mk
 resources/worker/module.mk
 resources/worker/test/module.mk
 resources/sem/module.mk
@@ -338,6 +336,8 @@ src/socket/module.mk
 src/socket/test/module.mk
 src/ssm/module.mk
 src/ssm/test/module.mk
+src/timer/test/module.mk
+src/timer/module.mk
 module.mk
 tests/module.mk
 parser/module.mk
