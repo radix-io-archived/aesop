@@ -14,6 +14,13 @@
 int aebdb_init(void);
 void aebdb_finalize(void);
 
+__blocking int bdb_txn_begin(DB_ENV *env,
+    DB_TXN *parent, 
+    DB_TXN **tid, 
+    u_int32_t flags);
+
+__blocking int bdb_txn_commit(DB_TXN *tid, u_int32_t flags);
+
 #endif
 
 
