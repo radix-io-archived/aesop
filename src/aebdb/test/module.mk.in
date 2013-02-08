@@ -2,3 +2,4 @@ DIR := src/aebdb/test
 
 AETESTSRC += $(DIR)/aebdb-example.ae 
 
+MODLIBS_$(DIR)/aebdb-example = -ldb

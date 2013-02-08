@@ -4,6 +4,8 @@
  * See COPYRIGHT in top-level directory.
  */
 
+#include <sys/time.h>
+
 #include <aesop/aesop.h>
 #include <aesop/aebdb.hae>
 
@@ -16,15 +18,60 @@ static double wtime(void)
 
 static __blocking int dotest(void)
 {
-    int fd;
     int ret;
     double start, end;
-    char fname_template[256];
-    char buf[4096];
+    DB_ENV *envp = NULL;
+    DB *dbp = NULL;
 
+    /* open environment and db */
+    ret = db_env_create(&envp, 0);
+    assert(ret == 0);
+
+    ret = envp->set_lk_detect(envp, DB_LOCK_DEFAULT);
+    assert(ret == 0);
+
+    ret = envp->open(envp, ".", DB_CREATE|DB_INIT_LOG|DB_INIT_TXN|
+        DB_INIT_MPOOL|DB_RECOVER|DB_THREAD|DB_INIT_LOCK, 0);
+    assert(ret == 0);
+    
+    ret = db_create(&dbp, envp, 0);
+    assert(ret == 0);
+
+    ret = dbp->open(dbp, NULL, "dat.db", "dat.db", DB_BTREE, 
+        DB_CREATE | DB_AUTO_COMMIT, 0);
+    assert(ret == 0);
+
+    /* flush txn logs up front */
+    envp->txn_checkpoint(envp, 0, 0, 0);
+    
     start = wtime();
 
-    /* TODO: fill this in */
+    pwait
+    {
+        pprivate int pret;
+        pprivate int i;
+        pprivate DB_TXN *txn;
+
+        /* run 100 concurrent pbranches */
+        for(i=0; i<100; i++)
+        {
+            pbranch
+            {
+                /* do a separate transaction in each pbranch */
+                do
+                {
+                    pret = bdb_txn_begin(envp, NULL, &txn, 0);
+                    
+                    if(pret == 0)
+                    {
+                        pret = bdb_txn_commit(txn, 0);
+                    }
+                }
+                while(pret == DB_LOCK_DEADLOCK);
+                printf("pret: %d\n", pret);
+            }
+        }
+    }
 
     end = wtime();
 
