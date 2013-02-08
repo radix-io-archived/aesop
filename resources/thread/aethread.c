@@ -66,11 +66,11 @@ void aethread_destroy_group(
     triton_list_del(&group->link);
     pthread_mutex_unlock(&group_mutex);
 
+    pthread_mutex_lock(&group->pool_mutex);
     /* TODO: should we do something to handle operations still in the queue
      * for this group?
      */
-
-    pthread_mutex_lock(&group->pool_mutex);
+    assert(ae_ops_count(&group->oplist) == 0);
     group->pool_running = 0;
     pthread_cond_broadcast(&group->pool_cond);
     pthread_mutex_unlock(&group->pool_mutex);
