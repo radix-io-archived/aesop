@@ -329,6 +329,8 @@ resources/sem/test/module.mk
 resources/thread/module.mk
 resources/thread/test/module.mk
 src/aefile/module.mk
+src/aebdb/module.mk
+src/aebdb/test/module.mk
 src/aefile/test/module.mk
 src/resourcebuilder/module.mk
 src/resourcebuilder/test/module.mk

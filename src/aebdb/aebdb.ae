@@ -1,0 +1,79 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include "src/aebdb/aebdb.hae"
+#include "resources/thread/aethread.hae"
+
+static struct aethread_group* general_thread_group = NULL;
+static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
+static int module_refcount = 0;
+
+#define AETHREAD_RUN() \
+do { \
+    int __ret; \
+    __ret = aethread_hint(general_thread_group); \
+    if(__ret == AE_ERR_SYSTEM) \
+        return(-EIO); \
+    if(__ret == AE_ERR_CANCELLED) \
+        return(-EINTR); \
+}while(0) 
+
+int aebdb_init(void)
+{
+    int ret;
+
+    triton_mutex_lock(&module_lock);
+
+    if(!module_refcount)
+    {
+        /* initialize required thread resource */
+        ret = aethread_init();
+        if(ret != 0)
+        {
+            triton_mutex_unlock(&module_lock);
+            return(ret);
+        }
+
+        /* Pool of threads for operations that aren't associated with a
+         * specific existing transaction
+         */
+        general_thread_group = aethread_create_group_pool(4);
+        if(!general_thread_group)
+        {
+            aethread_finalize();
+            triton_mutex_unlock(&module_lock);
+            return(AE_ERR_SYSTEM);
+        }
+    }
+    module_refcount++;
+    triton_mutex_unlock(&module_lock);
+
+    return(0);
+}
+
+void aebdb_finalize(void)
+{
+    triton_mutex_lock(&module_lock);
+    module_refcount--;
+
+    if(!module_refcount)
+    {
+        aethread_destroy_group(general_thread_group);
+        aethread_finalize();
+    }
+    triton_mutex_unlock(&module_lock);
+
+    return;
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

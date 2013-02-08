@@ -1,0 +1,63 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <aesop/aesop.h>
+#include <aesop/aebdb.hae>
+
+static double wtime(void)
+{
+    struct timeval t;
+    gettimeofday(&t, (void *) 0);
+    return ( (double) t.tv_sec + ( (double) t.tv_usec / 1000000 ) );
+}
+
+static __blocking int dotest(void)
+{
+    int fd;
+    int ret;
+    double start, end;
+    char fname_template[256];
+    char buf[4096];
+
+    start = wtime();
+
+    /* TODO: fill this in */
+
+    end = wtime();
+
+    printf("Example complete: %f seconds.\n", (end-start));
+
+    return 0;
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    int ret;
+
+    ret = aebdb_init();
+    assert(ret == 0);
+
+    ret = dotest();
+    if(ret == 0)
+        printf("Success.\n");
+    else
+        printf("Failure.\n");
+
+    aebdb_finalize();
+
+    return(ret);
+}
+
+aesop_main_set(aesop_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

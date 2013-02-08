@@ -1,0 +1,4 @@
+DIR := src/aebdb/test
+
+AETESTSRC += $(DIR)/aebdb-example.ae 
+

@@ -1,0 +1,7 @@
+DIR := src/aebdb
+
+AESOP_HDR += $(DIR)/aebdb.hae
+
+INSTALL_HDR += $(DIR)/aebdb.hae
+
+AELIBSRC += $(DIR)/aebdb.ae

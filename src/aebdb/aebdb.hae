@@ -1,0 +1,27 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#ifndef __AEBDB_HAE__
+#define __AEBDB_HAE__
+
+#include <db.h>
+
+#include <aesop/aesop.h>
+
+int aebdb_init(void);
+void aebdb_finalize(void);
+
+#endif
+
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
