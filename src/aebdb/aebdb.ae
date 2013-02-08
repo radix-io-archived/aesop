@@ -32,6 +32,7 @@ struct open_txn
 };
 
 static int open_txn_compare(const void *k, struct triton_hash_link *l);
+static struct open_txn* lookup_txn(DB_TXN *txnid);
 
 #define AETHREAD_RUN(__tg) \
 do { \
@@ -182,24 +183,10 @@ __blocking int bdb_txn_begin(DB_ENV *env,
 
 __blocking int bdb_txn_abort(DB_TXN *tid)
 {
-    triton_list_link_t *ot_link;
     struct open_txn *ot;
     int ret;
 
-    /* find this txn in our table of open txns */
-    triton_mutex_lock(&txn_table_mutex);
-    ot_link = triton_hash_search(txn_table, tid);
-    assert(ot_link);
-    /* NOTE: drop table mutex here; we trust that the caller will not
-     * issue any more operations on a txn once it has started a commit.  
-     * That would be an API violation.  The only thing the txn_table_mutex
-     * is doing is protecting the hash table itself, not the elements within
-     * it.
-     */ 
-    triton_mutex_unlock(&txn_table_mutex);
-
-    ot = triton_hash_get_entry(ot_link, struct open_txn, hash_link);
-    assert(ot);
+    ot = lookup_txn(tid);
 
     AETHREAD_RUN(ot->th_group);
     ret = tid->abort(tid);
@@ -207,7 +194,7 @@ __blocking int bdb_txn_abort(DB_TXN *tid)
     /* up semaphore to allow other transactions to proceed */
     aesop_sem_up(&txn_sem);
 
-    /* regardless of return code, once commit has been called on a
+    /* regardless of return code, once abort has been called on a
      * transaction the transaction is closed.  Shut down the thread pool
      * here.
      */
@@ -226,23 +213,13 @@ __blocking int bdb_put(
     DBT *data, 
     u_int32_t flags)
 {
-    triton_list_link_t *ot_link;
     struct open_txn *ot;
     int ret;
     struct aethread_group* th_group = NULL;
 
-    if(txnid)
-    {
-        /* find this txn in our table of open txns */
-        triton_mutex_lock(&txn_table_mutex);
-        ot_link = triton_hash_search(txn_table, txnid);
-        assert(ot_link);
-        triton_mutex_unlock(&txn_table_mutex);
-        ot = triton_hash_get_entry(ot_link, struct open_txn, hash_link);
-        assert(ot);
-
+    ot = lookup_txn(txnid);
+    if(ot)
         th_group = ot->th_group;
-    }
 
     AETHREAD_RUN(th_group);
     ret = db->put(db, txnid, key, data, flags);
@@ -253,24 +230,10 @@ __blocking int bdb_put(
 
 __blocking int bdb_txn_commit(DB_TXN *tid, u_int32_t flags)
 {
-    triton_list_link_t *ot_link;
     struct open_txn *ot;
     int ret;
 
-    /* find this txn in our table of open txns */
-    triton_mutex_lock(&txn_table_mutex);
-    ot_link = triton_hash_search(txn_table, tid);
-    assert(ot_link);
-    /* NOTE: drop table mutex here; we trust that the caller will not
-     * issue any more operations on a txn once it has started a commit.  
-     * That would be an API violation.  The only thing the txn_table_mutex
-     * is doing is protecting the hash table itself, not the elements within
-     * it.
-     */ 
-    triton_mutex_unlock(&txn_table_mutex);
-
-    ot = triton_hash_get_entry(ot_link, struct open_txn, hash_link);
-    assert(ot);
+    ot = lookup_txn(tid);
 
     AETHREAD_RUN(ot->th_group);
     ret = tid->commit(tid, flags);
@@ -297,6 +260,30 @@ static int open_txn_compare(const void *k, struct triton_hash_link *l)
         return 1;
     else
         return 0;
+}
+
+static struct open_txn* lookup_txn(DB_TXN *txnid)
+{
+    triton_list_link_t *ot_link;
+    struct open_txn *ot;
+
+    if(!txnid)
+        return(NULL);
+
+    /* find this txn in our table of open txns */
+    triton_mutex_lock(&txn_table_mutex);
+    ot_link = triton_hash_search(txn_table, txnid);
+    assert(ot_link);
+    triton_mutex_unlock(&txn_table_mutex);
+
+    /* Note that we don't have to hold the txn_table_mutex while a specific
+     * open_txn structure is being modified.   The mutex only protects the
+     * hash table itself, not the elements stored within it.
+     */
+    ot = triton_hash_get_entry(ot_link, struct open_txn, hash_link);
+    assert(ot);
+
+    return(ot);
 }
 
 /*
