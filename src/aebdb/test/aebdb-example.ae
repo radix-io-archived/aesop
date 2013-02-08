@@ -16,6 +16,22 @@ static double wtime(void)
     return ( (double) t.tv_sec + ( (double) t.tv_usec / 1000000 ) );
 }
 
+static __blocking int bdb_example_txn(DB_ENV* envp, DB *dbp, int i)
+{
+    int ret;
+    DB_TXN *txn;
+
+    ret = bdb_txn_begin(envp, NULL, &txn, 0);
+    if(ret < 0)
+        return(ret);
+
+    ret = bdb_txn_commit(txn, 0);
+    if(ret < 0)
+        return(ret);
+
+    return(0);
+}
+
 static __blocking int dotest(void)
 {
     int ret;
@@ -48,9 +64,8 @@ static __blocking int dotest(void)
 
     pwait
     {
-        pprivate int pret;
+        pprivate int pret = 0;
         pprivate int i;
-        pprivate DB_TXN *txn;
 
         /* run 100 concurrent pbranches */
         for(i=0; i<100; i++)
@@ -60,12 +75,9 @@ static __blocking int dotest(void)
                 /* do a separate transaction in each pbranch */
                 do
                 {
-                    pret = bdb_txn_begin(envp, NULL, &txn, 0);
-                    
-                    if(pret == 0)
-                    {
-                        pret = bdb_txn_commit(txn, 0);
-                    }
+                    pret = bdb_example_txn(envp, dbp, i);
+                    if(pret == DB_LOCK_DEADLOCK)
+                        printf("Retrying txn after deadlock.\n");
                 }
                 while(pret == DB_LOCK_DEADLOCK);
                 printf("pret: %d\n", pret);
