@@ -42,7 +42,6 @@ static ae_ops_t aethread_cancel_queue;
  */
 #define THREAD_WORK_THRESHOLD 1
 static int aethread_resource_id;
-#define AETHREAD_DEFAULT_OPCACHE_SIZE 1024
 
 static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
 static int module_refcount = 0;
