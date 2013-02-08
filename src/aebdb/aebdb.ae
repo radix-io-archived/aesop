@@ -188,20 +188,24 @@ __blocking int bdb_txn_abort(DB_TXN *tid)
 
     ot = lookup_txn(tid);
 
-    AETHREAD_RUN(ot->th_group);
-    ret = tid->abort(tid);
-
-    /* up semaphore to allow other transactions to proceed */
-    aesop_sem_up(&txn_sem);
-
-    /* regardless of return code, once abort has been called on a
-     * transaction the transaction is closed.  Shut down the thread pool
-     * here.
+    /* Go ahead and remove the txn from the table.  Regardless of the outcome of the
+     * upcoming abort(), it is no longer valid to submit operations on this txn, and bdb
+     * may elect to reuse the txn pointer as soon as the abort() is complete.
      */
-    aethread_destroy_group(ot->th_group);
     triton_mutex_lock(&txn_table_mutex);
     triton_list_del(&ot->hash_link);
     triton_mutex_unlock(&txn_table_mutex);
+
+    AETHREAD_RUN(ot->th_group);
+    ret = tid->abort(tid);
+
+    /* shut down the thread pool for this txn */
+    aethread_destroy_group(ot->th_group);
+
+    /* up semaphore to allow other transactions to proceed */
+    aesop_sem_up(&txn_sem);
+    
+    free(ot);
 
     return(ret);
 }
@@ -216,6 +220,9 @@ __blocking int bdb_put(
     struct open_txn *ot;
     int ret;
     struct aethread_group* th_group = NULL;
+    int *foo;
+
+    foo = key->data; 
 
     ot = lookup_txn(txnid);
     if(ot)
@@ -235,20 +242,25 @@ __blocking int bdb_txn_commit(DB_TXN *tid, u_int32_t flags)
 
     ot = lookup_txn(tid);
 
+    /* Go ahead and remove the txn from the table.  Regardless of the outcome of the
+     * upcoming commit(), it is no longer valid to submit operations on this txn, and bdb
+     * may elect to reuse the txn pointer as soon as the commit() is complete.
+     */
+    triton_mutex_lock(&txn_table_mutex);
+    triton_list_del(&ot->hash_link);
+    triton_mutex_unlock(&txn_table_mutex);
+
     AETHREAD_RUN(ot->th_group);
+   
     ret = tid->commit(tid, flags);
+
+    /* destroy the thread pool for this txn */
+    aethread_destroy_group(ot->th_group);
 
     /* up semaphore to allow other transactions to proceed */
     aesop_sem_up(&txn_sem);
 
-    /* regardless of return code, once commit has been called on a
-     * transaction the transaction is closed.  Shut down the thread pool
-     * here.
-     */
-    aethread_destroy_group(ot->th_group);
-    triton_mutex_lock(&txn_table_mutex);
-    triton_list_del(&ot->hash_link);
-    triton_mutex_unlock(&txn_table_mutex);
+    free(ot);
 
     return(ret);
 }
