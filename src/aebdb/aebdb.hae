@@ -21,6 +21,15 @@ __blocking int bdb_txn_begin(DB_ENV *env,
 
 __blocking int bdb_txn_commit(DB_TXN *tid, u_int32_t flags);
 
+__blocking int bdb_put(
+    DB *db, 
+    DB_TXN *txnid, 
+    DBT *key, 
+    DBT *data, 
+    u_int32_t flags);
+
+__blocking int bdb_txn_abort(DB_TXN *tid);
+
 #endif
 
 

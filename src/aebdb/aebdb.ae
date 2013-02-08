@@ -219,6 +219,37 @@ __blocking int bdb_txn_abort(DB_TXN *tid)
     return(ret);
 }
 
+__blocking int bdb_put(
+    DB *db, 
+    DB_TXN *txnid, 
+    DBT *key, 
+    DBT *data, 
+    u_int32_t flags)
+{
+    triton_list_link_t *ot_link;
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    if(txnid)
+    {
+        /* find this txn in our table of open txns */
+        triton_mutex_lock(&txn_table_mutex);
+        ot_link = triton_hash_search(txn_table, txnid);
+        assert(ot_link);
+        triton_mutex_unlock(&txn_table_mutex);
+        ot = triton_hash_get_entry(ot_link, struct open_txn, hash_link);
+        assert(ot);
+
+        th_group = ot->th_group;
+    }
+
+    AETHREAD_RUN(th_group);
+    ret = db->put(db, txnid, key, data, flags);
+
+    return(ret);
+}
+
 
 __blocking int bdb_txn_commit(DB_TXN *tid, u_int32_t flags)
 {
