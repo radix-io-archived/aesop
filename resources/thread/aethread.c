@@ -14,13 +14,15 @@
 #include "resources/thread/aethread.h"
 #include "resource.h"
 
+/* represents each independent operation submitted to the thread pool */
 struct aethread_op
 {
-    ae_op_id_t op_id;
-    struct ae_op op;
-    int ret;
+    ae_op_id_t op_id;  /* aesop operation identifier */
+    struct ae_op op;   /* aesop operation struct */
+    int ret;           /* return code for the operation */
 };
 
+/* a group represents a particular pool of threads */
 struct aethread_group
 {
     int pool_size;           /* total number of threads in pool */
