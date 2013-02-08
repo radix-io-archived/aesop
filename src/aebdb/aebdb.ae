@@ -204,11 +204,13 @@ __blocking int bdb_txn_commit(DB_TXN *tid, u_int32_t flags)
     AETHREAD_RUN(ot->th_group);
     ret = tid->commit(tid, flags);
 
+    /* up semaphore to allow other transactions to proceed */
+    aesop_sem_up(&txn_sem);
+
     /* regardless of return code, once commit has been called on a
      * transaction the transaction is closed.  Shut down the thread pool
      * here.
      */
-
     aethread_destroy_group(ot->th_group);
     triton_mutex_lock(&txn_table_mutex);
     triton_list_del(&ot->hash_link);
