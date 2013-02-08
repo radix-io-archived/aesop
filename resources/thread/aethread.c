@@ -23,14 +23,14 @@ struct aethread_op
 
 struct aethread_group
 {
-    int pool_size;
-    int pool_active;
-    int pool_started;
-    pthread_t *pool_tids;
+    int pool_size;           /* total number of threads in pool */
+    int pool_active_threads; /* number of threads that are currently active */
+    int pool_running;        /* is the pool currently runing or not (1 or 0) */
+    pthread_t *pool_tids;    /* thread id for each thread in pool */
     pthread_cond_t pool_cond;
     pthread_mutex_t pool_mutex;
-    ae_ops_t oplist;
-    triton_list_link_t link;
+    ae_ops_t oplist;         /* queue of operations to service */
+    triton_list_link_t link; /* link in list of all pools */
 };
 
 static triton_mutex_t aethread_cancel_lock = TRITON_MUTEX_INITIALIZER;
@@ -69,7 +69,7 @@ void aethread_destroy_group(
      */
 
     pthread_mutex_lock(&group->pool_mutex);
-    group->pool_started = 0;
+    group->pool_running = 0;
     pthread_cond_broadcast(&group->pool_cond);
     pthread_mutex_unlock(&group->pool_mutex);
 
@@ -110,8 +110,8 @@ struct aethread_group *aethread_create_group_pool(
     pthread_mutex_init(&group->pool_mutex, NULL);
     ae_ops_init(&group->oplist);
 
-    group->pool_active = size;
-    group->pool_started = 1;
+    group->pool_active_threads = size;
+    group->pool_running = 1;
     for (i = 0; i < size; i++)
     {
         ret = pthread_create(&group->pool_tids[i], NULL, thread_pool_fn, group);
@@ -135,21 +135,21 @@ static void *thread_pool_fn(
     while (1)
     {
         pthread_mutex_lock(&group->pool_mutex);
-        while (ae_ops_empty(&group->oplist) && group->pool_started)
+        while (ae_ops_empty(&group->oplist) && group->pool_running)
         {
-            group->pool_active--;
+            group->pool_active_threads--;
             pthread_cond_wait(&group->pool_cond, &group->pool_mutex);
-            group->pool_active++;
+            group->pool_active_threads++;
         }
-        if (!group->pool_started)
+        if (!group->pool_running)
         {
             triton_mutex_unlock(&group->pool_mutex);
             pthread_exit(NULL);
         }
         op = ae_ops_dequeue(&group->oplist);
 
-        if (ae_ops_count(&group->oplist) / group->pool_active >=
-            THREAD_WORK_THRESHOLD && group->pool_active < group->pool_size)
+        if (ae_ops_count(&group->oplist) / group->pool_active_threads >=
+            THREAD_WORK_THRESHOLD && group->pool_active_threads < group->pool_size)
         {
             /* there is enough work available that we could make use of
              * another thread
@@ -223,7 +223,7 @@ ae_define_post(int, aethread_hint, struct aethread_group * group)
 
     pthread_mutex_lock(&group->pool_mutex);
     ae_ops_enqueue(op, &group->oplist);
-    if (group->pool_active == 0)
+    if (group->pool_active_threads == 0)
     {
         /* need to wake up at least one servicing thread */
         pthread_cond_signal(&group->pool_cond);
