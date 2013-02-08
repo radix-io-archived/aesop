@@ -20,10 +20,26 @@ static __blocking int bdb_example_txn(DB_ENV* envp, DB *dbp, int i)
 {
     int ret;
     DB_TXN *txn;
+    DBT key, value;
+
+    memset(&key, 0, sizeof(key));
+    key.data = &i;
+    key.size = sizeof(i);
+    key.ulen = sizeof(i);
+    key.flags = DB_DBT_USERMEM;
+
+    value = key;
 
     ret = bdb_txn_begin(envp, NULL, &txn, 0);
     if(ret < 0)
         return(ret);
+
+    ret = bdb_put(dbp, txn, &key, &value, 0);
+    if(ret < 0)
+    {
+        bdb_txn_abort(txn);
+        return(ret);
+    }
 
     ret = bdb_txn_commit(txn, 0);
     if(ret < 0)
@@ -73,13 +89,12 @@ static __blocking int dotest(void)
             pbranch
             {
                 /* do a separate transaction in each pbranch */
-                do
+                for(pret = DB_LOCK_DEADLOCK; pret == DB_LOCK_DEADLOCK;)
                 {
                     pret = bdb_example_txn(envp, dbp, i);
                     if(pret == DB_LOCK_DEADLOCK)
                         printf("Retrying txn after deadlock.\n");
                 }
-                while(pret == DB_LOCK_DEADLOCK);
                 printf("pret: %d\n", pret);
             }
         }
