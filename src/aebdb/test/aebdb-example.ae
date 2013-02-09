@@ -71,6 +71,52 @@ static __blocking int bdb_example_txn(DB_ENV* envp, DB *dbp, int i)
     return(0);
 }
 
+static __blocking int bdb_example_txn_cursor(DB_ENV* envp, DB *dbp, int i)
+{
+    int ret;
+    DB_TXN *txn;
+    DBT key, value;
+    DBC *cursorp;
+    int intval = 0;
+    int intkey = 8675309;
+
+    memset(&key, 0, sizeof(key));
+    key.data = &intkey;
+    key.size = sizeof(intkey);
+    key.ulen = sizeof(intkey);
+    key.flags = DB_DBT_USERMEM;
+
+    memset(&value, 0, sizeof(value));
+    value.data = &intval;
+    value.size = sizeof(intval);
+    value.ulen = sizeof(intval);
+    value.flags = DB_DBT_USERMEM;
+
+    ret = aebdb_txn_begin(envp, NULL, &txn, 0);
+    if(ret < 0)
+        return(ret);
+
+    ret = aebdb_cursor(dbp, txn, &cursorp, 0);
+    if(ret < 0)
+    {
+        aebdb_txn_abort(txn);
+        return(ret);
+    }
+
+    ret = aebdb_cursor_close(cursorp);
+    if(ret < 0)
+    {
+        aebdb_txn_abort(txn);
+        return(ret);
+    }
+
+    ret = aebdb_txn_commit(txn, 0);
+    if(ret < 0)
+        return(ret);
+
+    return(0);
+}
+
 static __blocking int dotest(void)
 {
     int ret;
@@ -128,6 +174,36 @@ static __blocking int dotest(void)
                 if(pret != 0)
                 {
                     fprintf(stderr, "Error: txn example failed.\n");
+                    ret = -1;
+                }
+            }
+        }
+    }
+
+    if(ret < 0)
+        return(ret);
+
+    pwait
+    {
+        pprivate int pret = 0;
+        pprivate int i;
+
+        /* run 100 concurrent pbranches */
+        for(i=0; i<100; i++)
+        {
+            pbranch
+            {
+                /* do a separate transaction in each pbranch */
+                /* retry if txn deadlocks */
+                do
+                {
+                    pret = bdb_example_txn_cursor(envp, dbp, i);
+                    if(pret == DB_LOCK_DEADLOCK)
+                        printf("Retrying txn_cursor after deadlock.\n");
+                }while(pret == DB_LOCK_DEADLOCK);
+                if(pret != 0)
+                {
+                    fprintf(stderr, "Error: txn_cursor example failed.\n");
                     ret = -1;
                 }
             }

@@ -61,11 +61,18 @@ __blocking int aebdb_log_flush(
     DB_ENV *env,
     DB_LSN *lsn);
 
+__blocking int aebdb_cursor(
+    DB *db,
+    DB_TXN *txnid,
+    DBC **cursorp,
+    u_int32_t flags);
+
+__blocking int aebdb_cursor_close(
+    DBC *DBCursor);
+
 /* TODO:
  * - cursor get
  * - cursor del
- * - cursor close
- * - cursor 
  *
  * Also need autoconf tests for bdb to skip building aebdb code if bdb not
  * installed.

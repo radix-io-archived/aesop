@@ -348,6 +348,38 @@ __blocking int aebdb_log_flush(
     return(ret);
 }
 
+__blocking int aebdb_cursor(
+    DB *db,
+    DB_TXN *txnid,
+    DBC **cursorp,
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(txnid);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(th_group);
+    ret = db->cursor(db, txnid, cursorp, flags);
+
+    return(ret);
+}
+
+__blocking int aebdb_cursor_close(
+    DBC *DBCursor)
+{
+    int ret;
+
+    AETHREAD_RUN(NULL);
+    ret = DBCursor->c_close(DBCursor);
+
+    return(ret);
+}
+
+
 static int open_txn_compare(const void *k, struct triton_hash_link *l)
 {
     struct open_txn *ot = triton_hash_get_entry(l, struct open_txn, hash_link);
