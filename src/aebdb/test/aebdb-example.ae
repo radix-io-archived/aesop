@@ -77,6 +77,8 @@ static __blocking int dotest(void)
     double start, end;
     DB_ENV *envp = NULL;
     DB *dbp = NULL;
+    DBT key;
+    int intkey = 8675309;
 
     /* open environment and db */
     ret = db_env_create(&envp, 0);
@@ -119,8 +121,37 @@ static __blocking int dotest(void)
                     if(pret == DB_LOCK_DEADLOCK)
                         printf("Retrying txn after deadlock.\n");
                 }while(pret == DB_LOCK_DEADLOCK);
+                if(pret != 0)
+                {
+                    fprintf(stderr, "Error: txn example failed.\n");
+                    ret = -1;
+                }
             }
         }
+    }
+
+    if(ret < 0)
+        return(ret);
+
+    /* delete key */
+    memset(&key, 0, sizeof(key));
+    key.data = &intkey;
+    key.size = sizeof(intkey);
+    key.ulen = sizeof(intkey);
+    key.flags = DB_DBT_USERMEM;
+
+    /* doing this without an explicit txn: berkeley db will make this an
+     * automatic transaction of its own
+     */
+    do
+    {
+        ret = aebdb_del(dbp, NULL, &key, 0);
+    } while(ret == DB_LOCK_DEADLOCK);
+
+    if(ret < 0)
+    {
+        fprintf(stderr, "Error: failed to del().\n");
+        return(ret);
     }
 
     end = wtime();

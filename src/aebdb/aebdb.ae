@@ -272,6 +272,25 @@ __blocking int aebdb_put(
     return(ret);
 }
 
+__blocking int aebdb_del(
+    DB *db,
+    DB_TXN *txnid,
+    DBT *key,
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(txnid);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(th_group);
+    ret = db->del(db, txnid, key, flags);
+
+    return(ret);
+}
 
 __blocking int aebdb_txn_commit(DB_TXN *tid, u_int32_t flags)
 {
