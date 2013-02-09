@@ -37,6 +37,16 @@ __blocking int aebdb_get(
 
 __blocking int aebdb_txn_abort(DB_TXN *tid);
 
+/* TODO:
+ * - cursor get
+ * - cursor del
+ * - cursor close
+ * - cursor 
+ * - del
+ * - txn checkpoint
+ * - log flush
+ */
+
 #endif
 
 
