@@ -78,7 +78,7 @@ static __blocking int bdb_example_txn_cursor(DB_ENV* envp, DB *dbp, int i)
     DBT key, value;
     DBC *cursorp;
     int intval = 0;
-    int intkey = 8675309;
+    int intkey = 0;
 
     memset(&key, 0, sizeof(key));
     key.data = &intkey;
@@ -102,6 +102,14 @@ static __blocking int bdb_example_txn_cursor(DB_ENV* envp, DB *dbp, int i)
         aebdb_txn_abort(txn);
         return(ret);
     }
+
+    ret = aebdb_cursor_get(cursorp, &key, &value, DB_NEXT);
+    if(ret < 0)
+    {
+        aebdb_txn_abort(txn);
+        return(ret);
+    }
+    assert(intkey == 8675309);
 
     ret = aebdb_cursor_close(cursorp);
     if(ret < 0)

@@ -385,6 +385,44 @@ __blocking int aebdb_cursor_close(
     return(ret);
 }
 
+__blocking int aebdb_cursor_get(
+    DBC *DBcursor,
+    DBT *key,
+    DBT *data,
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(DBcursor->txn);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(NULL);
+    ret = DBcursor->c_get(DBcursor, key, data, flags);
+
+    return(ret);
+}
+
+__blocking int aebdb_cursor_del(
+    DBC *DBcursor,
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(DBcursor->txn);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(NULL);
+    ret = DBcursor->c_del(DBcursor, flags);
+
+    return(ret);
+}
+
 
 static int open_txn_compare(const void *k, struct triton_hash_link *l)
 {
