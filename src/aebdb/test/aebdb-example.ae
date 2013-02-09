@@ -21,19 +21,40 @@ static __blocking int bdb_example_txn(DB_ENV* envp, DB *dbp, int i)
     int ret;
     DB_TXN *txn;
     DBT key, value;
+    int intval = 0;
+    int intkey = 8675309;
 
     memset(&key, 0, sizeof(key));
-    key.data = &i;
-    key.size = sizeof(i);
-    key.ulen = sizeof(i);
+    key.data = &intkey;
+    key.size = sizeof(intkey);
+    key.ulen = sizeof(intkey);
     key.flags = DB_DBT_USERMEM;
 
-    value = key;
+    memset(&value, 0, sizeof(value));
+    value.data = &intval;
+    value.size = sizeof(intval);
+    value.ulen = sizeof(intval);
+    value.flags = DB_DBT_USERMEM;
 
     ret = aebdb_txn_begin(envp, NULL, &txn, 0);
     if(ret < 0)
         return(ret);
 
+    /* retrieve existing value */
+    ret = aebdb_get(dbp, txn, &key, &value, 0);
+    if(ret != DB_NOTFOUND && ret < 0)
+    {
+        aebdb_txn_abort(txn);
+        return(ret);
+    }
+
+    /* start at zero or increment by one */
+    if(ret == DB_NOTFOUND)
+        intval = 0;
+    else
+        intval = intval+1;
+
+    /* store new value */
     ret = aebdb_put(dbp, txn, &key, &value, 0);
     if(ret < 0)
     {
@@ -44,6 +65,8 @@ static __blocking int bdb_example_txn(DB_ENV* envp, DB *dbp, int i)
     ret = aebdb_txn_commit(txn, 0);
     if(ret < 0)
         return(ret);
+
+    printf("Committed value %d\n", intval);
 
     return(0);
 }
