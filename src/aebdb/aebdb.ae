@@ -322,6 +322,21 @@ __blocking int aebdb_txn_commit(DB_TXN *tid, u_int32_t flags)
     return(ret);
 }
 
+__blocking int aebdb_txn_checkpoint(
+    DB_ENV *env,
+    u_int32_t kbyte,
+    u_int32_t min,
+    u_int32_t flags)
+{
+    int ret;
+
+    AETHREAD_RUN(NULL);
+    ret = env->txn_checkpoint(env, kbyte, min, flags);
+
+    return(ret);
+}
+
+
 static int open_txn_compare(const void *k, struct triton_hash_link *l)
 {
     struct open_txn *ot = triton_hash_get_entry(l, struct open_txn, hash_link);

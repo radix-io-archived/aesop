@@ -43,12 +43,17 @@ __blocking int aebdb_del(
 
 __blocking int aebdb_txn_abort(DB_TXN *tid);
 
+__blocking int aebdb_txn_checkpoint(
+    DB_ENV *env,
+    u_int32_t kbyte,
+    u_int32_t min,
+    u_int32_t flags);
+
 /* TODO:
  * - cursor get
  * - cursor del
  * - cursor close
  * - cursor 
- * - txn checkpoint
  * - log flush
  */
 
