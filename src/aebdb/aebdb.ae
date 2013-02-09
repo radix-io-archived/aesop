@@ -4,6 +4,32 @@
  * See COPYRIGHT in top-level directory.
  */
 
+/* This is a set of aesop-enabled wrappers for common Berkeley DB functions
+ *
+ * Implementation notes:
+ *
+ * - Aesop semaphores are used to limit the number of concurrent
+ *   transactions.  See the set_tx_max() function in Berkeley
+ *   DB: Berkeley DB will return an error if you attemp to open too many
+ *   concurrent transactions.  The limit is set to max_txns, which is
+ *   hard coded right now but could be made configurable if needed.
+ *
+ * - Like the aefile resource, aebdb uses the aethread resource to convert
+ *   conventional function calls (Berkeley DB API calls in this case) 
+ *   into asynchronous calls.  The usage is a little bit unusual here,
+ *   however.  Berkeley DB will deadlock if the same thread is used to make
+ *   interleaved calls to different transactions.  In order to work around 
+ *   this limitation, each transaction opened using aebdb is assigned its 
+ *   own thread pool of size 1.  Each subsequent operation on that
+ *   transaction is mapped to the same thread pool.  The thread pool is 
+ *   destroyed when the transaction is committed or aborted.
+ *
+ *   This would probably be a little more efficient if we reused threads
+ *   instead of creating/destroying them for each transaction, but that
+ *   would require some changes to the aethread architecture to support
+ *   multiple work queues and thread affinity for those work queues.
+ */
+
 #include <assert.h>
 
 #include "src/aebdb/aebdb.hae"
