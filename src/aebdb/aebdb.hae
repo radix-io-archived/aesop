@@ -14,7 +14,7 @@
 int aebdb_init(void);
 void aebdb_finalize(void);
 
-/* APIRETURN VALUES:
+/* API RETURN VALUES:
  * 
  * Each aebdb function follows the same return value conventions as the
  * corresponding Berkeley DB with two additions:
