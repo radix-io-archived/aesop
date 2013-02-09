@@ -112,13 +112,13 @@ static __blocking int dotest(void)
             pbranch
             {
                 /* do a separate transaction in each pbranch */
-                for(pret = DB_LOCK_DEADLOCK; pret == DB_LOCK_DEADLOCK;)
+                /* retry if txn deadlocks */
+                do
                 {
                     pret = bdb_example_txn(envp, dbp, i);
                     if(pret == DB_LOCK_DEADLOCK)
                         printf("Retrying txn after deadlock.\n");
-                }
-                printf("pret: %d\n", pret);
+                }while(pret == DB_LOCK_DEADLOCK);
             }
         }
     }
