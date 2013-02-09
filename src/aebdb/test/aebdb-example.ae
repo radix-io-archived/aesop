@@ -30,18 +30,18 @@ static __blocking int bdb_example_txn(DB_ENV* envp, DB *dbp, int i)
 
     value = key;
 
-    ret = bdb_txn_begin(envp, NULL, &txn, 0);
+    ret = aebdb_txn_begin(envp, NULL, &txn, 0);
     if(ret < 0)
         return(ret);
 
-    ret = bdb_put(dbp, txn, &key, &value, 0);
+    ret = aebdb_put(dbp, txn, &key, &value, 0);
     if(ret < 0)
     {
-        bdb_txn_abort(txn);
+        aebdb_txn_abort(txn);
         return(ret);
     }
 
-    ret = bdb_txn_commit(txn, 0);
+    ret = aebdb_txn_commit(txn, 0);
     if(ret < 0)
         return(ret);
 
