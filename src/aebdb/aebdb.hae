@@ -58,6 +58,9 @@ __blocking int aebdb_log_flush(
  * - cursor del
  * - cursor close
  * - cursor 
+ *
+ * Also need autoconf tests for bdb to skip building aebdb code if bdb not
+ * installed.
  */
 
 #endif
