@@ -80,7 +80,7 @@ endif
 
 CFLAGS= -I$(srcdir)/src/c-utils -I$(srcdir)/include -I. -Iinclude -I src/c-utils \
  -I$(srcdir) \
- @CFLAGS@ $(CPPFLAGS)
+ @CFLAGS@ @DB_CFLAGS@ $(CPPFLAGS)
 
 # enable relocatable
 #CFLAGS += -fPIC
@@ -115,7 +115,7 @@ LDSHARED = $(TCC) -shared
 
 LIBCFLAGS=@LIBCFLAGS@
 LDFLAGS += @LDFLAGS@ -Lsrc/c-utils
-LIBS += @LIBS@ -lc-utils -lm -lpthread
+LIBS += @LIBS@ @DB_LIB@ -lc-utils -lm -lpthread
 
 DEPLIBS += @THREAD_LIB@
 

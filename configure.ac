@@ -299,6 +299,13 @@ fi],
     THREAD_LIB="-lpthread"
     AC_MSG_RESULT(yes) ])
 
+dnl check for optional berkeley db support
+dnl
+AC_ARG_WITH(db,
+       [  --with-db=<dir>         Location of installed DB package
+(default=/usr)],
+       [AX_BERKELEY_DB(${withval})],
+       [AX_BERKELEY_DB("")])
 
 AC_COMPILE_IFELSE(
 [#include <stdlib.h>

@@ -80,12 +80,6 @@ __blocking int aebdb_cursor_del(
     DBC *DBcursor,
     u_int32_t flags);
 
-/* TODO:
- *
- * Need autoconf tests for bdb to skip building aebdb code if bdb not
- * installed.
- */
-
 #endif
 
 
