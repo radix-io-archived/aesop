@@ -229,6 +229,28 @@ __blocking int aebdb_txn_abort(DB_TXN *tid)
     return(ret);
 }
 
+__blocking int aebdb_get(
+    DB *db, 
+    DB_TXN *txnid, 
+    DBT *key, 
+    DBT *data, 
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(txnid);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(th_group);
+    ret = db->get(db, txnid, key, data, flags);
+
+    return(ret);
+}
+
+
 __blocking int aebdb_put(
     DB *db, 
     DB_TXN *txnid, 
@@ -239,9 +261,6 @@ __blocking int aebdb_put(
     struct open_txn *ot;
     int ret;
     struct aethread_group* th_group = NULL;
-    int *foo;
-
-    foo = key->data; 
 
     ot = lookup_txn(txnid);
     if(ot)
