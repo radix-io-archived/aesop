@@ -371,7 +371,13 @@ __blocking int aebdb_cursor(
 __blocking int aebdb_cursor_close(
     DBC *DBCursor)
 {
+    struct open_txn *ot;
     int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(DBCursor->txn);
+    if(ot)
+        th_group = ot->th_group;
 
     AETHREAD_RUN(NULL);
     ret = DBCursor->c_close(DBCursor);
