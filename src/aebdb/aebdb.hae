@@ -49,12 +49,15 @@ __blocking int aebdb_txn_checkpoint(
     u_int32_t min,
     u_int32_t flags);
 
+__blocking int aebdb_log_flush(
+    DB_ENV *env,
+    DB_LSN *lsn);
+
 /* TODO:
  * - cursor get
  * - cursor del
  * - cursor close
  * - cursor 
- * - log flush
  */
 
 #endif

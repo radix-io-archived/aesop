@@ -336,6 +336,17 @@ __blocking int aebdb_txn_checkpoint(
     return(ret);
 }
 
+__blocking int aebdb_log_flush(
+    DB_ENV *env,
+    DB_LSN *lsn)
+{
+    int ret;
+
+    AETHREAD_RUN(NULL);
+    ret = env->log_flush(env, lsn);
+
+    return(ret);
+}
 
 static int open_txn_compare(const void *k, struct triton_hash_link *l)
 {

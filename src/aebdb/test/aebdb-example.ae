@@ -98,7 +98,11 @@ static __blocking int dotest(void)
         DB_CREATE | DB_AUTO_COMMIT, 0);
     assert(ret == 0);
 
+    /* checkpoint and flush db
+     * Not really needed for this example; mainly just exercising API */
     ret = aebdb_txn_checkpoint(envp, 0, 0, 0);
+    assert(ret == 0);
+    ret = aebdb_log_flush(envp, NULL);
     assert(ret == 0);
    
     start = wtime();
