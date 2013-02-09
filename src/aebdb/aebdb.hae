@@ -14,6 +14,14 @@
 int aebdb_init(void);
 void aebdb_finalize(void);
 
+/* APIRETURN VALUES:
+ * 
+ * Each aebdb function follows the same return value conventions as the
+ * corresponding Berkeley DB with two additions:
+ * - EINTR: the operation was cancelled
+ * - EIO: misc. Aesop/thread/memory failure
+ */
+
 __blocking int aebdb_txn_begin(DB_ENV *env,
     DB_TXN *parent, 
     DB_TXN **tid, 
