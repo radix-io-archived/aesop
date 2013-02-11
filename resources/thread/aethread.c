@@ -50,6 +50,7 @@ static int module_refcount = 0;
 
 static void *thread_pool_fn(
     void *foo);
+static void group_cleanup(struct aethread_group *group);
 
 /* list of active groups.  We have to track them all so that we can look
  * through the groups to find operations to be cancelled.
@@ -60,30 +61,39 @@ static pthread_mutex_t group_mutex = PTHREAD_MUTEX_INITIALIZER;
 void aethread_destroy_group(
     struct aethread_group *group)
 {
-    int i;
-
+    /* remove group from list */
     pthread_mutex_lock(&group_mutex);
     triton_list_del(&group->link);
     pthread_mutex_unlock(&group_mutex);
 
+    /* tell threads to shut down */
     pthread_mutex_lock(&group->pool_mutex);
-    /* TODO: should we do something to handle operations still in the queue
-     * for this group?
-     */
     assert(ae_ops_count(&group->oplist) == 0);
     group->pool_running = 0;
     pthread_cond_broadcast(&group->pool_cond);
     pthread_mutex_unlock(&group->pool_mutex);
 
-    for (i = 0; i < group->pool_size; i++)
-    {
-        pthread_join(group->pool_tids[i], NULL);
-    }
+    /* NOTE: we don't deallocate the group here.  The last thread to exit
+     * will take care of that.  The reason that we don't do it here is
+     * because an aesop callback may trigger destroy_group() itself, making
+     * it impossible to wait for running threads to exit in the context of
+     * this function.
+     */
+    return;
+}
 
+static void group_cleanup(
+    struct aethread_group *group)
+{
+    pthread_cond_destroy(&group->pool_cond);
+    pthread_mutex_destroy(&group->pool_mutex);
+    ae_ops_destroy(&group->oplist);
     free(group->pool_tids);
+    free(group);
 
     return;
 }
+
 
 struct aethread_group *aethread_create_group_pool(
     int size)
@@ -91,6 +101,7 @@ struct aethread_group *aethread_create_group_pool(
     struct aethread_group *group;
     int i;
     int ret;
+    pthread_attr_t attr;
 
     assert(module_refcount);
 
@@ -114,9 +125,20 @@ struct aethread_group *aethread_create_group_pool(
 
     group->pool_active_threads = size;
     group->pool_running = 1;
+
+    /* Create threads in detached mode. This allows us to control the timing
+     * of when threads exit vs. when the call to destroy_group is executed.
+     * destroy_group() cannot safely wait for threads to complete in some
+     * scenarios.
+     */
+    ret = pthread_attr_init(&attr);
+    assert(ret == 0);  /* TODO: error handling */
+    ret = pthread_attr_setdetachstate(&attr,
+        PTHREAD_CREATE_DETACHED);
+    assert(ret == 0);  /* TODO: error handling */
     for (i = 0; i < size; i++)
     {
-        ret = pthread_create(&group->pool_tids[i], NULL, thread_pool_fn, group);
+        ret = pthread_create(&group->pool_tids[i], &attr, thread_pool_fn, group);
         assert(ret == 0);       /* TODO: err handling */
     }
 
@@ -133,6 +155,7 @@ static void *thread_pool_fn(
     struct aethread_group *group = (struct aethread_group *) foo;
     struct ae_op *op = NULL;
     int normal_completion;
+    int size;
 
     while (1)
     {
@@ -145,7 +168,14 @@ static void *thread_pool_fn(
         }
         if (!group->pool_running)
         {
+            group->pool_size--;
+            size = group->pool_size;
             triton_mutex_unlock(&group->pool_mutex);
+            /* the last thread to exit cleans up memory associated with the
+             * group
+             */
+            if(size == 0)
+                group_cleanup(group);
             pthread_exit(NULL);
         }
         op = ae_ops_dequeue(&group->oplist);
