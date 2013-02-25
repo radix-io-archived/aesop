@@ -26,6 +26,7 @@ typedef struct
 {
    ae_op_t        op;
    aesop_sem_t *  sem;  /* needed for cancel to find the sem */
+   int flags;
 } sem_wait_t;
 
 /**
@@ -143,13 +144,16 @@ int aesop_sem_up (aesop_sem_t * sem)
 }
 
 
-ae_define_post(int, aesop_sem_down, aesop_sem_t * sem)
+ae_define_post(int, aesop_sem_down_with_flags, aesop_sem_t * sem, int flags)
 {
-   /** check if the ctl is marked for cancellation */
-   if (ae_resource_is_cancelled ())
+   if(!(flags & AESOP_SEM_FLAG_NOCANCEL))
    {
-      *__ae_retval = AE_ERR_CANCELLED;
-      return AE_IMMEDIATE_COMPLETION;
+      /** check if the ctl is marked for cancellation */
+      if (ae_resource_is_cancelled ())
+      {
+         *__ae_retval = AE_ERR_CANCELLED;
+         return AE_IMMEDIATE_COMPLETION;
+      }
    }
 
    triton_mutex_lock (&sem->lock);
@@ -167,6 +171,7 @@ ae_define_post(int, aesop_sem_down, aesop_sem_t * sem)
    /* Ok, we need to wait... */
    sem_wait_t * newwait = malloc (sizeof (sem_wait_t));
    newwait->sem = sem;
+   newwait->flags = flags;
    ae_op_fill (&newwait->op);
    ae_ops_link_init (&newwait->op);
    *__ae_op_id = ae_id_gen (sem_resource_id, (uintptr_t) newwait);
@@ -191,6 +196,11 @@ static int sem_cancel (ae_context_t ctx, ae_op_id_t op_id)
    /* consistency checks */
    assert (resource_id == sem_resource_id);
    assert (wait);
+
+   if(wait->flags & AESOP_SEM_FLAG_NOCANCEL)
+   {
+      return(AE_ERR_INVALID);
+   }
 
    // We lock the sem before checking the op list member, as somebody could be
    // removing the entry from the list. Note that op cannot go away,
