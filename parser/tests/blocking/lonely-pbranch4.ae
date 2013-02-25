@@ -10,6 +10,8 @@
 #include <aesop/timer.hae>
 #include "parser/tests/blocking/btest.hae"
 
+static int lonely_done_flag = 0;
+
 static __blocking void lonely_pbranch(void)
 {
 	int a = 0;
@@ -43,6 +45,7 @@ static __blocking void lonely_pbranch(void)
               printf("Error in branch 1 while sleeping\n");
            }
            printf("pbranch done!\n");
+           lonely_done_flag = 1;
         }
 
         ret1 = btest1(&a);
@@ -59,6 +62,9 @@ __blocking int aesop_main(int argc, char **argv)
     btest_init();
     aesop_timer_init();
     lonely_pbranch();
+    assert(lonely_done_flag == 0);
+    aesop_timer(3000);
+    assert(lonely_done_flag == 1);
     aesop_timer_finalize();
     btest_finalize();
     return 0;
