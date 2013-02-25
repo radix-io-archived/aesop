@@ -62,6 +62,7 @@ __blocking int aesop_main(int argc, char **argv)
     btest_init();
     aesop_timer_init();
     lonely_pbranch_wrapper();
+    aesop_timer(1000);
     aesop_timer_finalize();
     btest_finalize();
     return 0;
