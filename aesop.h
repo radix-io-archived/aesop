@@ -70,6 +70,7 @@ int ae_count_branches(struct ae_ctl *ctl);
 #define aesop_cancel_branches() ae_cancel_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
 #define aesop_count_branches() ae_count_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
 #define aesop_clear_cancel() ae_clear_cancel (__ae_ctl ? &__ae_ctl->gen : NULL)
+#define aesop_set_cancel() ae_set_cancel (__ae_ctl ? &__ae_ctl->gen : NULL)
 
 #else
 
@@ -93,6 +94,9 @@ static inline int aesop_count_branches(void) { return -1; }
  * It should not be called from within a pbranch.
  */
 static inline void aesop_clear_cancel(void) { }
+
+static inline void aesop_set_cancel (void) { }
+
 
 #endif /* AESOP_PARSER */
 

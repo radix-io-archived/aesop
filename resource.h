@@ -62,15 +62,25 @@
  * This function can be called from within a blocking function to clear the
  * cancelled state. It is a user function, and should not be called from
  * within a resource.
- *
- * Though this function will function when called from within a pbranch,
- * due to current convention this should not be done.
  */
 static inline void ae_clear_cancel (struct ae_ctl * ctl)
 {
    triton_mutex_lock (&ctl->mutex);
    ctl->op_state &= ~OP_REQUEST_CANCEL;
    triton_mutex_unlock (&ctl->mutex);
+}
+
+/**
+ * Set the cancellation flag for this context.
+ * This function can be used to restore the cancel signal after (temporarily
+ * clearing it, for example when blocking functions need to be called to
+ * perform state cleanup)
+ */
+static inline void ae_set_cancel (struct ae_ctl * ctl)
+{
+    triton_mutex_lock (&ctl->mutex);
+    ctl->op_state |= OP_REQUEST_CANCEL;
+    triton_mutex_unlock (&ctl->mutex);
 }
 
 int ae_check_debug_flag(int resource_id);
