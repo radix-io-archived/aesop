@@ -69,7 +69,7 @@ int ae_count_branches(struct ae_ctl *ctl);
 
 #define aesop_cancel_branches() ae_cancel_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
 #define aesop_count_branches() ae_count_branches(__ae_ctl->parent ? &__ae_ctl->parent->gen : NULL)
-#define aesop_clear_cancel () ae_clear_cancel (__ae_ctl ? &__ae_ctl->gen : NULL)
+#define aesop_clear_cancel() ae_clear_cancel (__ae_ctl ? &__ae_ctl->gen : NULL)
 
 #else
 
