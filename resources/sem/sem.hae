@@ -22,8 +22,6 @@ struct aesop_sem
 
 typedef struct aesop_sem aesop_sem_t;
 
-/* flags a down() call as un-cancellable */
-#define AESOP_SEM_FLAG_NOCANCEL 1
 
 int aesop_sem_module_init (void);
 
@@ -54,8 +52,7 @@ int aesop_sem_up (aesop_sem_t * sem);
  * Returns AE_ERR_CANCELLED when the operation was cancelled
  * (in which case the semaphore was not modified by this call)
  */
-__blocking int aesop_sem_down_with_flags (aesop_sem_t * sem, int flags);
-#define aesop_sem_down(__sem) aesop_sem_down_with_flags((__sem), 0);
+__blocking int aesop_sem_down (aesop_sem_t * sem);
 
 
 /**
