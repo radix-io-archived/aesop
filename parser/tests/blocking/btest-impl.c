@@ -12,7 +12,6 @@
 #include <pthread.h>
 #include "aesop.h"
 #include "triton-list.h"
-#include "opcache.h"
 #include "parser/tests/blocking/btest.h"
 #include "resource.h"
 
@@ -44,9 +43,6 @@ static ae_ops_t clist;
 static ae_ops_t flist;
 static ae_ops_t rlist;
 
-static ae_opcache_t test_opcache;
-static ae_opcache_t sleep_opcache;
-
 ae_define_post(int, ictest1, int *a)
 {
     ++(*a);
@@ -67,10 +63,19 @@ static void *tctest1_threadfun(void *ptr)
 {
     struct ae_op *op;
     struct btest_op *bop;
+#if 0
+    int normal_completion;
+#endif
     op = (struct ae_op *)ptr;
     bop = ae_op_entry(op, struct btest_op, op);
     *(bop->value) += 1;
-    ae_opcache_complete_op(test_opcache, &bop->op, int, 0);
+
+#if 0
+    normal_completion = ae_op_complete(op);
+    assert(normal_completion);
+#endif
+    ae_op_execute(op, int, 0);
+    free(bop);
     pthread_exit(ptr);
 
     return NULL;
@@ -83,9 +88,11 @@ ae_define_post(int, tctest1, int *a)
     pthread_attr_t attr;
     struct ae_op *op;
     struct btest_op *bop;
-    op = ae_opcache_get(test_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct btest_op, op);
+    ae_ops_link_init(op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
@@ -106,12 +113,20 @@ static void *tcrandom_threadfun(void *ptr)
     int r;
     struct ae_op *op;
     struct btest_op *bop;
+#if 0
+    int normal_completion;
+#endif
     op = (struct ae_op *)ptr;
     bop = ae_op_entry(op, struct btest_op, op);
     r = random() % 1000;
     printf("tctest_random sleep: %d\n", r);
     usleep(r);
-    ae_opcache_complete_op(test_opcache, &bop->op, int, 0);
+#if 0
+    normal_completion = ae_op_complete(op);
+    assert(normal_completion);
+#endif
+    ae_op_execute(op, int, 0);
+    free(bop);
     pthread_exit(ptr);
 
     return NULL;
@@ -124,9 +139,11 @@ ae_define_post(int, tctest_random)
     pthread_attr_t attr;
     struct ae_op *op;
     struct btest_op *bop;
-    op = ae_opcache_get(test_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct btest_op, op);
+    ae_ops_link_init(op);
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     printf("tctest_random\n");
@@ -146,9 +163,11 @@ ae_define_post(int, btest_fail10, int *a)
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST_FAIL10: %d\n", *a);
-    op = ae_opcache_get(test_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct btest_op, op);
+    ae_ops_link_init(op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
@@ -165,9 +184,11 @@ ae_define_post(int, btest1, int *a)
     printf("BTEST1: %d\n", *a);
     ae_debug(btest_resource_id, "btest1 called.\n");
 
-    op = ae_opcache_get(test_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct btest_op, op);
+    ae_ops_link_init(op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
@@ -183,9 +204,11 @@ ae_define_post(int, btest2, int *a)
     struct btest_op *bop;
     printf("BTEST2: %d\n", *a);
     ae_debug(btest_resource_id, "btest2 called.\n");
-    op = ae_opcache_get(test_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct btest_op, op);
+    ae_ops_link_init(op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
@@ -201,9 +224,11 @@ ae_define_post(int, btest3, int *a)
     struct btest_op *bop;
     printf("BTEST3: %d\n", *a);
     ae_debug(btest_resource_id, "btest3 called.\n");
-    op = ae_opcache_get(test_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct btest_op, op);
+    ae_ops_link_init(op);
     bop->value = a;
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
@@ -218,9 +243,11 @@ ae_define_post(int, btest_sleep, int secs)
     struct ae_op *op;
     struct bsleep_op *bop;
     printf("BTEST SLEEP\n");
-    op = ae_opcache_get(sleep_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct bsleep_op, op);
+    ae_ops_link_init(op);
     bop->sleep = secs;
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
@@ -235,9 +262,11 @@ ae_define_post(int, btest_sleep_random)
     struct ae_op *op;
     struct bsleep_op *bop;
     printf("BTEST SLEEP RANDOM\n");
-    op = ae_opcache_get(sleep_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct bsleep_op, op);
+    ae_ops_link_init(op);
     bop->sleep = random() % 1000;
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
@@ -252,9 +281,11 @@ ae_define_post(int, btest_forever)
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST FOREVER\n");
-    op = ae_opcache_get(test_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct btest_op, op);
+    ae_ops_link_init(op);
     bop->value = NULL;
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
@@ -269,9 +300,11 @@ ae_define_post(int, btest_random)
     struct ae_op *op;
     struct btest_op *bop;
     printf("BTEST RANDOM\n");
-    op = ae_opcache_get(test_opcache);
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
     ae_op_fill(op);
-    bop = ae_op_entry(op, struct btest_op, op);
+    ae_ops_link_init(op);
     bop->value = NULL;
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
@@ -343,6 +376,9 @@ static int btest_poll(ae_context_t context, void *user_data)
    int more, request;
    struct btest_op *b;
    struct bsleep_op *s;
+#if 0
+   int normal_completion;
+#endif
 
    more = 0;
    request = 0;
@@ -351,7 +387,12 @@ static int btest_poll(ae_context_t context, void *user_data)
    if(b)
    {
 	*(b->value) += 1;
-        ae_opcache_complete_op(test_opcache, &b->op, int, 0);
+#if 0
+        normal_completion = ae_op_complete(&b->op);
+        assert(normal_completion);
+#endif
+        ae_op_execute(&b->op, int, 0);
+        free(b);
    }
    request = more;
 
@@ -359,7 +400,12 @@ static int btest_poll(ae_context_t context, void *user_data)
    if(b)
    {
 	*(b->value) += 2;
-        ae_opcache_complete_op(test_opcache, &b->op, int, 0);
+#if 0
+        normal_completion = ae_op_complete(&b->op);
+        assert(normal_completion);
+#endif
+        ae_op_execute(&b->op, int, 0);
+        free(b);
    }
    request = request | more;
 
@@ -367,7 +413,12 @@ static int btest_poll(ae_context_t context, void *user_data)
    if(b)
    {
 	*(b->value) += 3;
-        ae_opcache_complete_op(test_opcache, &b->op, int, 0);
+#if 0
+        normal_completion = ae_op_complete(&b->op);
+        assert(normal_completion);
+#endif
+        ae_op_execute(&b->op, int, 0);
+        free(b);
    }
    request = request | more;
 
@@ -378,12 +429,22 @@ static int btest_poll(ae_context_t context, void *user_data)
         if(*(b->value) >= 10)
         {
             printf("BTEST_FAIL10 returning success.\n");
-            ae_opcache_complete_op(test_opcache, &b->op, int, 0);
+#if 0
+            normal_completion = ae_op_complete(&b->op);
+            assert(normal_completion);
+#endif
+            ae_op_execute(&b->op, int, 0);
+            free(b);
         }
         else
         {
             printf("BTEST_FAIL10 returning EAGAIN.\n");
-            ae_opcache_complete_op(test_opcache, &b->op, int, -EAGAIN);
+#if 0
+            normal_completion = ae_op_complete(&b->op);
+            assert(normal_completion);
+#endif
+            ae_op_execute(&b->op, int, -EAGAIN);
+            free(b);
         }
    }
    request = request | more;
@@ -391,14 +452,24 @@ static int btest_poll(ae_context_t context, void *user_data)
    b = poll_list(&clist, &more);
    if(b)
    {
-        ae_opcache_complete_op(test_opcache, &b->op, int, -1);
+#if 0
+        normal_completion = ae_op_complete(&b->op);
+        assert(normal_completion);
+#endif
+        ae_op_execute(&b->op, int, -1);
+        free(b);
    }
    request = request | more;
 
    b = poll_list(&rlist, &more);
    if(b)
    {
-       ae_opcache_complete_op(test_opcache, &b->op, int, random());
+#if 0
+       normal_completion = ae_op_complete(&b->op);
+       assert(normal_completion);
+#endif
+       ae_op_execute(&b->op, int, random());
+       free(b);
    }
    request = request | more;
 
@@ -406,7 +477,12 @@ static int btest_poll(ae_context_t context, void *user_data)
    if(s)
    {
 	sleep(s->sleep);
-        ae_opcache_complete_op(sleep_opcache, &s->op, int, 0);
+#if 0
+        normal_completion = ae_op_complete(&s->op);
+        assert(normal_completion);
+#endif
+        ae_op_execute(&s->op, int, 0);
+        free(b);
    }
    request = request | more;
 
@@ -414,7 +490,12 @@ static int btest_poll(ae_context_t context, void *user_data)
    if(s)
    {
 	usleep(s->sleep);
-        ae_opcache_complete_op(sleep_opcache, &s->op, int, 0);
+#if 0
+        normal_completion = ae_op_complete(&s->op);
+        assert(normal_completion);
+#endif
+        ae_op_execute(&s->op, int, 0);
+        free(b);
    }
    request = request | more;
 
@@ -449,6 +530,14 @@ static int btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
 {
    struct ae_op *t, *tmp;
    struct btest_op *b;
+#if 0
+   int normal_completion;
+#endif
+
+   /* NOTE: This is known not to work. Aesop no longer allows cancel to 
+    * invoke callbacks directly
+    */
+   assert(0);
 
    ae_ops_for_each(t, tmp, &flist)
    {
@@ -457,7 +546,12 @@ static int btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
 	{
 	    ae_ops_del(t);
 	    printf("forever op cancelled\n");
-            ae_opcache_complete_op(test_opcache, &b->op, int, -1);
+#if 0
+            normal_completion = ae_op_complete(&b->op);
+            assert(normal_completion);
+#endif
+            ae_op_execute(&b->op, int, -1);
+            free(b);
 	}
    }
 
@@ -502,9 +596,6 @@ int btest_init(void)
 {
     ae_resource_register(&btest_resource, &btest_resource_id);
 
-    AE_OPCACHE_INIT(struct bsleep_op, op, 1024, &sleep_opcache);
-    AE_OPCACHE_INIT(struct btest_op, op, 1024, &test_opcache);
-
     ae_ops_init(&list1);
     ae_ops_init(&list2);
     ae_ops_init(&list3);
@@ -521,9 +612,6 @@ int btest_init(void)
 void btest_finalize(void)
 {
     ae_resource_unregister(btest_resource_id);
-
-    ae_opcache_destroy(sleep_opcache);
-    ae_opcache_destroy(test_opcache);
 }
 
 void btest_enable_immediate_cancel(void)
