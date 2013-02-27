@@ -36,6 +36,7 @@ struct btest_op
 static ae_ops_t list1;
 static ae_ops_t list2;
 static ae_ops_t list3;
+static ae_ops_t list_consec;
 static ae_ops_t list_fail10;
 static ae_ops_t slist;
 static ae_ops_t srlist;
@@ -172,6 +173,26 @@ ae_define_post(int, btest_fail10, int *a)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list_fail10);
+    ae_resource_request_poll(op->ctx, btest_resource_id);
+
+    return 0;
+}
+
+ae_define_post(int, btest_consec)
+{
+    struct ae_op *op;
+    struct btest_op *bop;
+    ae_debug(btest_resource_id, "btest_consec called.\n");
+
+    bop = malloc(sizeof(*bop));
+    assert(bop);
+    op = &bop->op;
+    ae_op_fill(op);
+    ae_ops_link_init(op);
+    bop->value = 0;
+    bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
+    *__ae_op_id = bop->id;
+    ae_ops_enqueue(op, &list_consec);
     ae_resource_request_poll(op->ctx, btest_resource_id);
 
     return 0;
@@ -371,14 +392,14 @@ static struct btest_op * poll_list(ae_ops_t *list, int *more)
    return NULL;
 }
 
+static int consec_count = 0;
+
 static int btest_poll(ae_context_t context, void *user_data)
 {
    int more, request;
    struct btest_op *b;
    struct bsleep_op *s;
-#if 0
    int normal_completion;
-#endif
 
    more = 0;
    request = 0;
@@ -421,6 +442,36 @@ static int btest_poll(ae_context_t context, void *user_data)
         free(b);
    }
    request = request | more;
+
+   /* TODO: update the remainder of this resource to use ae_op_complete()
+    * once the consecutive-resource-completions.ae test program issue is
+    * resolved.
+    */
+   b = poll_list(&list_consec, &more);
+   if(b)
+   {
+        normal_completion = ae_op_complete(&b->op);
+        printf("DEBUG: iteration %d of btest_consec(): op: %p, op->user_ptr (ctl): %p, return code from ae_op_complete(op): %d\n", consec_count, &b->op, b->op.user_ptr, normal_completion);
+        consec_count++;
+        assert(normal_completion);
+        ae_op_execute(&b->op, int, 0);
+        free(b);
+   }
+   request = request | more;
+
+   b = poll_list(&list3, &more);
+   if(b)
+   {
+	*(b->value) += 3;
+#if 0
+        normal_completion = ae_op_complete(&b->op);
+        assert(normal_completion);
+#endif
+        ae_op_execute(&b->op, int, 0);
+        free(b);
+   }
+   request = request | more;
+
 
    b = poll_list(&list_fail10, &more);
    if(b)
@@ -599,6 +650,7 @@ int btest_init(void)
     ae_ops_init(&list1);
     ae_ops_init(&list2);
     ae_ops_init(&list3);
+    ae_ops_init(&list_consec);
     ae_ops_init(&list_fail10);
     ae_ops_init(&slist);
     ae_ops_init(&srlist);

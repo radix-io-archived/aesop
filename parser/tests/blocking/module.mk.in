@@ -63,6 +63,7 @@ AETESTSRC +=  \
               $(DIR)/pwait-in-while.ae \
               $(DIR)/pwait-in-for.ae \
               $(DIR)/pbranch-completion.ae \
+	      $(DIR)/consecutive-resource-completions.ae \
 	      $(DIR)/minimal.ae
 
 # This should not compile
