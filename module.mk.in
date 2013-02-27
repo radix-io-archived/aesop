@@ -1,5 +1,4 @@
-LIBSRC += opcache.c \
-	  aesop.c \
+LIBSRC += aesop.c \
 	  resource.c \
 	  hints.c \
           ae-ctl.c
@@ -13,5 +12,4 @@ INSTALL_HDR += ae-types.h \
  hints.h \
  ae-debug.h \
  op.h \
- opcache.h \
  resource.h
