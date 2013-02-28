@@ -102,8 +102,6 @@ struct ae_resource
     int (*test)(ae_op_id_t id, int ms_timeout);
     int (*poll_context)(ae_context_t context, void *user_data);
     int (*cancel)(ae_context_t ctx, ae_op_id_t id);
-    int (*register_context)(ae_context_t context);
-    int (*unregister_context)(ae_context_t context);
 };
 
 /**

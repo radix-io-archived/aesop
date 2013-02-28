@@ -371,7 +371,6 @@ int _ae_context_create(ae_context_t *context, const char *format __attribute__((
     int cindex = ae_context_count;
     ae_context_t c;
     int i, j, reindex;
-    int ret;
 
     if(ae_context_count == AE_MAX_CONTEXTS)
     {
@@ -427,16 +426,6 @@ int _ae_context_create(ae_context_t *context, const char *format __attribute__((
                 c->poll_data[reindex].user_data = 
                     ae_resource_entries[j].poll_data.user_data;
 
-                if(ae_resource_entries[j].resource->register_context)
-                {
-                    ret = ae_resource_entries[j].resource->register_context(c);
-                    if(ret != AE_SUCCESS)
-                    {
-                        /* what do we do if a context fails to register with a resource? */
-                        va_end(ap);
-                        return ret;
-                    }
-                }
                 ev_async_start(c->eloop, &c->poll_data[reindex].async);
 
                 c->resource_ids[reindex] = ae_resource_entries[j].id;
@@ -460,16 +449,10 @@ int _ae_context_create(ae_context_t *context, const char *format __attribute__((
 
 int ae_context_destroy(ae_context_t context)
 {
-    int rid, idx, i;
+    int i;
 
     for(i = 0; i < context->resource_count; ++i)
     {
-        rid = context->resource_ids[i];
-        idx = AE_RESOURCE_ID2IDX(rid);
-        if(ae_resource_entries[idx].resource->unregister_context)
-        {
-            ae_resource_entries[idx].resource->unregister_context(context);
-        }
         ev_async_stop(context->eloop, &context->poll_data[i].async);
     }
     free(context->resource_ids);

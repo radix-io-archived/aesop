@@ -360,8 +360,6 @@ struct ae_resource
     int (*test)(ae_op_id_t id, int ms_timeout);
     int (*poll_context)(ae_context_t context);
     int (*cancel)(ae_context_t ctx, ae_op_id_t id);
-    int (*register_context)(ae_context_t context);
-    int (*unregister_context)(ae_context_t context);
 };
 ----
 
@@ -377,14 +375,6 @@ struct ae_resource
   function by calling the operation's callback from the `ae_op` structure.
 
 * The `poll` member will be discussed below.
-
-
-[NOTE]
-====
-The _context_ concept is deprecated and will be removed in a future version.
-The `register_context` and `unregister_context` functions should be set to
-`NULL`. The `poll_context` function can safely ignore the `context` parameter.
-====
 
 The new resource should be registered with {aesop} using the `ae_resource_register`
 function. The internal ID for the resource (used in creating an operation ID)
