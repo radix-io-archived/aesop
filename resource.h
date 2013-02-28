@@ -88,15 +88,6 @@ int ae_check_debug_flag(int resource_id);
 #define ae_debug(__resource_id, __format, ...) \
     if(ae_check_debug_flag(__resource_id)) fprintf(stderr, __format, ## __VA_ARGS__)
 
-/* this structure defines a configuration parameter for a resource */
-struct ae_resource_config
-{
-    const char* name;
-    const char* default_value;
-    const char* description;
-    int (*updater)(const char* key, const char* value);
-};
-
 /* The resource structure is defined by a given resource, and registered
  * to the aesop management code during resource initialization.
  *
@@ -113,7 +104,6 @@ struct ae_resource
     int (*cancel)(ae_context_t ctx, ae_op_id_t id);
     int (*register_context)(ae_context_t context);
     int (*unregister_context)(ae_context_t context);
-    struct ae_resource_config* config_array;  /* terminated by entry with NULL name */
 };
 
 /**

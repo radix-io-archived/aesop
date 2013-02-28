@@ -609,38 +609,11 @@ static int btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
    return AE_SUCCESS;
 }     
 
-static int testconfig_updater(const char* key, const char* value)
-{
-    int ret;
-    int tmp;
-
-    ret = sscanf(value, "%d", &tmp);
-    if(ret != 1)
-    {
-        return(AE_ERR_INVALID);
-    }
-
-    printf("btest testconfig updated to %d\n", tmp);
-
-    return(0);
-}
-
-struct ae_resource_config btest_config_array[] = {
-    {
-        .name = RESOURCE_NAME ".testconfig",
-        .default_value = "1",
-        .description = "Testing, integer parameter",
-        .updater = testconfig_updater
-    },
-    {NULL, NULL, NULL, NULL}
-};
-
 struct ae_resource btest_resource =
 {
     .resource_name = RESOURCE_NAME,
     .poll_context = btest_poll,
     .cancel = btest_cancel,
-    .config_array = btest_config_array
 };
 
 int btest_init(void)

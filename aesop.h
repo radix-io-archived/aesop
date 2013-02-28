@@ -21,7 +21,6 @@
 int aesop_init(void);
 void aesop_finalize(void);
 
-int aesop_set_config(const char* key, const char* value);
 int aesop_set_debugging(const char* resource, int value);
 int aesop_debug_from_env (void);
 

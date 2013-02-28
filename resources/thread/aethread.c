@@ -341,7 +341,6 @@ struct ae_resource triton_aethread_resource = {
     .resource_name = "thread",
     .poll_context = triton_aethread_poll,
     .cancel = triton_aethread_cancel,
-    .config_array = NULL
 };
 
 int aethread_init(

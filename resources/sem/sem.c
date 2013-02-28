@@ -283,7 +283,6 @@ static struct ae_resource sem_resource =
    .resource_name = "aesop_sem",
    .cancel = sem_cancel,
    .poll_context = sem_poll,
-   .config_array = 0
 };
 
 

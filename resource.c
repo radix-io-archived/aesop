@@ -696,32 +696,6 @@ void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
     }
 }
 
-int aesop_set_config(const char* key, const char* value)
-{
-    int i;
-    int ret;
-    struct ae_resource_config* config;
-
-    for(i=0; i<MAX_RESOURCES; i++)
-    {
-        if(ae_resource_entries[i].id == -1)
-            continue;
-
-        config = ae_resource_entries[i].resource->config_array; 
-        while(config != NULL && config->name != NULL)
-        {
-            if(strcmp(config->name, key) == 0)
-            {
-                ret = config->updater(key, value);
-                return(ret);
-            }
-            config++;
-        }
-    }
-
-    return(AE_ERR_NOT_FOUND);
-}
-
 int aesop_dbg_blocking = 0;
 int aesop_dbg_cancel = 0;
 int aesop_dbg_pbranch = 0;

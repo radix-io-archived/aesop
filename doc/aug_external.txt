@@ -362,7 +362,6 @@ struct ae_resource
     int (*cancel)(ae_context_t ctx, ae_op_id_t id);
     int (*register_context)(ae_context_t context);
     int (*unregister_context)(ae_context_t context);
-    struct ae_resource_config* config_array;  /* terminated by entry with NULL name */
 };
 ----
 
@@ -377,7 +376,7 @@ struct ae_resource
   operation. The resource is still responsible for completing the blocking
   function by calling the operation's callback from the `ae_op` structure.
 
-* The `poll` and `config_array` members will be discussed below.
+* The `poll` member will be discussed below.
 
 
 [NOTE]
@@ -403,53 +402,6 @@ The `ResourceBuilder` and `Thread` resources provide good examples on how to
 construct a simple resource. Their code can be found in the `resources`
 directory in the {aesop} distribution.
 ====
-
-[[ref-resource-configuration]]
-Resource Configuration
-~~~~~~~~~~~~~~~~~~~~~~
-
-When a resource is registered with the {aesop} system using the
-`ae_resource_register()` function, the resource author has the option of
-specifying configuration parameters for that resource using the
-`config_array` field of the required `ae_resource` struct.  The 
-`config_array` field is a `NULL` terminated array of structs of type `struct
-ae_resource_config`, which is defined as follows:
-
-[source,c]
-----
-struct ae_resource_config
-{
-    const char* name;
-    const char* default_value;
-    const char* description;
-    int (*updater)(const char* key, const char* value);
-};
-----
-
-The `name` field is the name of the configuration parameter (which
-corresponds to the `key` argument of the `aesop_set_config()` function).
-The `default_value` field specifies the starting value of the configuration
-parameter.  The `description` is a free form text field, though standard
-practice is to limit this to a single line of text describing the
-configuration parameter.  The `updater` field is a pointer to a function
-that will be invoked when the configuration parameter is updated.  The
-resource must provide this function and handle configuration updates in a
-manner appropriate for the resource.  For example, this function may
-perform an `sscanf()` to read an integer value, and then check its values
-against the legal ranges for the parameter before accepting it.  The
-resource should return 0 on success or `AE_ERR_INVALID` if the configuration
-value is not valid.
-
-The `config_array` field can be set to `NULL` at resource registration time
-if the resource does not support any configuration parameters.
-
-[NOTE]
-====
-As of February 2012 this functionality is only avaialable to resources, but
-in future work we will extend this concept to allow arbitrary {aesop}
-components to register configuration parameters in a similar manner.
-====
-
 
 [[ref-progress]]
 Resource Progress
