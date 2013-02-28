@@ -63,8 +63,6 @@ enum ae_pwait_command
         "NONE" : ((__cmd == AE_PWAIT_CONTINUE) ? "CONTINUE" :         \
                   ((__cmd == AE_PWAIT_YIELD) ? "YIELD" : "UNKNOWN"))
 
-typedef struct ae_context *ae_context_t;
-
 enum op_state
 {
    /** This context is cancelled, all ops should return immediately */
@@ -121,7 +119,6 @@ struct ae_ctl
     int allposted;
     int in_pwait;
     ae_hints_t *hints;
-    ae_context_t context;
     OPA_int_t refcount;
     int op_state;
 };
@@ -142,7 +139,6 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
                                void *fctl,
                                const char *name,
                                ae_hints_t *hints,
-                               ae_context_t context,
                                int internal,
                                void *user_ptr)
 {
@@ -159,7 +155,6 @@ static inline void ae_ctl_init(struct ae_ctl *ctl,
      */
     ctl->hints = hints;
 
-    ctl->context = context;
     triton_mutex_init(&ctl->mutex, NULL);
     triton_list_init(&ctl->children);
     OPA_store_int (&ctl->refcount, 1);

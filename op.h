@@ -24,7 +24,6 @@ typedef struct ae_op
     /*int (*op_worker)(struct ae_op* op); */
     void *user_ptr;
     ae_hints_t *hints;
-    ae_context_t ctx;
     triton_list_link_t link;
 } ae_op_t;
 
@@ -42,15 +41,13 @@ typedef struct ae_op
         (_op)->callback = (__ae_callback);      \
         (_op)->user_ptr = (__ae_user_ptr);      \
         (_op)->hints = (__ae_hints);            \
-        (_op)->ctx  = (__ae_ctx);               \
     } while(0)
 
-#define ae_op_fill_with_params(_op, _cb, _up, _hints, _ctx) \
+#define ae_op_fill_with_params(_op, _cb, _up, _hints) \
     do {                                                    \
         (_op)->callback = (_cb);                            \
         (_op)->user_ptr = (_up);                            \
         (_op)->hints = (_hints);                            \
-        (_op)->ctx  = (_ctx);                               \
     } while(0)
 
 #define ae_ops_link_clear(_op) triton_list_link_clear(&(_op)->link)
@@ -60,7 +57,6 @@ typedef struct ae_op
         (_op)->callback = NULL;                 \
         (_op)->user_ptr = NULL;                 \
         (_op)->hints = NULL;                    \
-        (_op)->ctx = NULL;                      \
         ae_ops_link_clear(_op);                 \
     } while(0)
 

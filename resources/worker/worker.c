@@ -59,14 +59,14 @@ int aesop_worker_schedule (aesop_worker_t * worker)
        * We don't have access to the context since this is not a blocking
        * function.
        */
-      ae_resource_request_poll (NULL, worker_resource_id);
+      ae_resource_request_poll (worker_resource_id);
    }
 
    return AE_SUCCESS;
 }
 
 
-static int aesop_worker_poll (ae_context_t context, void * arg)
+static int aesop_worker_poll (void * arg)
 {
    assert (worker_refcount);
 
@@ -105,7 +105,7 @@ static int aesop_worker_poll (ae_context_t context, void * arg)
 static struct ae_resource worker_resource =
 {
     .resource_name = "worker",
-    .poll_context = aesop_worker_poll
+    .poll = aesop_worker_poll
 };
 
 

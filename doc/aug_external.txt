@@ -358,8 +358,8 @@ struct ae_resource
 {
     const char *resource_name;
     int (*test)(ae_op_id_t id, int ms_timeout);
-    int (*poll_context)(ae_context_t context);
-    int (*cancel)(ae_context_t ctx, ae_op_id_t id);
+    int (*poll)(void* user_data);
+    int (*cancel)(ae_op_id_t id);
 };
 ----
 
@@ -410,7 +410,7 @@ just indicate specific times when they would like to be polled.
 
 A resource is responsible for indicating it has work to do, by calling the
 `ae_resource_request_poll` function. After calling this function, {aesop} will
-schedule a call to the resource's `poll_context` function.
+schedule a call to the resource's `poll` function.
 The `ae_resource_request_poll` function is thread-safe and can safely be
 called from within a signal handler.
 

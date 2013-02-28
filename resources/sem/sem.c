@@ -181,7 +181,7 @@ ae_define_post(int, aesop_sem_down, aesop_sem_t * sem)
     ((_ptr != NULL) ?                     \
         ((_type *)((char *)(_ptr) - (unsigned long)((&((_type *)0)->_member)))) : NULL)
 
-static int sem_cancel (ae_context_t ctx, ae_op_id_t op_id)
+static int sem_cancel (ae_op_id_t op_id)
 {
    int resource_id;
 
@@ -249,13 +249,13 @@ static int sem_cancel (ae_context_t ctx, ae_op_id_t op_id)
    ae_ops_enqueue (&wait->op, &sem_cancel_queue);
    triton_mutex_unlock (&sem_cancel_lock);
 
-   ae_resource_request_poll (ctx, sem_resource_id);
+   ae_resource_request_poll (sem_resource_id);
 
 
    return AE_SUCCESS;
 }
 
-static int sem_poll (ae_context_t ctx, void * arg)
+static int sem_poll (void * arg)
 {
    triton_mutex_lock (&sem_cancel_lock);
    while (!ae_ops_empty (&sem_cancel_queue))
@@ -282,7 +282,7 @@ static struct ae_resource sem_resource =
 {
    .resource_name = "aesop_sem",
    .cancel = sem_cancel,
-   .poll_context = sem_poll,
+   .poll = sem_poll,
 };
 
 

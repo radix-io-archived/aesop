@@ -173,7 +173,7 @@ ae_define_post(int, btest_fail10, int *a)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list_fail10);
-    ae_resource_request_poll(op->ctx, btest_resource_id);
+    ae_resource_request_poll(btest_resource_id);
 
     return 0;
 }
@@ -193,7 +193,7 @@ ae_define_post(int, btest_consec)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list_consec);
-    ae_resource_request_poll(op->ctx, btest_resource_id);
+    ae_resource_request_poll(btest_resource_id);
 
     return 0;
 }
@@ -214,7 +214,7 @@ ae_define_post(int, btest1, int *a)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list1);
-    ae_resource_request_poll(op->ctx, btest_resource_id);
+    ae_resource_request_poll(btest_resource_id);
 
     return 0;
 }
@@ -234,7 +234,7 @@ ae_define_post(int, btest2, int *a)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list2);
-    ae_resource_request_poll(op->ctx, btest_resource_id);
+    ae_resource_request_poll(btest_resource_id);
 
     return 0;
 }
@@ -254,7 +254,7 @@ ae_define_post(int, btest3, int *a)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &list3);
-    ae_resource_request_poll(op->ctx, btest_resource_id);
+    ae_resource_request_poll(btest_resource_id);
 
     return 0;
 }
@@ -273,7 +273,7 @@ ae_define_post(int, btest_sleep, int secs)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &slist);
-    ae_resource_request_poll(op->ctx, btest_resource_id);
+    ae_resource_request_poll(btest_resource_id);
 
     return 0;
 }
@@ -292,7 +292,7 @@ ae_define_post(int, btest_sleep_random)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &srlist);
-    ae_resource_request_poll(op->ctx, btest_resource_id);
+    ae_resource_request_poll(btest_resource_id);
 
     return 0;
 }
@@ -311,7 +311,7 @@ ae_define_post(int, btest_forever)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &flist);
-    ae_resource_request_poll(op->ctx, btest_resource_id);
+    ae_resource_request_poll(btest_resource_id);
 
     return 0;
 }
@@ -330,7 +330,7 @@ ae_define_post(int, btest_random)
     bop->id = ae_id_gen(btest_resource_id, (intptr_t) op);
     *__ae_op_id = bop->id;
     ae_ops_enqueue(op, &rlist);
-    ae_resource_request_poll(op->ctx, btest_resource_id);
+    ae_resource_request_poll(btest_resource_id);
 
     return 0;
 }
@@ -394,7 +394,7 @@ static struct btest_op * poll_list(ae_ops_t *list, int *more)
 
 static int consec_count = 0;
 
-static int btest_poll(ae_context_t context, void *user_data)
+static int btest_poll(void *user_data)
 {
    int more, request;
    struct btest_op *b;
@@ -552,12 +552,12 @@ static int btest_poll(ae_context_t context, void *user_data)
 
    if(request)
    {
-       ae_resource_request_poll(context, btest_resource_id);
+       ae_resource_request_poll(btest_resource_id);
    }
    return AE_SUCCESS;
 }
 
-static int btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
+static int btest_cancel(ae_op_id_t op_id)
 {
    struct ae_op *t, *tmp;
    struct btest_op *b;
@@ -570,14 +570,14 @@ static int btest_cancel(ae_context_t ctx, ae_op_id_t op_id)
 	    ae_ops_del(t);
 	    printf("forever op cancelled\n");
 	    ae_ops_enqueue(&b->op, &clist);
-            ae_resource_request_poll(ctx, btest_resource_id);
+            ae_resource_request_poll(btest_resource_id);
 	}
    }
 
    return AE_SUCCESS;
 }     
 
-static int btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
+static int btest_cancel_immed(ae_op_id_t op_id)
 {
    struct ae_op *t, *tmp;
    struct btest_op *b;
@@ -612,7 +612,7 @@ static int btest_cancel_immed(ae_context_t ctx, ae_op_id_t op_id)
 struct ae_resource btest_resource =
 {
     .resource_name = RESOURCE_NAME,
-    .poll_context = btest_poll,
+    .poll = btest_poll,
     .cancel = btest_cancel,
 };
 

@@ -28,37 +28,21 @@ int aesop_debug_from_env (void);
  * check with the normal compiler (GCC), we don't get a 'too many arguments to function' error.
  */
 #ifdef AESOP_PARSER
-#define ae_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) \
-    __fname(__callback, __user_ptr, __hints, __resource_ctx, __op_id, 0, ##__fargs)
+#define ae_post_blocking(__fname, __callback, __user_ptr, __hints, __op_id, __fargs...) \
+    __fname(__callback, __user_ptr, __hints, __op_id, 0, ##__fargs)
 #else
-#define ae_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) AE_SUCCESS
+#define ae_post_blocking(__fname, __callback, __user_ptr, __hints, __op_id, __fargs...) AE_SUCCESS
 #endif
 
-#define ext_post_blocking(__fname, __callback, __user_ptr, __hints, __resource_ctx, __op_id, __fargs...) \
-    __fname(__callback, __user_ptr, __hints, __resource_ctx, __op_id, 0, ##__fargs)
+#define ext_post_blocking(__fname, __callback, __user_ptr, __hints, __op_id, __fargs...) \
+    __fname(__callback, __user_ptr, __hints, __op_id, 0, ##__fargs)
 
 /* Called by c programs to break ae_poll() calls once callbacks are complete */
-void ae_poll_break(ae_context_t context);
+void ae_poll_break(void);
 
-/* Contexts are created to allow separation of polling for different logical
- * groups of operations.  Don't use this function.  Instead, use the associated
- * ae_context_create macro.
+/* Poll for completion of operations up to a timeout value.
  */
-int _ae_context_create(ae_context_t *context, const char *format, int resource_count, ...) __attribute__((format (printf, 2, 4))) ;
-
-/* macro to calculate the number of resources passed in as string
- * arguments so we don't have to pass in the count explicitly. */
-#define ae_context_create(_context, ...) \
-    _ae_context_create(_context, FORMAT_ARGS(__VA_ARGS__) , ##__VA_ARGS__)
-
-/* Context destruction.  Called to cleanup state allocated in ae_context_create.
- */
-int ae_context_destroy(ae_context_t context);
-
-/* Poll for completion of the operations within the given context up to a
- * timeout value.
- */
-int ae_poll(ae_context_t context, int ms);
+int ae_poll(int ms);
 
 int ae_cancel_branches(struct ae_ctl *ctl);
 
@@ -115,16 +99,13 @@ static inline void aesop_set_cancel (void) { }
    aesop_main_set_with_init (0, __main_blocking_function__);
 
 /* Similar to above, but this one takes an initialization function
- * that gets called before aesop_init, and you can optionally specify 
- * a comma-separated list of resources to be polled in a separate context.
+ * that gets called before aesop_init.
  *
  * Example:
  *
  * __blocking int aesop_main(int argc, char **argv) { ... }
  * int set_zeroconf_params(void) { ... }
  * aesop_main_set_with_init(set_zeroconf_params, aesop_main);
- *   or
- * aesop_main_set_with_init(set_zeroconf_params, aesop_main, "bdb", "file");
  */
 #define aesop_main_set_with_init(__init_before_main__,            \
                                  __main_blocking_function__, ...) \
@@ -132,14 +113,12 @@ static int __main_done=0;                                         \
 static int __main_ret;                                            \
 static void __main_cb(void *user_ptr, int t)                      \
 {                                                                 \
-      ae_context_t ctx = (ae_context_t)user_ptr;                  \
       __main_done = 1;                                            \
       __main_ret = t;                                             \
-      ae_poll_break(ctx);                                         \
+      ae_poll_break();                                         \
 }                                                                 \
 int main(int argc, char **argv)                                   \
 {                                                                 \
-    ae_context_t __main_ctx = NULL;                               \
     ae_hints_t __main_hints;                                      \
     ae_op_id_t __main_opid;                                       \
     int ret;                                                      \
@@ -151,19 +130,13 @@ int main(int argc, char **argv)                                   \
     }                                                             \
     ret = aesop_init();                          \
     aesop_error_assert(ret);                                      \
-    if(COUNT_ARGS(__VA_ARGS__) > 0)                               \
-    {                                                             \
-        ret = ae_context_create(&__main_ctx, ##__VA_ARGS__);      \
-        aesop_error_assert(ret);                                 \
-    }                                                             \
     ret = ae_hints_init(&__main_hints);                          \
     assert(ret == 0); \
     ret = ae_post_blocking(                                       \
         __main_blocking_function__,                               \
         __main_cb,                                                \
-        __main_ctx,                                               \
+        NULL,                                               \
         &__main_hints,                                            \
-        __main_ctx,                                               \
         &__main_opid,                                             \
         &__main_ret,                                              \
         argc,                                                     \
@@ -172,7 +145,7 @@ int main(int argc, char **argv)                                   \
     {                                                             \
         while(!__main_done)                                       \
         {                                                         \
-            ret = ae_poll(__main_ctx, AESOP_MAIN_SET_POLL_TIMEOUT); \
+            ret = ae_poll(AESOP_MAIN_SET_POLL_TIMEOUT); \
             if(ret == AE_ERR_TIMEDOUT) continue;                  \
             aesop_error_assert(ret);                              \
         }                                                         \
@@ -184,17 +157,13 @@ int main(int argc, char **argv)                                   \
              ae_lone_pbranches_count ());      \
        while(ae_lone_pbranches_count ())                             \
        {                                                               \
-          ret = ae_poll(__main_ctx, AESOP_MAIN_SET_POLL_TIMEOUT);     \
+          ret = ae_poll(AESOP_MAIN_SET_POLL_TIMEOUT);     \
           if(ret == AE_ERR_TIMEDOUT) continue;                         \
           aesop_error_assert(ret);                                    \
        }                                                               \
     }                                                         \
     aesop_error_assert(ret);                                      \
     ae_hints_destroy(&__main_hints);                              \
-    if(COUNT_ARGS(__VA_ARGS__) > 0)                               \
-    {                                                             \
-        ae_context_destroy(__main_ctx);                           \
-    }                                                             \
     aesop_finalize();                                             \
     return __main_ret;                                            \
 }

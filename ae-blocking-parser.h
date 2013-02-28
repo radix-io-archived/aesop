@@ -40,7 +40,6 @@ typedef triton_list_t* triton_state_data_list_t;
 #define AE_MK_BLOCKING_PARAMS_FUN_PTR_DECLS() \
     void *__ae_user_ptr; \
     ae_hints_t *__ae_hints; \
-    ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal;
 
@@ -186,7 +185,6 @@ static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr) \
     __ae_postret = __bcall(__fname##_##__bcallName##_##__pos_str##_callback, \
                            __ae_ctl,                                         \
                            __ae_ctl->gen.hints,                              \
-                           __ae_ctl->gen.context,                            \
                            &__ae_ctl->gen.current_op_id,                     \
                            1);
 
@@ -318,7 +316,6 @@ __ae_pbranch_##__pbranch_pos_str##_start:                                       
                 __ae_ctl,                                                             \
                 #__fname "_ctl:pbranch_" #__pbranch_pos_str,                          \
                 NULL,                                                                 \
-                __ae_ctl_parent->gen.context,                                         \
                 1,                                                                    \
                 __ae_ctl_parent);                                                     \
     ae_debug_pbranch("starting pbranch: %s (ctl=%p, parent=%p)\n",                    \
@@ -450,7 +447,6 @@ __ae_pbranch_##__pbranch_pos_str##_start:                                 \
                 __ae_ctl,                                                 \
                 #__fname "_ctl:[L]pbranch_" #__pbranch_pos_str,              \
                 NULL,                                                     \
-                __ae_ctl_parent->gen.context,                             \
                 1,                                                        \
                 __ae_ctl_parent);                                         \
     ae_debug_pbranch("starting lone pbranch: %s (ctl=%p, parent=%p)\n",   \
@@ -523,14 +519,12 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
 #define AE_MK_BFUN_PARAMS_DECLS() \
     void *__ae_user_ptr; \
     ae_hints_t *__ae_hints; \
-    ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal;
 
 #define AE_MK_BFUN_PARAMS_FUN_PTR_DECLS(__ret_type) \
     void *__ae_user_ptr; \
     ae_hints_t *__ae_hints; \
-    ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal; \
     __ret_type *retval;
@@ -550,7 +544,6 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
                 __ae_ctl,                                             \
                 #__fname,                                             \
                 __ae_hints,                                           \
-                __ae_context,                                         \
                 __ae_internal,                                        \
                 __ae_user_ptr);                                       \
     AE_MK_START_OF_BLOCKING(__fname);                                 \

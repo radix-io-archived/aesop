@@ -266,7 +266,6 @@ ae_define_post(int, aethread_hint, struct aethread_group * group)
 }
 
 static int triton_aethread_poll(
-    ae_context_t context,
     void *data)
 {
     triton_mutex_lock(&aethread_cancel_lock);
@@ -284,7 +283,6 @@ static int triton_aethread_poll(
 }
 
 static int triton_aethread_cancel(
-    ae_context_t triton_ctx,
     ae_op_id_t op_id)
 {
     int resource_id;
@@ -329,7 +327,7 @@ static int triton_aethread_cancel(
 
     if (found)
     {
-        ae_resource_request_poll(triton_ctx, aethread_resource_id);
+        ae_resource_request_poll(aethread_resource_id);
         return (AE_SUCCESS);
     }
 
@@ -339,7 +337,7 @@ static int triton_aethread_cancel(
 
 struct ae_resource triton_aethread_resource = {
     .resource_name = "thread",
-    .poll_context = triton_aethread_poll,
+    .poll = triton_aethread_poll,
     .cancel = triton_aethread_cancel,
 };
 

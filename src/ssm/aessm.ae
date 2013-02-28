@@ -569,13 +569,12 @@ static void * aessm_thread (void *arg)
  *   This function is intended to be called by the aesop poller.
  *
  * Parameters:
- *   context - aesop internal context
  *   user_data - data provided in ae_resource_register
  *
  * Returns:
  *   AE_SUCCESS - poll was successful
  */
-static int aessm_poll (ae_context_t context, void *user_data)
+static int aessm_poll (void *user_data)
 {
     struct timeval tv;
     int            rc;
@@ -591,7 +590,7 @@ static int aessm_poll (ae_context_t context, void *user_data)
     rc = ssm_wait(aessm_id->ssm, &tv);
     assert(rc >= 0);
 
-    ae_resource_request_poll(context, aessm_id->resource_id);
+    ae_resource_request_poll(aessm_id->resource_id);
 
     return AE_SUCCESS;
 }
@@ -602,7 +601,7 @@ static int aessm_poll (ae_context_t context, void *user_data)
 static struct ae_resource aessm_resource =
 {
     .resource_name = "aessm",
-    .poll_context  = aessm_poll
+    .poll  = aessm_poll
 };
 
 /*

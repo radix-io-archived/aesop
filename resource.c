@@ -17,8 +17,7 @@
 struct ae_poll_data
 {
     ev_async async;
-    int (*poll_context)(ae_context_t context, void *user_data);
-    ae_context_t context;
+    int (*poll)(void *user_data);
     void *user_data;
 };
 
@@ -43,20 +42,6 @@ static pthread_t ev_loop_thread;
 #define AE_RESOURCE_IDX2ID(reindex) (reindex+16)
 #define AE_RESOURCE_ID2IDX(rid) (rid-16)
 
-struct ae_context
-{
-    int id;
-    int resource_count;
-    int* resource_ids;
-    struct ae_poll_data* poll_data;
-    struct ev_loop *eloop;
-    ev_async eloop_breaker;
-};
-
-static int ae_context_count = 0;
-static struct ae_context ae_context_entries[AE_MAX_CONTEXTS];
-
-
 static void ev_break_cb(EV_P_ ev_async *w, int revents)
 {
     /* Break the loop.  Note that ev_run() will still process all events
@@ -73,8 +58,8 @@ static void ev_async_cb(EV_P_ ev_async *w, int revents)
     struct ae_poll_data* poll_data = 
         (struct ae_poll_data*)(((char*)w)-offsetof(struct ae_poll_data, async));
 
-    assert(poll_data->poll_context);
-    ret = poll_data->poll_context(poll_data->context, poll_data->user_data);
+    assert(poll_data->poll);
+    ret = poll_data->poll(poll_data->user_data);
     /* TODO: error handling? */
     aesop_error_assert(ret);
     
@@ -137,9 +122,7 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
     assert(reindex > -1 && reindex < MAX_RESOURCES);
 
     ev_async_init(&ae_resource_entries[reindex].poll_data.async, ev_async_cb);
-    ae_resource_entries[reindex].poll_data.poll_context =
-        resource->poll_context;
-    ae_resource_entries[reindex].poll_data.context = NULL;
+    ae_resource_entries[reindex].poll_data.poll = resource->poll;
     ae_resource_entries[reindex].poll_data.user_data = user_data;
     ev_async_start(eloop, &ae_resource_entries[reindex].poll_data.async);
 
@@ -155,10 +138,6 @@ void ae_resource_unregister(int id)
 {
     int idx = AE_RESOURCE_ID2IDX(id);
 
-    /* TODO: what about contexts that might include this resource?  Do we
-     * just assume that contexts are always closed before resources are
-     * unregistered?
-     */
     ev_async_stop(eloop, &ae_resource_entries[idx].poll_data.async);
 
     memset(&ae_resource_entries[idx], 0, sizeof(ae_resource_entries[idx]));
@@ -167,53 +146,22 @@ void ae_resource_unregister(int id)
     ae_resource_count--;
 }
 
-static void find_async_watcher(ae_context_t context, int resource_id, ev_async** async_out, struct ev_loop** loop_out)
+static void find_async_watcher(int resource_id, ev_async** async_out)
 {
     ev_async* async = NULL;
-    int i;
     int ridx;
-    struct ev_loop *target_loop = NULL;
-
-    if(context)
-    {
-        /* find this resource in the context */
-        for(i=0; i<context->resource_count; i++)
-        {
-            if(resource_id == context->resource_ids[i])
-            {
-                async = &context->poll_data[i].async;
-                target_loop = context->eloop;
-                break;
-            }
-        }
-    }
-    else
-    {   
-        /* find this resource in the global list */
-        ridx = AE_RESOURCE_ID2IDX(resource_id);
-        async = &ae_resource_entries[ridx].poll_data.async;
-        target_loop = eloop;
-    }
+   
+    /* find this resource in the global list */
+    ridx = AE_RESOURCE_ID2IDX(resource_id);
+    async = &ae_resource_entries[ridx].poll_data.async;
 
     if(!async)
     {
-        aesop_err("Error: context %p is not configured to handle resource with id %d", context, resource_id);
-        for(i=0; i<MAX_RESOURCES; i++)
-        {
-            if(ae_resource_entries[i].id == resource_id)
-            {
-                aesop_err("Consider adding the \"%s\" resource your aesop context.", ae_resource_entries[i].resource->resource_name);
-                assert(0);
-            }
-        }
         aesop_err("Error: resource_id %d is unknown to aesop.  Are you using a resource that was not initialized?\n", resource_id);
         assert(0);
     }
 
-    assert(target_loop);
-
     *async_out = async;
-    *loop_out = target_loop;
 
     return;
 }
@@ -224,47 +172,32 @@ static void find_async_watcher(ae_context_t context, int resource_id, ev_async**
  * functions to allow the c program to continue execution after the final
  * aesop callback has completed.
  */
-void ae_poll_break(ae_context_t context)
+void ae_poll_break()
 {
-    ev_async* breaker = NULL;
-    struct ev_loop *target_loop = NULL;
-
-    if(context)
-    {
-        breaker = &context->eloop_breaker;
-        target_loop = context->eloop;
-    }
-    else
-    {
-        breaker = &eloop_breaker;
-        target_loop = eloop;
-    }
-
     if(pthread_equal(ev_loop_thread, pthread_self()))
     {
         /* this was called from the event loop thread, so we know that it is
          * already awake.  Just make sure that it exits if the
          * ae_poll_break() as called from a libev callback.
          */
-        ev_break(target_loop, EVBREAK_ONE);
+        ev_break(eloop, EVBREAK_ONE);
         return;
     }
 
-    ev_async_send(target_loop, breaker);
+    ev_async_send(eloop, &eloop_breaker);
 }
 
 /**
  * ae_resource_request_poll() is used by a resource to inform aesop that the
  * resource needs to be polled.
  */
-void ae_resource_request_poll(ae_context_t context, int resource_id)
+void ae_resource_request_poll(int resource_id)
 {
     ev_async* async = NULL;
-    struct ev_loop *target_loop = NULL;
 
-    find_async_watcher(context, resource_id, &async, &target_loop);
+    find_async_watcher(resource_id, &async);
 
-    ev_async_send(target_loop, async);
+    ev_async_send(eloop, async);
 
     return;
 }
@@ -321,37 +254,25 @@ static void timeout_cb(EV_P_ ev_timer *w, int revents)
     ev_break(EV_A_ EVBREAK_ONE);
 }
 
-int ae_poll(ae_context_t context, int millisecs)
+int ae_poll(int millisecs)
 {
-    struct ev_loop* target_loop;
     ev_timer timeout;
     int hit_timeout = 0;
-
-    if(context)
-    {
-        /* use context specific event loop */
-        target_loop = context->eloop;
-    }
-    else
-    {
-        /* use global event loop */
-        target_loop = eloop;
-    }
 
     if(millisecs > 0)
     {
         timeout.data = &hit_timeout;
         ev_timer_init(&timeout, timeout_cb, (double)millisecs * 1000.0, 0);
-        ev_timer_start(target_loop, &timeout);
-        ev_run(target_loop, 0);
+        ev_timer_start(eloop, &timeout);
+        ev_run(eloop, 0);
     }
     else
     {
-        ev_run(target_loop, EVRUN_NOWAIT);
+        ev_run(eloop, EVRUN_NOWAIT);
     }
 
     if(millisecs > 0)
-        ev_timer_stop(target_loop, &timeout);
+        ev_timer_stop(eloop, &timeout);
 
     /* this means that the event loop timed out without finding any work */
     if(hit_timeout == 1)
@@ -364,114 +285,12 @@ int ae_poll(ae_context_t context, int millisecs)
 
 #include <stdarg.h>
 
-int _ae_context_create(ae_context_t *context, const char *format __attribute__((unused)), int resource_count, ...)
-{
-    va_list ap;
-    char *rname;
-    int cindex = ae_context_count;
-    ae_context_t c;
-    int i, j, reindex;
-
-    if(ae_context_count == AE_MAX_CONTEXTS)
-    {
-        return AE_ERR_INVALID;
-    }
-
-    c = &(ae_context_entries[cindex]);
-    c->id = ae_context_count;
-    ae_context_count++;
-    c->resource_count = resource_count;
-    c->resource_ids = malloc(sizeof(*c->resource_ids) * resource_count);
-    if(!c->resource_ids)
-    {
-        return AE_ERR_SYSTEM;
-    }
-    c->poll_data = malloc(sizeof(*c->poll_data) * resource_count);
-    if(!c->poll_data)
-    {
-        free(c->resource_ids);
-        return AE_ERR_SYSTEM;
-    }
-
-    c->eloop = ev_loop_new(EVFLAG_AUTO);
-    if(!c->eloop)
-    {
-        aesop_err("Error: could not create libev event loop.\n");
-        free(c->resource_ids);
-        free(c->poll_data);
-        return(AE_ERR_SYSTEM);
-    }
-    ev_async_init(&c->eloop_breaker, ev_break_cb);
-    ev_async_start(c->eloop, &c->eloop_breaker);
-
-    reindex = 0;
-
-    /* step through the resource names passed in and register the context with them */
-    va_start(ap, resource_count);
-    for(i = 0; i < resource_count; ++i)
-    {
-        int resource_found = 0;
-        rname = va_arg(ap, char *);
-
-        /* find the matching resource and register the context with that resource */
-
-        for(j = 0; j < MAX_RESOURCES; ++j)
-        {
-            if(!strcmp(ae_resource_entries[j].resource->resource_name, rname))
-            {
-                ev_async_init(&c->poll_data[reindex].async, ev_async_cb);
-                c->poll_data[reindex].poll_context = 
-                    ae_resource_entries[j].poll_data.poll_context;
-                c->poll_data[reindex].context = c;
-                c->poll_data[reindex].user_data = 
-                    ae_resource_entries[j].poll_data.user_data;
-
-                ev_async_start(c->eloop, &c->poll_data[reindex].async);
-
-                c->resource_ids[reindex] = ae_resource_entries[j].id;
-
-                reindex++;
-                resource_found = 1;
-                break;
-            }
-        }
-        if(!resource_found)
-        {
-            va_end(ap);
-            return AE_ERR_NOT_FOUND;
-        }
-    }
-    va_end(ap);
-
-    *context = c;
-    return AE_SUCCESS;
-}
-
-int ae_context_destroy(ae_context_t context)
-{
-    int i;
-
-    for(i = 0; i < context->resource_count; ++i)
-    {
-        ev_async_stop(context->eloop, &context->poll_data[i].async);
-    }
-    free(context->resource_ids);
-    free(context->poll_data);
-    context->resource_ids = NULL;
-    context->poll_data = NULL;
-    context->id = -1;
-    context->resource_count = -1;
-    ev_loop_destroy(context->eloop);
-    return AE_SUCCESS;
-}
-
-
 /**
- * Given an op_id and a context, try to call the resource to cancel
+ * Given an op_id, try to call the resource to cancel
  * the operation if it was generated by a resource.
  * Otherwise, do nothing.
  */
-static int ae_cancel_resource_op (ae_context_t context, ae_op_id_t op)
+static int ae_cancel_resource_op (ae_op_id_t op)
 {
    int resource_id;
 
@@ -496,7 +315,7 @@ static int ae_cancel_resource_op (ae_context_t context, ae_op_id_t op)
 
    if(ae_resource_entries[ridx].resource->cancel)
    {
-      return ae_resource_entries[ridx].resource->cancel(context, op);
+      return ae_resource_entries[ridx].resource->cancel(op);
    }
    else
    {
@@ -584,8 +403,7 @@ int ae_cancel_ctl (struct ae_ctl * ctl)
 
          assert (resource_id);
          /* We're in a context that actually called a resource function */
-         ret = ae_cancel_resource_op (ctl->context,
-               ctl->current_op_id);
+         ret = ae_cancel_resource_op (ctl->current_op_id);
 
 
          if (ret == AE_SUCCESS)
@@ -616,7 +434,6 @@ int ae_cancel_branches(struct ae_ctl *ctl)
     //int ret;
     //ae_op_id_t *children_ids;
     //int ind, count, error;
-    //ae_context_t context;
 
     ae_debug_cancel("ae_cancel_branches: %p\n", ctl);
 

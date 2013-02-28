@@ -36,7 +36,6 @@
     int __fname(void (*__ae_callback)(void *ptr, __ret_type ret), \
                          void *__ae_user_ptr,                              \
                          ae_hints_t *__ae_hints,                           \
-                         ae_context_t __ae_ctx,                            \
                          ae_op_id_t *__ae_op_id,                           \
                          int __ae_internal,                                \
                          __ret_type *__ae_retval,                          \
@@ -100,8 +99,8 @@ struct ae_resource
 {
     const char *resource_name;
     int (*test)(ae_op_id_t id, int ms_timeout);
-    int (*poll_context)(ae_context_t context, void *user_data);
-    int (*cancel)(ae_context_t ctx, ae_op_id_t id);
+    int (*poll)(void *user_data);
+    int (*cancel)(ae_op_id_t id);
 };
 
 /**
@@ -131,10 +130,10 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid, voi
 void ae_resource_unregister(int resource_id);
 
 /* Called by resources to request polling from the event loop */
-void ae_resource_request_poll(ae_context_t context, int resource_id);
+void ae_resource_request_poll(int resource_id);
 
 /* Cancel an operation */
-int ae_cancel_op(ae_context_t context, ae_op_id_t op_id);
+int ae_cancel_op(ae_op_id_t op_id);
 
 
 /**
