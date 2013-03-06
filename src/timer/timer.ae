@@ -165,20 +165,19 @@ static void* thread_fn(void* foo)
         head_link = triton_list_del_front(&timer_queue);
         while(head_link)
         {
-            triton_mutex_unlock(&timer_mutex);
             tm = triton_list_get_entry(head_link, struct timer_obj, link);
 
             gettimeofday(&now, NULL);
             if(timercmp(&(tm->expire), &now, <))
             {
                 /* expired; up semaphore */
+                triton_mutex_unlock(&timer_mutex);
                 aesop_sem_up(&tm->sem);
                 triton_mutex_lock(&timer_mutex);
             }
             else
             {
                 /* head item has not expired, put back on queue */
-                triton_mutex_lock(&timer_mutex);
                 triton_list_add_front(&tm->link, &timer_queue);
                 break;
             }
