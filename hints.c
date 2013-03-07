@@ -478,8 +478,10 @@ int ae_hints_copy(ae_hints_t *oldh, ae_hints_t ** newh)
     {
        *newh = alloc_init_hint ();
     }
-
-    ae_hints_init(*newh);
+    else
+    {
+        ae_hints_init(*newh);
+    }
 
     triton_mutex_lock(&oldh->lock);
     oldh->refcount++;
