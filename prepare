@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if ! test -e src/c-utils/prepare ; then
+   echo "Can't find c-utils source. Did you remember to checkout the"
+   echo "submodule? (git submodule init && git submodule update)"
+   exit 2
+fi
+
 echo "preparing src/c-utils:"
 cd src/c-utils
 ./prepare
