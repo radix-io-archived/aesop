@@ -8,6 +8,9 @@
  * It allows a function to be scheduled for later execution.
  * When the worker resource is polled, it will call all the scheduled
  * functions.
+ *
+ * This can also be used to make sure a function is called from the highest
+ * level (i.e. the polling loop)
  */
 
 typedef struct aesop_worker_t aesop_worker_t;
