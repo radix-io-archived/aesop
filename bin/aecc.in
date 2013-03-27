@@ -79,8 +79,12 @@ if test "${hasOpt_parse_hae}" = "yes"; then
 fi
 
 if test "${hasOpt_from_interm}" != "yes"; then
+    
+    # This makes assumptions about current PWD!
+    #buildifile=$(echo "${INPUTFILES}" | sed -e "s|^ *${SRCDIR}||" | sed -e "s|^/||")
 
-    buildifile=$(echo "${INPUTFILES}" | sed -e "s|^ *${SRCDIR}||" | sed -e "s|^/||")
+    buildifile=$(echo "${INPUTFILES}" | sed -e "s|^ *${SRCDIR}||")
+
     cppout=${buildifile}.i
     addToClean ${cppout}
 
