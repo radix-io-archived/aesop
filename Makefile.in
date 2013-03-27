@@ -78,7 +78,7 @@ ifeq ($(BUILD_SSM),1)
    LIBS += -lssm_ref -lssmp_mpi
 endif
 
-CFLAGS= -I$(srcdir)/src/c-utils -I$(srcdir)/include -I. -Iinclude -I src/c-utils \
+CFLAGS=-I$(builddir)/src/c-utils/include -I$(srcdir)/include -I. -Iinclude -I src/c-utils \
  -I$(srcdir) \
  @CFLAGS@ @DB_CFLAGS@ $(CPPFLAGS)
 
@@ -114,7 +114,11 @@ CWARNS += -Wno-unused-label
 LDSHARED = $(TCC) -shared
 
 LIBCFLAGS=@LIBCFLAGS@
-LDFLAGS += @LDFLAGS@ -Lsrc/c-utils
+LDFLAGS += @LDFLAGS@ -L$(builddir)/src/c-utils/lib
+
+# hack for now
+LDFLAGS += @LDFLAGS@ -L$(builddir)/src/c-utils/lib/.libs
+
 LIBS += @LIBS@ @DB_LIB@ -lc-utils -lm -lpthread
 
 DEPLIBS += @THREAD_LIB@
