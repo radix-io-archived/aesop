@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include "aesop.h"
-#include "triton-list.h"
+#include <triton-list.h>
 #include "parser/tests/blocking/btest.h"
 #include "resource.h"
 

@@ -7,7 +7,7 @@
 #include <sys/time.h>
 
 #include <aesop/timer.hae>
-#include <aesop/triton-list.h>
+#include <triton-list.h>
 #include <aesop/sem.hae>
 #include <pthread.h>
 

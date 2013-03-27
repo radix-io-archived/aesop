@@ -8,8 +8,8 @@
 #define __AE_HINTS_H__
 
 // #include <triton-base.h>
-#include <aesop/triton-list.h>
-#include <aesop/triton-thread.h>
+#include <triton-list.h>
+#include <triton-thread.h>
 
 struct ae_hints
 {

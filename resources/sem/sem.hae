@@ -8,7 +8,7 @@
 #define AESOP_SEM_SEM_HAE
 
 #include "aesop.h"
-#include "triton-thread.h"
+#include <triton-thread.h>
 #include "resource.h"
 #include "op.h"
 

@@ -1,6 +1,6 @@
 #include "worker.h"
-#include "triton-list.h"
-#include "triton-thread.h"
+#include <triton-list.h>
+#include <triton-thread.h>
 #include "resource.h"
 
 struct aesop_worker_t

@@ -7,11 +7,11 @@
 #ifndef __AESOP_H__
 #define __AESOP_H__
 
-#include <aesop/triton-base.h>
+#include <triton-base.h>
 
-#include <aesop/triton-list.h>
-#include <aesop/triton-thread.h>
-#include <aesop/triton-uint128.h>
+#include <triton-list.h>
+#include <triton-thread.h>
+#include <triton-uint128.h>
 
 #include <aesop/ae-error.h>
 #include <aesop/ae-log.h>

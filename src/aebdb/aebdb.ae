@@ -35,7 +35,7 @@
 #include "src/aebdb/aebdb.hae"
 #include "resources/thread/aethread.hae"
 #include "resources/sem/sem.hae"
-#include "src/c-utils/triton-hash.h"
+#include <triton-hash.h>
 
 static struct aethread_group* general_thread_group = NULL;
 static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;

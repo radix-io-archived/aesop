@@ -9,8 +9,8 @@
 
 #include <stdlib.h>
 
-#include <aesop/triton-thread.h>
-#include <aesop/triton-list.h>
+#include <triton-thread.h>
+#include <triton-list.h>
 #include <aesop/ae-debug.h>
 #include <aesop/ae-types.h>
 #include <aesop/ae-error.h>

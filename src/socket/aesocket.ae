@@ -12,7 +12,7 @@
 #include <signal.h>
 #include <errno.h>
 
-#include "libev/ev.h"
+#include <ev.h>
 #include <aesop/resourcebuilder.hae>
 
 /**

@@ -4,7 +4,7 @@
  * See COPYRIGHT in top-level directory.
  */
 
-#include "libev/ev.h"
+#include <ev.h>
 #include <stddef.h>
 #include <unistd.h>
 #include <fcntl.h>
