@@ -4,8 +4,14 @@
 # Installs cabal locally
 # Use apt-get install cabal-install to install globally
 
+# Note: some files are in $HOME/.cabal, some things are in $HOME/.ghc/
+
+DIR=$(mktemp -d)
+pushd $DIR
 wget -c http://www.haskell.org/cabal/release/cabal-install-0.14.0/cabal-install-0.14.0.tar.gz
 tar xvfz cabal-install-0.14.0.tar.gz
 cd cabal-install-0.14.0
 sh ./bootstrap.sh
+popd
+
 
