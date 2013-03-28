@@ -1,16 +1,14 @@
 #!/bin/sh
 
-echo "Some info:"
-date
-ls
-set
-echo "============"
-
 # get root
 SRC_ROOT=$PWD
 
 BUILD_ROOT=$PWD/build
 INSTALL_ROOT=$PWD/install
+
+CONFIGURE_OPTS=
+
+#==============================================================
 
 if ! test -d ${BUILD_ROOT} ; then
 mkdir $BUILD_ROOT || exit 2
@@ -19,11 +17,32 @@ if ! test -d ${INSTALL_ROOT} ; then
 mkdir $INSTALL_ROOT || exit 2
 fi
 
+#==============================================================
+#==== AESOP Dependencies ======================================
+#==============================================================
 
-# Generate build system files
-./prepare || exit 2
 
-# check if we have cabal
+#------------------
+# Install OpenPA
+#------------------
+
+OPENPA=${BUILD_ROOT}/openpa
+./maint/jenkins/install-openpa.sh $OPENPA || exit 6
+CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-openpa=${OPENPA}"
+
+#------------------
+# Install c-utils
+#------------------
+
+CUTILS=${BUILD_ROOT}/c-utils
+./maint/jenkins/install-c-utils.sh $CUTILS || exit 7
+CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-c-utils=${CUTILS}"
+
+
+#------------------------------------------------------------
+# check if we have cabal & Haskell Libs
+#------------------------------------------------------------
+
 CABAL=$(which cabal)
 if test -z $CABAL; then
    ./maint/hs/setup-cabal-local || exit 3
@@ -41,15 +60,15 @@ fi
 # Get modified Language.C
 ./maint/hs/setup-aesop || exit 5
 
-# Install OpenPA
-OPENPA=${BUILD_ROOT}/openpa
-./maint/jenkins/install-openpa.sh $OPENPA || exit 6
-CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-openpa=${OPENPA}"
+#===============================================================
+# Build AESOP
+#===============================================================
 
-# Configure
-
+# Configure Aesop
 CONFIGURE_OPTS="${CONFIGURE_OPTS} --prefix=${INSTALL_ROOT}"
 
+# Generate build system files
+./prepare || exit 2
 BUILD_DIR=${SRC_ROOT}    # no-VPATH
 BUILD_DIR=${BUILD_ROOT}  # VPATH
 
@@ -59,3 +78,5 @@ ${SRC_ROOT}/configure ${CONFIGURE_OPTS}
 # make
 make
 
+# check
+make check
