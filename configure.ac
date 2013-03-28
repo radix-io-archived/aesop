@@ -24,7 +24,6 @@ AC_DEFINE_UNQUOTED(AESOP_VERSION_SUB,   $AESOP_SUB, sub version number)
 AC_CONFIG_HEADER(aesop-config.h)
 AC_CONFIG_AUX_DIR(maint/config)
 
-AC_CONFIG_SUBDIRS(src/c-utils)
 
 AC_PROG_INSTALL
 AC_PROG_CC
@@ -74,6 +73,44 @@ AS_IF([test "x$enable_valgrind_clean" = "xyes"], [
 ])
 AC_SUBST(VALGRIND_CLEAN)
 
+
+dnl =========================================================================
+dnl ==== Check for C-Utils ==================================================
+dnl =========================================================================
+
+
+# OpenPA
+AC_ARG_WITH([c-utils],
+            [AS_HELP_STRING([[--with-c-utils[=DIR]]],
+                             ["embedded" or "path"])],
+            [],
+            [ with_c_utils="embedded"])
+
+c_utils_prefix=""
+c_utils_embedded=
+AC_SUBST([c_utils_prefix])
+AC_SUBST([c_utils_embedded])
+
+if test "X$with_c_utils" = "Xyes"; then
+   with_c_utils="/usr"
+fi
+
+if test "X$with_c_utils" = "Xembedded" ; then
+   c_utils_embedded=1
+   old_ac_configure_args="$ac_configure_args"
+   ac_configure_args="$ac_configure_arge --disable-shared"
+   AC_CONFIG_SUBDIRS([src/c-utils])
+   ac_configure_args="$old_ac_configure_args"
+else
+   CPPFLAGS="-I${with_c_utils}/include"
+   LDFLAGS="-L${with_c_utils}/lib"
+   AC_CHECK_HEADER([c-utils-common.h],[],
+            [AC_MSG_ERROR([Could not find c-utils at prefix
+             ${with_c_utils}!])])
+   AC_CHECK_LIB([c-utils],[bj_hashlittle2],[],
+                [AC_MSG_ERROR([Could not find useable
+              C-Utils library at prefix ${with_c_utils}!])])
+fi
 
 dnl =========================================================================
 dnl == OpenPA ===============================================================
