@@ -140,9 +140,7 @@ dnl =========================================================================
 # OpenPA
 AC_ARG_WITH([openpa],
             [AS_HELP_STRING([[--with-openpa[=DIR]]],
-                             [rather than the one included in src/openpa.  Pass
-                             "embedded" to force usage of the OpenPA source
-                             distributed with triton.])],
+                             [Use OpenPA installed in DIR])],
             [],
             [
              OLDLIBS="$LIBS"
@@ -155,7 +153,7 @@ OPA_store_int(&i,10);
 OPA_fetch_and_incr_int(&i);
 ])dnl
                              ],
-                            [with_openpa=system],
+                            [with_openpa="/usr"],
                             [with_openpa="/usr"])
              LIBS="$OLDLIBS"
              ])
@@ -163,41 +161,16 @@ OPA_fetch_and_incr_int(&i);
 opadir=""
 AC_SUBST([opadir])
 
-if test "$with_openpa" = "embedded" ; then
-   AC_MSG_ERROR([Embedded mode disabled for OpenPA!])
-    if test -e "${srcdir}/extern/openpa" ; then
-        opadir="openpa"
-        EXTERNAL_SRC_DIRS="$EXTERNAL_SRC_DIRS extern/openpa"
-        CPPFLAGS="-I${srcdir}/extern/openpa/src $CPPFLAGS"
-        AC_CONFIG_SUBDIRS([extern/openpa])
-        LIBS="-lopa $LIBS"
-    else
-        AC_MSG_WARN([Attempted to use the embedded OpenPA source tree in dnl
-                     "${srcdir}/extern/openpa", but it is missing.
-                     Configuration or dnl
-                     compilation may fail later.]) dnl
-    fi
-elif test "$with_openpa" = "system" ; then
-   dummy="dummy";
-   dnl LIBS="-lopa $LIBS"
-elif test "$with_openpa" = "no" ; then
-   AC_MSG_ERROR([OpenPA is required!])
-else
-    # The user specified an already-installed OPA; just sanity check, don't
-    # subconfigure it
-    AS_IF([test -s "${with_openpa}/include/opa_primitives.h" -a -s "${with_openpa}/include/opa_config.h"],
+AS_IF([test -s "${with_openpa}/include/opa_primitives.h" -a \
+            -s "${with_openpa}/include/opa_config.h"],
           [:],[AC_MSG_ERROR([the OpenPA installation in "${with_openpa}" appears broken])])
-    CPPFLAGS="-I${with_openpa}/include $CPPFLAGS"
-dnl CPPFLAGS="-I${ac_top_build_prefix}/extern/openpa"
-dnl    LIBS="-lopa $LIBS"
-    LDFLAGS="-L${with_openpa}/lib $LDFLAGS"
-fi
+
+CPPFLAGS="-I${with_openpa}/include $CPPFLAGS"
+LDFLAGS="-L${with_openpa}/lib $LDFLAGS"
 
 
-AC_CHECK_LIB([opa],[OPA_Queue_init],[],[AC_MSG_ERROR([Could not find useable
-              OpenPA library!])])
-
-dnl AC_SUBST([subdirs])
+AC_CHECK_LIB([opa],[OPA_Queue_init],[],
+       [AC_MSG_ERROR([Could not find useable OpenPA library!])])
 
 dnl =========================================================================
 dnl == Google's PerfTools ===================================================
