@@ -100,7 +100,6 @@ dnl ==== Check for C-Utils ==================================================
 dnl =========================================================================
 
 
-# OpenPA
 AC_ARG_WITH([c-utils],
             [AS_HELP_STRING([[--with-c-utils[=DIR]]],
                              ["embedded" or "path"])],
