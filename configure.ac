@@ -73,6 +73,27 @@ AS_IF([test "x$enable_valgrind_clean" = "xyes"], [
 ])
 AC_SUBST(VALGRIND_CLEAN)
 
+dnl =========================================================================
+dnl ==== Check for libev ====================================================
+dnl =========================================================================
+
+AC_ARG_WITH([libev],
+            [AS_HELP_STRING([[--with-libev=[DIR]]],
+                            [Use libev from specified directory])])
+
+libev_prefix=
+AC_SUBST([libev_prefix])
+
+CPPFLAGS="$CPPFLAGS -I${with_libev}/include"
+LDFLAGS="$LDFLAGS -L${with_libev}/lib"
+
+AC_CHECK_HEADER([ev.h],[],
+         [AC_MSG_ERROR([Could not find libev header in
+          ${with_libev}/include!])])
+AC_CHECK_LIB([ev],[ev_once],[],
+             [AC_MSG_ERROR([Could not find useable
+           libev library at prefix ${with_libev}/lib!])])
+
 
 dnl =========================================================================
 dnl ==== Check for C-Utils ==================================================
