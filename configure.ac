@@ -123,8 +123,8 @@ if test "X$with_c_utils" = "Xembedded" ; then
    ac_configure_args="$old_ac_configure_args"
    AC_MSG_WARN([Embedded c-utils mode is deprecated and will be removed soon!])
 else
-   CPPFLAGS="-I${with_c_utils}/include"
-   LDFLAGS="-L${with_c_utils}/lib"
+   CPPFLAGS="$CPPFLAGS -I${with_c_utils}/include"
+   LDFLAGS="$LDFLAGS -L${with_c_utils}/lib"
    AC_CHECK_HEADER([c-utils-common.h],[],
             [AC_MSG_ERROR([Could not find c-utils at prefix
              ${with_c_utils}!])])
