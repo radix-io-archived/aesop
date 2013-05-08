@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set
+
 # get root
 SRC_ROOT=$PWD
 
