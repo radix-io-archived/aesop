@@ -23,44 +23,13 @@ fi
 #==== AESOP Dependencies ======================================
 #==============================================================
 
+./maint/jenkins/prepare_environment.sh
 
-#------------------
-# Install OpenPA
-#------------------
+source ./properties.prop
 
-OPENPA=${BUILD_ROOT}/openpa
-./maint/jenkins/install-openpa.sh $OPENPA || exit 6
-CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-openpa=${OPENPA}"
-
-#------------------
-# Install c-utils
-#------------------
-
-CUTILS=${BUILD_ROOT}/c-utils
-./maint/jenkins/install-c-utils.sh $CUTILS || exit 7
-CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-c-utils=${CUTILS}"
-
-
-#------------------------------------------------------------
-# check if we have cabal & Haskell Libs
-#------------------------------------------------------------
-
-CABAL=$(which cabal)
-if test -z $CABAL; then
-   ./maint/hs/setup-cabal-local || exit 3
-   export PATH=$PATH:$HOME/.cabal/bin
-   CABAL=$(which cabal)
-   if test -z $CABAL; then
-      echo "Error installing cabal!" > /dev/stderr
-      exit 3
-   fi
-fi
-
-# Get HS packages
-./maint/hs/setup-hs-local || exit 4
-
-# Get modified Language.C
-./maint/hs/setup-aesop || exit 5
+CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-libev=${AESOP_LIBEV}"
+CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-openpa=${AESOP_OPENPA}"
+CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-c-utils=${AESOP_CUTILS}"
 
 #===============================================================
 # Build AESOP
