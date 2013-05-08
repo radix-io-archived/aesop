@@ -19,7 +19,7 @@ pushd $TMPDIR
 wget -c -O ${CACHEDIR}/libev-4.15.tar.gz http://dist.schmorp.de/libev/libev-4.15.tar.gz
 tar -xzf ${CACHEDIR}/libev-4.15.tar.gz
 cd libev-4.15
-./configure --prefix=$PREFIX && make && make install
+./configure --disable-shared --enable-static --prefix=$PREFIX && make && make install
 popd
 
 
