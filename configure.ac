@@ -121,6 +121,7 @@ if test "X$with_c_utils" = "Xembedded" ; then
    ac_configure_args="$ac_configure_arge --disable-shared"
    AC_CONFIG_SUBDIRS([src/c-utils])
    ac_configure_args="$old_ac_configure_args"
+   AC_MSG_WARN([Embedded c-utils mode is deprecated and will be removed soon!])
 else
    CPPFLAGS="-I${with_c_utils}/include"
    LDFLAGS="-L${with_c_utils}/lib"
