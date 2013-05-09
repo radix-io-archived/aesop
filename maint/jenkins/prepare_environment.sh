@@ -10,10 +10,6 @@ PROPS=properties.prop
 
 echo "# Aesop build environment properties" > $PROPS
 
-echo "setting vars"
-echo "AESOP_CUTILS = test directory" >> properties.prop
-echo "AESOP_LIBEV = test directory 2" >> properties.prop
-
 echo "==========================================="
 echo "========== Installing libev ==============="
 echo "==========================================="
