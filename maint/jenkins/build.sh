@@ -31,6 +31,9 @@ CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-libev=${AESOP_LIBEV}"
 CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-openpa=${AESOP_OPENPA}"
 CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-c-utils=${AESOP_CUTILS}"
 
+export LD_LIBRARY_PATH=${AESOP_CUTILS}/lib:${AESOP_LIBEV}/lib:${AESOP_OPENPA}/lib:$LD_LIBRARY_PATH
+
+
 #===============================================================
 # Build AESOP
 #===============================================================
