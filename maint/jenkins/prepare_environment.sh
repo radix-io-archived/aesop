@@ -6,9 +6,9 @@ echo "========================================================="
 
 set
 
-PROPS=properties.prop
+PROPS=$1
 
-echo "# Aesop build environment properties" > $PROPS
+echo "# Aesop build environment properties $(date)" > $PROPS
 
 echo "==========================================="
 echo "========== Installing libev ==============="

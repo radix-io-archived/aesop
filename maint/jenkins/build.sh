@@ -10,6 +10,8 @@ INSTALL_ROOT=$PWD/install
 
 CONFIGURE_OPTS=
 
+PROPS=$BUILD_ROOT/dependencies.sh
+
 #==============================================================
 
 if ! test -d ${BUILD_ROOT} ; then
@@ -23,9 +25,9 @@ fi
 #==== AESOP Dependencies ======================================
 #==============================================================
 
-./maint/jenkins/prepare_environment.sh
+./maint/jenkins/prepare_environment.sh $PROPS
 
-source ./properties.prop
+source $PROPS
 
 CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-libev=${AESOP_LIBEV}"
 CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-openpa=${AESOP_OPENPA}"
