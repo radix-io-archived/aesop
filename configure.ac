@@ -90,9 +90,16 @@ LDFLAGS="$LDFLAGS -L${with_libev}/lib"
 AC_CHECK_HEADER([ev.h],[],
          [AC_MSG_ERROR([Could not find libev header in
           ${with_libev}/include!])])
-AC_CHECK_LIB([ev],[ev_once],[],
+
+AC_CHECK_LIB([ev],[ev_once],[evok=1],
+             [evok=0])
+if test "A$evok" == "A0"; then
+   AC_CHECK_LIB([m], [log], [], [])
+   AC_CHECK_LIB([ev], [ev_once], [],
              [AC_MSG_ERROR([Could not find useable
            libev library at prefix ${with_libev}/lib!])])
+fi
+
 
 
 dnl =========================================================================
