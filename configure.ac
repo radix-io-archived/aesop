@@ -95,7 +95,8 @@ AC_CHECK_LIB([ev],[ev_once],[evok=1],
              [evok=0])
 if test "A$evok" == "A0"; then
    AC_CHECK_LIB([m], [log], [], [])
-   AC_CHECK_LIB([ev], [ev_once], [],
+   dnl Needs to be a different function to avoid hitting cache
+   AC_CHECK_LIB([ev], [ev_break], [],
              [AC_MSG_ERROR([Could not find useable
            libev library at prefix ${with_libev}/lib!])])
 fi
