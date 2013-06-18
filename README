@@ -2,8 +2,18 @@ For the latest version and for bug reports, please go to
 http://trac.mcs.anl.gov/projects/aesop
 
 
+INSTALLATION
+============
 
-ENVIRONMENT VARIABLES
+Aesop requires at least the following external libraries to be installed:
+
+c-utils  (http://trac.mcs.anl.gov/projects/c-utils)
+libev
+openpa (http://trac.mcs.anl.gov/projects/openpa)
+
+
+ENVIRONMENT VARIABLES 
+===================== 
 
 AESOP_DEBUG:
   if 1:

@@ -42,9 +42,6 @@ libdir = $(DESTDIR)@libdir@
 A2X = @A2X@
 ASCIIDOC = @ASCIIDOC@
 
-# subdirs that contain configure/make
-SUBDIRS = @subdirs@
-
 VPATH = $(srcdir)
 AEPRETTY =
 AEDEBUG =
@@ -78,7 +75,7 @@ ifeq ($(BUILD_SSM),1)
    LIBS += -lssm_ref -lssmp_mpi
 endif
 
-CFLAGS=-I$(builddir)/src/c-utils/include -I$(srcdir)/include -I. -Iinclude -I src/c-utils \
+CFLAGS=-I$(srcdir)/include -I. -Iinclude \
  -I$(srcdir) \
  @CFLAGS@ @DB_CFLAGS@ $(CPPFLAGS)
 
@@ -114,12 +111,12 @@ CWARNS += -Wno-unused-label
 LDSHARED = $(TCC) -shared
 
 LIBCFLAGS=@LIBCFLAGS@
-LDFLAGS += @LDFLAGS@ -L$(builddir)/src/c-utils/lib
+LDFLAGS += @LDFLAGS@ 
 
 # hack for now
-LDFLAGS += @LDFLAGS@ -L$(builddir)/src/c-utils/lib/.libs
+LDFLAGS += @LDFLAGS@ 
 
-LIBS += @LIBS@ @DB_LIB@ -lc-utils -lm -lpthread
+LIBS += @LIBS@ @DB_LIB@ -lm -lpthread
 
 DEPLIBS += @THREAD_LIB@
 
@@ -207,15 +204,12 @@ endif
 # MODULES is a list of subdirectories that we wish to operate on.
 #    They are identified by the presence of module.mk files (makefile
 #    includes).
-MODULES := $(shell find . -name "*.mk" |grep -v c-utils| sed -e 's/^.\///;s/module.mk//')
+MODULES := $(shell find . -name "*.mk" |sed -e 's/^.\///;s/module.mk//')
 
 
 ################################################################
 # Default target forward pointer, to avoid other targets in make stubs
 all::
-
-all:: subdirs
-
 
 ###############################################################
 # HACK for broken .hae headers
@@ -225,15 +219,6 @@ headers: resources/sem/sem.h \
 
 ###############################################################
 
-
-################################################################
-# Subdir configure
-################################################################
-.PHONY: subdirs $(SUBDIRS)
-subdirs: $(SUBDIRS)
-
-$(SUBDIRS) :
-	make -C $@ $(MAKECMDGOALS)
 
 ################################################################
 # Auto regenerate makefile / rerun configure                   #
@@ -690,16 +675,6 @@ docs: $(DOCPDF)
 doc: $(DOCPDF)
 docshtml: $(DOCHTML)
 dochtml: $(DOCHTML)
-
-# manually add some c-utils headers to the install list
-
-INSTALL_HDR += src/c-utils/triton-list.h \
- src/c-utils/triton-thread.h \
- src/c-utils/triton-base.h \
- src/c-utils/triton-hash.h \
- src/c-utils/triton-string.h \
- src/c-utils/triton-uint128.h \
- src/c-utils/jenkins-hash.h
 
 INSTALL_HDR_SRC=$(patsubst %,$(abs_srcdir)/%,$(INSTALL_HDR))
 

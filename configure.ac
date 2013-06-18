@@ -91,7 +91,7 @@ AC_CHECK_HEADER([ev.h],[],
          [AC_MSG_ERROR([Could not find libev header in
           ${with_libev}/include!])])
 
-AC_CHECK_LIB([ev],[ev_once],[evok=1],
+AC_CHECK_LIB([ev],[ev_once],[evok=1; LIBS="-lev $LIBS"],
              [evok=0])
 if test "A$evok" == "A0"; then
    AC_CHECK_LIB([m], [log], [], [])
@@ -110,36 +110,21 @@ dnl =========================================================================
 
 AC_ARG_WITH([c-utils],
             [AS_HELP_STRING([[--with-c-utils[=DIR]]],
-                             ["embedded" or "path"])],
+                             [Installation path of c-utils])],
             [],
-            [ with_c_utils="embedded"])
+            [ with_c_utils="/usr"])
 
 c_utils_prefix=""
-c_utils_embedded=
 AC_SUBST([c_utils_prefix])
-AC_SUBST([c_utils_embedded])
 
-if test "X$with_c_utils" = "Xyes"; then
-   with_c_utils="/usr"
-fi
-
-if test "X$with_c_utils" = "Xembedded" ; then
-   c_utils_embedded=1
-   old_ac_configure_args="$ac_configure_args"
-   ac_configure_args="$ac_configure_arge --disable-shared"
-   AC_CONFIG_SUBDIRS([src/c-utils])
-   ac_configure_args="$old_ac_configure_args"
-   AC_MSG_WARN([Embedded c-utils mode is deprecated and will be removed soon!])
-else
-   CPPFLAGS="$CPPFLAGS -I${with_c_utils}/include"
-   LDFLAGS="$LDFLAGS -L${with_c_utils}/lib"
-   AC_CHECK_HEADER([c-utils-common.h],[],
+CPPFLAGS="$CPPFLAGS -I${with_c_utils}/include"
+LDFLAGS="$LDFLAGS -L${with_c_utils}/lib"
+AC_CHECK_HEADER([c-utils-common.h],[],
             [AC_MSG_ERROR([Could not find c-utils at prefix
              ${with_c_utils}!])])
-   AC_CHECK_LIB([c-utils],[bj_hashlittle2],[],
+AC_CHECK_LIB([c-utils],[bj_hashlittle2],[],
                 [AC_MSG_ERROR([Could not find useable
               C-Utils library at prefix ${with_c_utils}!])])
-fi
 
 dnl =========================================================================
 dnl == OpenPA ===============================================================
