@@ -695,9 +695,11 @@ include/aesop/.done:
 install:: all
 	install -Cv -d $(bindir)
 	install -Cv -d $(libdir)
+	install -Cv -d $(libdir)/pkgconfig
 	install -Cv -d $(includedir)
 	install -Cv -m 755 parser/ae-blocking-parser $(bindir)
 	install -Cv -m 755 bin/aecc $(bindir)
 	install -Cv -m 755 bin/aecc-utils $(bindir)
 	install -Cv -m 644 lib/libaesop.* $(libdir)
+	install -Cv -m 644 maint/aesop.pc $(libdir)/pkgconfig/
 	install -Cv -m 644 $(INSTALL_HDR_SRC) $(includedir)

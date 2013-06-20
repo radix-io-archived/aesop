@@ -1,0 +1,12 @@
+# This gives access to the mercury header files
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+libdir=@libdir@
+aesop_pkgconfig_libs=@AESOP_PKGCONFIG_LIBS@
+
+Name: aesop
+Description: language for high concurrency system software development
+Version: @AESOP_VERSION@
+URL: http://trac.mcs.anl.gov/projects/aesop
+Requires:
+Libs: -L${libdir} -laesop ${aesop_pkgconfig_libs}

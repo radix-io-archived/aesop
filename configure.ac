@@ -86,6 +86,7 @@ AC_SUBST([libev_prefix])
 
 CPPFLAGS="$CPPFLAGS -I${with_libev}/include"
 LDFLAGS="$LDFLAGS -L${with_libev}/lib"
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_libev}/lib -lev"
 
 AC_CHECK_HEADER([ev.h],[],
          [AC_MSG_ERROR([Could not find libev header in
@@ -119,6 +120,7 @@ AC_SUBST([c_utils_prefix])
 
 CPPFLAGS="$CPPFLAGS -I${with_c_utils}/include"
 LDFLAGS="$LDFLAGS -L${with_c_utils}/lib"
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_c_utils}/lib -lc-utils"
 AC_CHECK_HEADER([c-utils-common.h],[],
             [AC_MSG_ERROR([Could not find c-utils at prefix
              ${with_c_utils}!])])
@@ -160,6 +162,7 @@ AS_IF([test -s "${with_openpa}/include/opa_primitives.h" -a \
 
 CPPFLAGS="-I${with_openpa}/include $CPPFLAGS"
 LDFLAGS="-L${with_openpa}/lib $LDFLAGS"
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_openpa}/lib -lopa"
 
 
 AC_CHECK_LIB([opa],[OPA_Queue_init],[],
@@ -348,6 +351,8 @@ AC_SUBST(AECC_CFLAGS)
 
 AC_SUBST(LIBCFLAGS)
 AC_SUBST(THREAD_LIB)
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} ${THREAD_LIB}"
+AC_SUBST(AESOP_PKGCONFIG_LIBS)
 
 AC_CONFIG_FILES([bin/aecc-utils], [])
 AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
@@ -376,5 +381,6 @@ tests/module.mk
 parser/module.mk
 parser/tests/blocking/module.mk
 doc/module.mk
+maint/aesop.pc
 ])
 
