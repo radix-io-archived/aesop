@@ -1,0 +1,46 @@
+External library prerequisites
+==============================
+
+Please install the following:
+
+* libev (http://software.schmorp.de/pkg/libev.html)
+* openpa (http://trac.mcs.anl.gov/projects/openpa)
+* c-utils (git clone git://git.mcs.anl.gov/c-utils)
+
+Haskell prerequisites
+=====================
+
+* Install GHC 
+  * preferred method: use packages provided with OS distribution
+  * alternate: see http://www.haskell.org/ghc/
+
+* Install cabal
+  * preferred method: use packages provided with OS distribution
+  * alternate: install locally with maint/hs/setup-cabal-local
+
+* Install required Haskell libraries via cabal
+  * maint/hs/setup-hs-local
+
+* Install language-c package with Aesop modifications
+  * maint/hs/setup-aesop
+    note: this step must be repeated for new aesop source directories
+
+Configuring Aesop
+=================
+
+./configure \
+ --with-libev=<LIBEV_INSTALL_PREFIX> \
+ --with-openpa=<OPENPA_INSTALL_PREFIX> \
+ --with-c-utils=<C-UTILS_INSTALL_PREFIX> \
+ --prefix=<AESOP_INSTALL_PREFIX>
+
+Building and installing Aesop
+=============================
+
+* Build and install
+  make 
+  make install
+
+* (optional) build test programs
+  make tests
+
