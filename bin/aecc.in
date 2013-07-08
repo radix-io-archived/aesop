@@ -103,7 +103,7 @@ if test "${hasOpt_from_interm}" != "yes"; then
     elif test "${hasOpt_parse_hae}" = "yes"; then
         poutfile=${outputfile}
     else
-        poutfile=${buildifile}.s
+        poutfile=${outputfile%.*}.s
         addToClean ${poutfile}
     fi
 
