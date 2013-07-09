@@ -155,7 +155,8 @@ static void find_async_watcher(int resource_id, ev_async** async_out)
 
     if(!async)
     {
-        aesop_err("Error: resource_id %d is unknown to aesop.  Are you using a resource that was not initialized?\n", resource_id);
+        aesop_err("Error: resource_id %d is unknown to aesop.  Are you using"
+                " a resource that was not initialized?\n", resource_id);
         assert(0);
     }
 
