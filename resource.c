@@ -37,7 +37,6 @@ static int ae_resource_count = 0;
 static struct ae_resource_entry ae_resource_entries[MAX_RESOURCES]; 
 static struct ev_loop *eloop = NULL;
 ev_async eloop_breaker;
-static pthread_t ev_loop_thread;
 
 #define AE_RESOURCE_IDX2ID(reindex) (reindex+16)
 #define AE_RESOURCE_ID2IDX(rid) (rid-16)
@@ -93,7 +92,6 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
         }
     }
 
-    ev_loop_thread = pthread_self();
     if(eloop == NULL)
     {
         /* This is the first resource to be registered.  Initialize the
@@ -174,17 +172,17 @@ static void find_async_watcher(int resource_id, ev_async** async_out)
  */
 void ae_poll_break()
 {
-    if(pthread_equal(ev_loop_thread, pthread_self()))
-    {
-        /* this was called from the event loop thread, so we know that it is
-         * already awake.  Just make sure that it exits if the
-         * ae_poll_break() as called from a libev callback.
-         */
-        ev_break(eloop, EVBREAK_ONE);
-        return;
-    }
-
+    // Note: it is safe to call ev_break from outside of ev_run
+    // (in which case it has no effect), so we don't care if this is
+    // called from within the main event loop thread or from some other
+    // thread.
+    //
+    // This might (but probably not, as ev_break will still process all
+    // pending events before breaking) cause the next ev_run call to return
+    // early, but that should be OK as the event loop will typically call
+    // ev_run forever.
     ev_async_send(eloop, &eloop_breaker);
+    ev_break(eloop, EVBREAK_ONE);
 }
 
 /**
