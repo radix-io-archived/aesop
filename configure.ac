@@ -65,7 +65,7 @@ dnl ====================================================
 AC_CHECK_PROGS(TIMEOUT_PROG,[timeout])
 TEST_RUNNER=
 if test -n ${TIMEOUT_PROG}; then
-   TEST_RUNNER="${TIMEOUT_PROG} -k 400s 300s --foreground"
+   TEST_RUNNER="${TIMEOUT_PROG} -k 400 300"
 fi
 AC_SUBST(TEST_RUNNER)
 
