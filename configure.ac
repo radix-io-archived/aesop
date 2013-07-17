@@ -58,6 +58,17 @@ fi
 
 AX_GHC("")
 
+
+dnl ====================================================
+dnl = Find timeout program to safely run tests for now =
+dnl ====================================================
+AC_CHECK_PROGS(TIMEOUT_PROG,[timeout])
+TEST_RUNNER=
+if test -n ${TIMEOUT_PROG}; then
+   TEST_RUNNER="${TIMEOUT_PROG} -k 400s 300s --foreground"
+fi
+AC_SUBST(TEST_RUNNER)
+
 dnl ======================================================================
 dnl  Try harder to be valgrind safe
 dnl ======================================================================

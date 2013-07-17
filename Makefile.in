@@ -38,6 +38,9 @@ sbindir = $(DESTDIR)@sbindir@
 bindir = $(DESTDIR)@bindir@
 libdir = $(DESTDIR)@libdir@
 
+# tests
+TEST_RUNNER=@TEST_RUNNER@
+
 # tools
 A2X = @A2X@
 ASCIIDOC = @ASCIIDOC@
@@ -550,13 +553,11 @@ $(runTESTS): run%: %
 	@if test -n "$(call testparams,$<)"; then \
 		for p in $(call testparams,$<); do \
 			echo -n "Running $< $$p..."; \
-			./$< $$p > /dev/null; \
-			echo "done."; \
+			$(TEST_RUNNER) ./$< $$p > /dev/null && echo OK || echo FAILED; \
 		done \
 	else \
 		echo -n "Running $<..."; \
-		./$< > /dev/null; \
-		echo "done."; \
+		$(TEST_RUNNER) ./$< > /dev/null && echo OK || echo FAILED;\
 	fi
 
 check: $(runTESTS) test_results
