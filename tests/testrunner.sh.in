@@ -47,11 +47,15 @@ echo "1..${TESTCOUNT}" >&3
 
 testnumber=0
 
+TMPOUT=$(mktemp)
+TMPERR=$(mktemp)
+
 for test in $*; do
    testnumber=$((testnumber+1))
-   output="$(${TEST_RUNNER} -k ${opt_kill} $opt_timeout $test)"
+   ${TEST_RUNNER} -k ${opt_kill} $opt_timeout $test >"${TMPOUT}" 2>"${TMPERR}"
    ret=$?
    tap="not ok"
+   status="FAILED"
    directive=""
    case ${ret} in
       0) tap="ok" status="ok";;
@@ -60,7 +64,10 @@ for test in $*; do
     137) status="TIMEOUT(KILL)"; directive="#timeout-killed" ;;
    esac
    echo "${tap} ${testnumber} - ${test} ${directive}" >&3
-   test -n "${output}" && echo "${output}" | sed -e 's/^/      | /g' >&4
+   cat ${TMPERR}  | sed -e 's/^/      + /g' >&4
+   cat ${TMPOUT}  | sed -e 's/^/      | /g' >&4
+   cat ${TMPERR}  | sed -e 's/^/    #   + /g'
+   rm ${TMPOUT} ${TMPERR}
    echo -e "    # ${status}\t [${testnumber}/${TESTCOUNT}] - $test" >&2
 
    if test "${ret}" -eq 130; then
