@@ -62,12 +62,12 @@ AX_GHC("")
 dnl ====================================================
 dnl = Find timeout program to safely run tests for now =
 dnl ====================================================
+TIMEOUT_PROG=
 AC_CHECK_PROGS(TIMEOUT_PROG,[timeout])
-TEST_RUNNER=
-if test -n ${TIMEOUT_PROG}; then
-   TEST_RUNNER="${TIMEOUT_PROG} -k 400 300"
+if test -z "$TIMEOUT_PROG"; then
+   AC_MSG_ERROR("Could not find 'timeout' program!")
 fi
-AC_SUBST(TEST_RUNNER)
+AC_SUBST(TIMEOUT_PROG)
 
 dnl ======================================================================
 dnl  Try harder to be valgrind safe
@@ -367,6 +367,8 @@ AC_SUBST(AESOP_PKGCONFIG_LIBS)
 
 AC_CONFIG_FILES([bin/aecc-utils], [])
 AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
+
+AC_CONFIG_FILES([tests/testrunner.sh], [chmod +x tests/testrunner.sh])
 
 AC_OUTPUT([Makefile
 resources/worker/module.mk
