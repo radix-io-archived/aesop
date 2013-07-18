@@ -10,11 +10,13 @@ TEST_RUNNER="@TIMEOUT_PROG@"
 opt_verbose=
 opt_timeout=600
 opt_outputfile=
-while getopts vt:o: name
+opt_kill="$((opt_timeout+60))"
+while getopts vk:t:o: name
 do
     case $name in
     t)    opt_timeout="$OPTARG";;
     v)    opt_verbose=1 ;;
+    k)    opt_kill="$OPTARG";;
     o)    opt_outputfile="$OPTARG";;
     ?)   printf "Usage: %s: [-o outputfile] [-v] [-t timeout] test test test\n" $0
           exit 2;;
@@ -47,17 +49,19 @@ testnumber=0
 
 for test in $*; do
    testnumber=$((testnumber+1))
-   ${TEST_RUNNER} $opt_timeout "$test" | sed -e 's/^/#   /' >&4
+   ${TEST_RUNNER} -k ${opt_kill} $opt_timeout "$test" >&4
    ret=$?
-   if test "${ret}" -eq 0; then
-      echo -n "ok " >&3
-      echo "${testnumber} - ${test}" >&3
-      echo -e "    # OK\t [${testnumber}/${TESTCOUNT}] - $test" >&2
-   else
-      echo -n "not ok " >&3
-      echo "${testnumber} - ${test}" >&3
-      echo -e "    # FAIL\t [${testnumber}/${TESTCOUNT}] - $test" >&2
-   fi
+   tap="not ok"
+   directive=""
+   case ${ret} in
+      0) tap="ok" status="ok";;
+    130) status="[interrupted]"; directive="# Ctrl-C received; test interrupted" ;;
+    124) status="TIMEOUT"; directive="#timeout" ;;
+    137) status="TIMEOUT(KILL)"; directive="#timeout-killed" ;;
+   esac
+   echo "${tap} ${testnumber} - ${test} ${directive}" >&3
+   echo -e "    # ${status}\t [${testnumber}/${TESTCOUNT}] - $test" >&2
+
    if test "${ret}" -eq 130; then
       echo "Ctrl-C received. Stopping tests"
       exit 2
