@@ -542,7 +542,7 @@ all::  $(PROGRAMS) $(LIBRARIES)
 
 .PHONY: check
 check: $(TESTS)
-	@$(TEST_RUNNER) -o ${builddir}/tests/test_results.tap $(TESTS)
+	@$(TEST_RUNNER) -v -o ${builddir}/tests/test_results.tap $(TESTS)
 
 .PHONY: tests
 tests: test

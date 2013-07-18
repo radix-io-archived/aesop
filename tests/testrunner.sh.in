@@ -8,7 +8,7 @@
 TEST_RUNNER="@TIMEOUT_PROG@"
 
 opt_verbose=
-opt_timeout=600
+opt_timeout=300
 opt_outputfile=
 opt_kill="$((opt_timeout+60))"
 while getopts vk:t:o: name
@@ -39,7 +39,7 @@ if test -z "$opt_verbose" ; then
    exec 4>/dev/null;
 #   exec 5>/dev/null;
 else
-   exec 4>&0;
+   exec 4>&3;
 #   exec 2>&5;
 fi
 
@@ -49,7 +49,7 @@ testnumber=0
 
 for test in $*; do
    testnumber=$((testnumber+1))
-   ${TEST_RUNNER} -k ${opt_kill} $opt_timeout "$test" >&4
+   output="$(${TEST_RUNNER} -k ${opt_kill} $opt_timeout $test)"
    ret=$?
    tap="not ok"
    directive=""
@@ -60,6 +60,7 @@ for test in $*; do
     137) status="TIMEOUT(KILL)"; directive="#timeout-killed" ;;
    esac
    echo "${tap} ${testnumber} - ${test} ${directive}" >&3
+   test -n "${output}" && echo "${output}" | sed -e 's/^/      | /g' >&4
    echo -e "    # ${status}\t [${testnumber}/${TESTCOUNT}] - $test" >&2
 
    if test "${ret}" -eq 130; then
