@@ -64,8 +64,8 @@ for test in $*; do
     137) status="TIMEOUT(KILL)"; directive="#timeout-killed" ;;
    esac
    echo "${tap} ${testnumber} - ${test} ${directive}" >&3
-   cat ${TMPERR}  | sed -e 's/^/      + /g' >&4
-   cat ${TMPOUT}  | sed -e 's/^/      | /g' >&4
+   cat ${TMPERR}  | sed -e 's/^/#      + /g' >&4
+   cat ${TMPOUT}  | sed -e 's/^/#      | /g' >&4
    echo -e "    # ${status}\t [${testnumber}/${TESTCOUNT}] - $test" >&2
    cat ${TMPERR}  | sed -e 's/^/    #   + /g' >&2
 
