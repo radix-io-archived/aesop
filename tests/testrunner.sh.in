@@ -66,9 +66,10 @@ for test in $*; do
    echo "${tap} ${testnumber} - ${test} ${directive}" >&3
    cat ${TMPERR}  | sed -e 's/^/      + /g' >&4
    cat ${TMPOUT}  | sed -e 's/^/      | /g' >&4
-   cat ${TMPERR}  | sed -e 's/^/    #   + /g'
-   rm ${TMPOUT} ${TMPERR}
    echo -e "    # ${status}\t [${testnumber}/${TESTCOUNT}] - $test" >&2
+   cat ${TMPERR}  | sed -e 's/^/    #   + /g' >&2
+
+   rm ${TMPOUT} ${TMPERR}
 
    if test "${ret}" -eq 130; then
       echo "Ctrl-C received. Stopping tests"
