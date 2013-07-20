@@ -7,13 +7,15 @@
 
 TEST_RUNNER="@TIMEOUT_PROG@"
 
+opt_directive=
 opt_verbose=
 opt_timeout=300
 opt_outputfile=
 opt_kill="$((opt_timeout+60))"
-while getopts vk:t:o: name
+while getopts d:vk:t:o: name
 do
     case $name in
+    d)    opt_directive="$OPTARG";;
     t)    opt_timeout="$OPTARG";;
     v)    opt_verbose=1 ;;
     k)    opt_kill="$OPTARG";;
@@ -57,16 +59,28 @@ for test in $*; do
    tap="not ok"
    status="FAILED"
    directive=""
+
    case ${ret} in
       0) tap="ok" status="ok";;
-    130) status="[interrupted]"; directive="# Ctrl-C received; test interrupted" ;;
-    124) status="TIMEOUT"; directive="#timeout" ;;
-    137) status="TIMEOUT(KILL)"; directive="#timeout-killed" ;;
+    130) status="[interrupted]"; directive="$directive [Ctrl-C received; test interrupted]" ;;
+    124) status="TIMEOUT"; directive="$directive [timeout]" ;;
+    137) status="TIMEOUT(KILL)"; directive="$directive [timeout-killed]" ;;
    esac
-   echo "${tap} ${testnumber} - ${test} ${directive}" >&3
+ 
+   if test -n "${opt_directive}" ; then
+      extra_dir=$(awk -v key="${test}" '/^\s*#.*/ { next; } $2 == key { print $1 }'  ${opt_directive})
+      if test -n "${extra_dir}"; then
+      case ${extra_dir} in 
+         SKIP) directive="SKIP $directive"; status="$status (SKIP)";;
+         TODO) directive="TODO $directive"; status="$status (TODO)";;
+            *) echo "Unknown directive ($extra_dir)!" >&2;;
+      esac
+      fi
+   fi
+   echo "${tap} ${testnumber} - ${test} # ${directive}" >&3
    cat ${TMPERR}  | sed -e 's/^/#      + /g' >&4
    cat ${TMPOUT}  | sed -e 's/^/#      | /g' >&4
-   echo -e "    # ${status}\t [${testnumber}/${TESTCOUNT}] - $test" >&2
+   echo -e "    # ${status}\t [${testnumber}/${TESTCOUNT}] - $test ($directive)" >&2
    cat ${TMPERR}  | sed -e 's/^/    #   + /g' >&2
 
    rm ${TMPOUT} ${TMPERR}
