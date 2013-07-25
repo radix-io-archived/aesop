@@ -20,7 +20,15 @@
 #include "resources/thread/aethread.hae"
 #include "resource.h"
 
-struct aethread_group* file_threads = NULL;
+/* TODO:
+ * - make thread pool size configurable
+ * - make operation fairness configurable
+ * - make thread usage in metadata ops configurable 
+ */
+
+static struct aethread_group* file_threads = NULL;
+static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
+static int module_refcount = 0;
 
 #define AETHREAD_RUN() \
 do { \
@@ -34,21 +42,95 @@ do { \
 
 int aefile_init(void)
 {
-    assert(file_threads == NULL);
-    /* TODO: make this configurable */
-    file_threads = aethread_create_group_pool(32);
-    if(!file_threads)
-        return(AE_ERR_SYSTEM);
+    int ret;
+
+    triton_mutex_lock(&module_lock);
+
+    if(!module_refcount)
+    {
+        /* initialize required thread resource */
+        ret = aethread_init();
+        if(ret != 0)
+        {
+            triton_mutex_unlock(&module_lock);
+            return(ret);
+        }
+
+        /* TODO: make this configurable */
+        file_threads = aethread_create_group_pool(32);
+        if(!file_threads)
+        {
+            triton_mutex_unlock(&module_lock);
+            return(AE_ERR_SYSTEM);
+        }
+    }
+    module_refcount++;
+    triton_mutex_unlock(&module_lock);
 
     return(0);
 }
 
 void aefile_finalize(void)
 {
-    assert(file_threads);
-    aethread_destroy_group(file_threads);
+    triton_mutex_lock(&module_lock);
+    module_refcount--;
+
+    if(!module_refcount)
+    {
+        aethread_destroy_group(file_threads);
+        aethread_finalize();
+    }
+    triton_mutex_unlock(&module_lock);
 
     return;
+}
+
+__blocking int aefile_open(const char *pathname, int flags, mode_t mode)
+{
+    int ret;
+
+    AETHREAD_RUN();
+
+    ret = open(pathname, flags, mode);
+
+    if(ret == -1)
+    {
+        ret = -errno;
+    }
+    
+    return ret;
+}
+
+__blocking int aefile_close(int fd)
+{
+    int ret;
+
+    AETHREAD_RUN();
+
+    ret = close(fd);
+
+    if(ret == -1)
+    {
+        ret = -errno;
+    }
+    
+    return ret;
+}
+
+
+__blocking int aefile_fstat(int fd, struct stat *buf)
+{
+    int ret;
+
+    AETHREAD_RUN();
+
+    ret = fstat(fd, buf);
+
+    if(ret == -1)
+    {
+        ret = -errno;
+    }
+    return ret;
 }
 
 __blocking ssize_t aefile_pwrite(int fd, const void *buf, size_t count, off_t offset)

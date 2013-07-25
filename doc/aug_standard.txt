@@ -6,38 +6,6 @@ The {aesop} Standard Library
 {aesop} System Interfaces and Tools
 ----------------------------------
 
-Configuration Interface
-~~~~~~~~~~~~~~~~~~~~~~~
-
-{aesop} provides a unified interface to advertise and set configuration
-parameters across code modules.
-
-This section describes the {aesop} user interface to this functionality; The low
-level C interface used for system components is described in
-<<ref-resource-configuration>>.
-
-Querying and setting configuration parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The following function can be used to set arbitrary configuration
-parameters:
-
-[source,c]
-----
-int aesop_set_config(const char* key, const char* value);
-----
-
-The `key` argument is the name of the configuration parameter to be set,
-while the `value` argument is the new value for that configuration
-parameter.  All values must be provided as strings.  The function returns 0
-on success, `AE_ERR_NOT_FOUND` if the key is not known to {aesop}, or
-`AE_ERR_INVAL` if the key is valid but the value is not. 
-
-There is currently no corresponding function to query a configuration
-parameter or list available keys (as of February 2012), although this will be 
-added in future versions of {aesop}.
-
-
 Debugging
 ~~~~~~~~~~
 

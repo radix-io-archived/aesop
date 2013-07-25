@@ -6,7 +6,7 @@
 
 #include <unistd.h>
 #include <aesop/aesop.h>
-#include <aesop/aesop-support.hae>
+#include <aesop/timer.hae>
 #include "parser/tests/blocking/btest.hae"
 #include <assert.h>
 
@@ -30,8 +30,8 @@ static __blocking void run_test(void)
 	    pbranch
 	    {
                 /* cancel the other pbranch */
-                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
-                aesop_cancel_branches_wait();
+                printf("pbranch2: calling aesop_cancel_branches().\n");
+                aesop_cancel_branches();
                 printf("pbranch2: done.\n");
 	    }
 	}
@@ -44,7 +44,11 @@ static __blocking void run_test(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
+    aesop_timer_init();
     run_test();
+    aesop_timer_finalize();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

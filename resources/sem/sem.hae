@@ -1,0 +1,82 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#ifndef AESOP_SEM_SEM_HAE
+#define AESOP_SEM_SEM_HAE
+
+#include "aesop.h"
+#include <triton-thread.h>
+#include "resource.h"
+#include "op.h"
+
+
+struct aesop_sem
+{
+   triton_mutex_t  lock;
+   unsigned int    value;
+   ae_ops_t        wait_queue;
+};
+
+typedef struct aesop_sem aesop_sem_t;
+
+
+int aesop_sem_module_init (void);
+
+void aesop_sem_module_finalize (void);
+
+
+/**
+ * Initialize semaphore; Set the initial value
+ * Returns AE_SUCCESS
+ */
+int aesop_sem_init (aesop_sem_t * sem, unsigned int value);
+
+/**
+ * Destroy semaphore.
+ * There should be no callers sleeping on the semaphore.
+ * Returns AE_SUCCESS
+ */
+int aesop_sem_destroy (aesop_sem_t * sem);
+
+
+/**
+ * Returns AE_SUCCESS
+ */
+int aesop_sem_up (aesop_sem_t * sem);
+
+/**
+ * Returns AE_SUCCESS if the operation was successful;
+ * Returns AE_ERR_CANCELLED when the operation was cancelled
+ * (in which case the semaphore was not modified by this call)
+ */
+__blocking int aesop_sem_down (aesop_sem_t * sem);
+
+
+/**
+ * Set the semaphore to a certain value.
+ * There should not be any callers blockin in aesop_sem_down when calling this
+ * function.
+ */
+int aesop_sem_set (aesop_sem_t * sem, unsigned int value);
+
+
+/**
+ * Retrieve current value of semaphore
+ */
+int aesop_sem_get (aesop_sem_t * sem, unsigned int * value);
+
+
+
+#endif
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

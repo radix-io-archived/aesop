@@ -1,0 +1,218 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <sys/time.h>
+
+#include <aesop/timer.hae>
+#include <triton-list.h>
+#include <aesop/sem.hae>
+#include <pthread.h>
+
+static pthread_t tid;
+static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
+static int module_refcount = 0;
+static triton_mutex_t timer_mutex = TRITON_MUTEX_INITIALIZER;
+static triton_cond_t timer_cond = TRITON_COND_INITIALIZER;
+static TRITON_LIST_DEFINE(timer_queue);
+static int shutting_down = 0;
+
+static void* thread_fn(void* foo);
+
+struct timer_obj
+{
+    struct timeval expire;
+    aesop_sem_t sem;
+    triton_list_link_t link;
+};
+
+/**
+ * run a timer for the specified number of milliseconds
+ * \return 0 on success, -ECANCELED if canceled
+ */
+__blocking int aesop_timer(int millisecs)
+{
+    struct timer_obj* tm;
+    struct timeval adjust, now;
+    struct timer_obj *pos, *scratch, *holder;
+    int ret;
+
+    tm = malloc(sizeof(*tm));
+    if(!tm)
+    {
+        return(AE_ERR_NOMEM);
+    }
+    aesop_sem_init(&tm->sem, 0);
+    triton_list_link_clear(&tm->link);
+
+    /* calculate when this timer will expire */
+    adjust.tv_sec = (int)(millisecs / 1e3);
+    adjust.tv_usec = (millisecs % 1000) * 1e3;
+    gettimeofday(&now, NULL);
+    timeradd(&adjust, &now, &(tm->expire));
+
+    triton_mutex_lock(&timer_mutex);
+
+    /* Insert this timer in the list in ascending order.  Search backwards 
+     * through the queue because newly posted timers are more likely to be
+     * at the end of the queue.
+     */
+    holder = NULL;
+    triton_list_for_each_entry_reverse(pos, scratch, &timer_queue, struct timer_obj, link)
+    {
+        if(timercmp(&(pos->expire), &(tm->expire), <))
+        {
+            break;
+        }
+        holder = pos;
+    }
+    if(holder)
+        triton_list_insert_before(&tm->link, &holder->link, &timer_queue);
+    else
+        triton_list_add_back(&tm->link, &timer_queue);
+
+    /* detect if we are the new head or not */
+    if(triton_list_peek_front(&timer_queue) == &tm->link)
+    {
+        /* if so, wake up the worker thread so that it can adjust its
+         * timeout
+         */
+        triton_cond_signal(&timer_cond);
+    }
+    triton_mutex_unlock(&timer_mutex);
+
+    /* sleep until the worker thread signals that this timer has expired */
+    ret = aesop_sem_down(&tm->sem);
+
+    triton_mutex_lock(&timer_mutex);
+    /* See if we need to remove this from the timer queue or not.  If
+     * operation was cancelled then the progress engine (thread_fn) may not
+     * find the operation.
+     */
+    if(triton_list_return_list(&tm->link))
+        triton_list_del(&tm->link);
+    /* Note that we do not need to signal the thread_fn.  In the worst case
+     * it will simply wake up too early and find nothing to do.
+     */
+    triton_mutex_unlock(&timer_mutex);
+
+    free(tm);
+
+    return ret;
+}
+
+int aesop_timer_init(void)
+{
+    int ret;
+
+    triton_mutex_lock(&module_lock);
+
+    if(!module_refcount)
+    {
+        ret = aesop_sem_module_init();
+        if(ret != 0)
+        {
+            triton_mutex_unlock(&module_lock);
+            return(ret);
+        }
+        ret = pthread_create(&tid, NULL, thread_fn, NULL);
+        if(ret != 0)
+        {
+            aesop_sem_module_finalize();
+            triton_mutex_unlock(&module_lock);
+            return AE_ERR_SYSTEM;
+        }
+    }
+    module_refcount++;
+    triton_mutex_unlock(&module_lock);
+
+    return AE_SUCCESS;
+}
+
+void aesop_timer_finalize(void)
+{
+    triton_mutex_lock(&module_lock);
+    module_refcount--;
+
+    if(!module_refcount)
+    {
+        triton_mutex_lock(&timer_mutex);
+        shutting_down = 1;
+        triton_cond_signal(&timer_cond);
+        triton_mutex_unlock(&timer_mutex);
+
+        pthread_join(tid, NULL);
+        aesop_sem_module_finalize();
+    }
+    triton_mutex_unlock(&module_lock);
+
+    return;
+}
+
+static void* thread_fn(void* foo)
+{
+    triton_list_link_t* head_link;
+    struct timer_obj* tm;
+    struct timeval now;
+    struct timespec abstime;
+
+    triton_mutex_lock(&timer_mutex);
+    while(!shutting_down)
+    {
+        /* look for expired timers */
+        head_link = triton_list_del_front(&timer_queue);
+        while(head_link)
+        {
+            tm = triton_list_get_entry(head_link, struct timer_obj, link);
+
+            gettimeofday(&now, NULL);
+            if(timercmp(&(tm->expire), &now, <))
+            {
+                /* expired; up semaphore */
+                triton_mutex_unlock(&timer_mutex);
+                aesop_sem_up(&tm->sem);
+                triton_mutex_lock(&timer_mutex);
+            }
+            else
+            {
+                /* head item has not expired, put back on queue */
+                triton_list_add_front(&tm->link, &timer_queue);
+                break;
+            }
+            head_link = triton_list_del_front(&timer_queue);
+        }
+
+        if(triton_list_empty(&timer_queue))
+        {
+            /* if there is nothing on the queue, then sleep indefinitely */
+            triton_cond_wait(&timer_cond, &timer_mutex);
+        }
+        else
+        {
+            /* otherwise sleep until the next timer expires */
+            head_link = triton_list_peek_front(&timer_queue);
+            assert(head_link);
+            tm = triton_list_get_entry(head_link, struct timer_obj, link);
+            
+            abstime.tv_sec = tm->expire.tv_sec;
+            abstime.tv_nsec = (long)tm->expire.tv_usec * (long)1000;
+            triton_cond_timedwait(&timer_cond, &timer_mutex, &abstime);
+        }
+    }
+
+    shutting_down = 0;
+    triton_mutex_unlock(&timer_mutex);
+
+    return(NULL);
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

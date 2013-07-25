@@ -1,0 +1,5 @@
+
+DIR := resources/worker/test
+
+AETESTSRC += $(DIR)/worker.ae
+

@@ -14,18 +14,6 @@ static __blocking void run_basic(void)
 	int ret;
 	int a = 0;
 
-        /* test various scenarios of setting a resource configuration
-         * parameter
-         */
-        ret = aesop_set_config("foo", "bar");
-        assert(ret == AE_ERR_NOT_FOUND);
-
-        ret = aesop_set_config("btest.testconfig", "bar");
-        assert(ret == AE_ERR_INVALID);
-
-        ret = aesop_set_config("btest.testconfig", "35");
-        assert(ret == 0);
-
         ret = aesop_set_debugging("foo", 1);
         assert(ret == AE_ERR_NOT_FOUND);
 
@@ -53,7 +41,9 @@ static __blocking void run_basic(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
     run_basic();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

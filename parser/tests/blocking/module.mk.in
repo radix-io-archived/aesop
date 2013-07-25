@@ -1,6 +1,17 @@
 DIR := parser/tests/blocking
 
-AETESTSRC +=  $(DIR)/icpfor.ae \
+
+AETESTSRC +=  \
+	      $(DIR)/empty-blocking.ae \
+	      $(DIR)/cancel-pbranch1.ae \
+	      $(DIR)/cancel-pbranch2.ae \
+	      $(DIR)/cancel-pbranch3.ae \
+	      $(DIR)/cancel-pbranch4.ae \
+	      $(DIR)/cancel-pbranch-loop.ae \
+	      $(DIR)/lonely-pbranch3.ae \
+	      $(DIR)/parallel3.ae \
+	      $(DIR)/nbfun.ae \
+	      $(DIR)/icpfor.ae \
 	      $(DIR)/tcpfor.ae \
 	      $(DIR)/afterwhile.ae \
 	      $(DIR)/basic.ae \
@@ -15,7 +26,6 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/whileloop.ae \
 	      $(DIR)/parallel1.ae \
 	      $(DIR)/parallel2.ae \
-	      $(DIR)/parallel3.ae \
 	      $(DIR)/parallel4.ae \
 	      $(DIR)/parallelfor.ae \
 	      $(DIR)/parallelfor2.ae \
@@ -33,6 +43,7 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/pbreak6.ae \
 	      $(DIR)/pbreak7.ae \
 	      $(DIR)/pbreak8.ae \
+	      $(DIR)/pbranch-empty.ae \
 	      $(DIR)/if.ae \
 	      $(DIR)/ifnoelse.ae \
 	      $(DIR)/ifnoelse2.ae \
@@ -42,23 +53,18 @@ AETESTSRC +=  $(DIR)/icpfor.ae \
 	      $(DIR)/twofors.ae \
 	      $(DIR)/threefors.ae \
 	      $(DIR)/funptrs.ae \
-	      $(DIR)/nbfun.ae \
 	      $(DIR)/pprivate.ae \
 	      $(DIR)/pshared.ae \
 	      $(DIR)/pbreak-before-blocking.ae \
 	      $(DIR)/lonely-pbranch.ae \
 	      $(DIR)/lonely-pbranch2.ae \
-	      $(DIR)/lonely-pbranch3.ae \
 	      $(DIR)/lonely-pbranch4.ae \
 	      $(DIR)/lonely-pbranch-variable-scope.ae \
               $(DIR)/pwait-in-while.ae \
               $(DIR)/pwait-in-for.ae \
               $(DIR)/pbranch-completion.ae \
-	      $(DIR)/cancel-pbranch1.ae \
-	      $(DIR)/cancel-pbranch2.ae \
-	      $(DIR)/cancel-pbranch3.ae \
-	      $(DIR)/cancel-pbranch4.ae \
-	      $(DIR)/cancel-pbranch-loop.ae 
+	      $(DIR)/consecutive-resource-completions.ae \
+	      $(DIR)/minimal.ae
 
 # This should not compile
 #	      $(DIR)/pbranch-with-return.ae

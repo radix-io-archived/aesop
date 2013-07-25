@@ -11,17 +11,15 @@
 struct ae_resource rsc1 = 
 {
     .resource_name = "rsc1",
-    .poll_context = NULL,
+    .poll = NULL,
     .cancel = NULL,
-    .config_array = NULL,
 };
 
 struct ae_resource rsc2 = 
 {
     .resource_name = "rsc2",
-    .poll_context = NULL,
+    .poll = NULL,
     .cancel = NULL,
-    .config_array = NULL,
 };
 
 int main(int argc, char **argv)

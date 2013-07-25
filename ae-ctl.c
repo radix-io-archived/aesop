@@ -10,6 +10,16 @@
 static triton_list_t ae_lone_pbranch_list = TRITON_LIST_STATIC_INITIALIZER(ae_lone_pbranch_list);
 static triton_mutex_t ae_lone_pbranch_mutex = TRITON_MUTEX_INITIALIZER;
 
+
+/**
+ * NOTE: Right now, there (might?) be no need to keep the actual ctl of the
+ * pbranches.
+ *
+ * (Unless some code is relying on ctl->link to check if a pbranch is lonely
+ * or not)
+ *
+ * The count is used to determine when it is safe to stop running the event.
+ */
 void ae_lone_pbranches_add(struct ae_ctl *ctl)
 {
     triton_mutex_lock(&ae_lone_pbranch_mutex);

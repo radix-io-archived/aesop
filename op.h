@@ -9,17 +9,21 @@
 #define __OP_H__
 
 #include "aesop.h"
-#include "src/c-utils/triton-list.h"
+#include <triton-list.h>
 
 #include <stdint.h>
 
+/**
+ * TODO: there's really no reason why the op structure has to be mixed in with
+ * the opcache; The link member is needed for the op_cache, and is not needed
+ * for the op.
+ */
 typedef struct ae_op
 {
     void *callback;
-    int (*op_worker)(struct ae_op* op);
+    /*int (*op_worker)(struct ae_op* op); */
     void *user_ptr;
     ae_hints_t *hints;
-    ae_context_t ctx;
     triton_list_link_t link;
 } ae_op_t;
 
@@ -37,15 +41,13 @@ typedef struct ae_op
         (_op)->callback = (__ae_callback);      \
         (_op)->user_ptr = (__ae_user_ptr);      \
         (_op)->hints = (__ae_hints);            \
-        (_op)->ctx  = (__ae_ctx);               \
     } while(0)
 
-#define ae_op_fill_with_params(_op, _cb, _up, _hints, _ctx) \
+#define ae_op_fill_with_params(_op, _cb, _up, _hints) \
     do {                                                    \
         (_op)->callback = (_cb);                            \
         (_op)->user_ptr = (_up);                            \
         (_op)->hints = (_hints);                            \
-        (_op)->ctx  = (_ctx);                               \
     } while(0)
 
 #define ae_ops_link_clear(_op) triton_list_link_clear(&(_op)->link)
@@ -55,7 +57,6 @@ typedef struct ae_op
         (_op)->callback = NULL;                 \
         (_op)->user_ptr = NULL;                 \
         (_op)->hints = NULL;                    \
-        (_op)->ctx = NULL;                      \
         ae_ops_link_clear(_op);                 \
     } while(0)
 
@@ -67,12 +68,31 @@ typedef triton_list_t ae_ops_t;
 
 #define ae_ops_enqueue(_op, _queue) triton_queue_enqueue(&(_op)->link, _queue)
 
+/**
+ * Initialize the ae op link
+ */
+static inline void ae_ops_link_init (ae_op_t * op)
+{
+   triton_list_link_clear (&op->link);
+}
+
 static inline ae_op_t *ae_ops_dequeue(ae_ops_t *queue)
 {
     triton_list_link_t *llink;
     llink = triton_queue_dequeue(queue);
     if(!llink) return NULL;
     return ae_op_from_link(llink);
+}
+
+/**
+ * Return the ae_ops_t this op is on, NULL if not on any queue.
+ */
+static inline ae_ops_t * ae_ops_get_queue (ae_op_t * op)
+{
+   if (!op)
+      return 0;
+
+   return (ae_ops_t *) triton_list_return_list (&op->link);
 }
 
 #define ae_ops_del(_op) triton_list_del(&(_op)->link)
@@ -104,6 +124,18 @@ static inline struct ae_op * intptr2op (intptr_t op)
 {
    return (struct ae_op *) op;
 }
+
+/**
+ * Call the callback described by the op.
+ */
+#define ae_op_execute(__op, __ret_type, __error_code) do { \
+    void (*__callback)(void *, __ret_type) = (__op)->callback; \
+    void* __user_ptr = (__op)->user_ptr; \
+    __ret_type __saved_error_code = __error_code; \
+    __callback(__user_ptr, __saved_error_code); \
+    } while(0)
+
+
 
 #endif
 

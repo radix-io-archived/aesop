@@ -1,16 +1,18 @@
 #!/bin/sh
 
-echo "Some info:"
-date
-ls
 set
-echo "============"
 
 # get root
 SRC_ROOT=$PWD
 
 BUILD_ROOT=$PWD/build
 INSTALL_ROOT=$PWD/install
+
+CONFIGURE_OPTS=
+
+PROPS=$BUILD_ROOT/dependencies.sh
+
+#==============================================================
 
 if ! test -d ${BUILD_ROOT} ; then
 mkdir $BUILD_ROOT || exit 2
@@ -19,37 +21,30 @@ if ! test -d ${INSTALL_ROOT} ; then
 mkdir $INSTALL_ROOT || exit 2
 fi
 
+#==============================================================
+#==== AESOP Dependencies ======================================
+#==============================================================
+
+./maint/jenkins/prepare_environment.sh $PROPS
+
+source $PROPS
+
+CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-libev=${AESOP_LIBEV}"
+CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-openpa=${AESOP_OPENPA}"
+CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-c-utils=${AESOP_CUTILS}"
+
+export LD_LIBRARY_PATH=${AESOP_CUTILS}/lib:${AESOP_LIBEV}/lib:${AESOP_OPENPA}/lib:$LD_LIBRARY_PATH
+
+
+#===============================================================
+# Build AESOP
+#===============================================================
+
+# Configure Aesop
+CONFIGURE_OPTS="${CONFIGURE_OPTS} --prefix=${INSTALL_ROOT}"
 
 # Generate build system files
 ./prepare || exit 2
-
-# check if we have cabal
-CABAL=$(which cabal)
-if test -z $CABAL; then
-   ./maint/hs/setup-cabal-local || exit 3
-   export PATH=$PATH:$HOME/.cabal/bin
-   CABAL=$(which cabal)
-   if test -z $CABAL; then
-      echo "Error installing cabal!" > /dev/stderr
-      exit 3
-   fi
-fi
-
-# Get HS packages
-./maint/hs/setup-hs-local || exit 4
-
-# Get modified Language.C
-./maint/hs/setup-aesop || exit 5
-
-# Install OpenPA
-OPENPA=${BUILD_ROOT}/openpa
-./maint/jenkins/install-openpa.sh $OPENPA || exit 6
-CONFIGURE_OPTS="${CONFIGURE_OPTS} --with-openpa=${OPENPA}"
-
-# Configure
-
-CONFIGURE_OPTS="${CONFIGURE_OPTS} --prefix=${INSTALL_ROOT}"
-
 BUILD_DIR=${SRC_ROOT}    # no-VPATH
 BUILD_DIR=${BUILD_ROOT}  # VPATH
 
@@ -59,3 +54,5 @@ ${SRC_ROOT}/configure ${CONFIGURE_OPTS}
 # make
 make
 
+# check
+make check

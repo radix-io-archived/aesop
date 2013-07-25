@@ -30,18 +30,6 @@
 > import Header
 > import System.Directory
 
-Toggle abp_trace:
-
-> abp_trace_enabled = True
-
--- > abp_trace_enabled = False
-
-Aesop Blocking Parser trace:
-
-> abp_trace :: String -> IO ()
-> abp_trace s =
->       if abp_trace_enabled then putStrLn s else putStr ""
-
 > aesopCtlPrefix :: String
 > aesopCtlPrefix = "__ae_ctl"
 

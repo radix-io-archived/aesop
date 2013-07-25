@@ -1,0 +1,279 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <sys/time.h>
+
+#include <aesop/aesop.h>
+#include <aesop/aebdb.hae>
+
+static double wtime(void)
+{
+    struct timeval t;
+    gettimeofday(&t, (void *) 0);
+    return ( (double) t.tv_sec + ( (double) t.tv_usec / 1000000 ) );
+}
+
+static __blocking int bdb_example_txn(DB_ENV* envp, DB *dbp, int i)
+{
+    int ret;
+    DB_TXN *txn;
+    DBT key, value;
+    int intval = 0;
+    int intkey = 8675309;
+
+    memset(&key, 0, sizeof(key));
+    key.data = &intkey;
+    key.size = sizeof(intkey);
+    key.ulen = sizeof(intkey);
+    key.flags = DB_DBT_USERMEM;
+
+    memset(&value, 0, sizeof(value));
+    value.data = &intval;
+    value.size = sizeof(intval);
+    value.ulen = sizeof(intval);
+    value.flags = DB_DBT_USERMEM;
+
+    ret = aebdb_txn_begin(envp, NULL, &txn, 0);
+    if(ret < 0)
+        return(ret);
+
+    /* retrieve existing value */
+    ret = aebdb_get(dbp, txn, &key, &value, 0);
+    if(ret != DB_NOTFOUND && ret < 0)
+    {
+        aebdb_txn_abort(txn);
+        return(ret);
+    }
+
+    /* start at zero or increment by one */
+    if(ret == DB_NOTFOUND)
+        intval = 0;
+    else
+        intval = intval+1;
+
+    /* store new value */
+    ret = aebdb_put(dbp, txn, &key, &value, 0);
+    if(ret < 0)
+    {
+        aebdb_txn_abort(txn);
+        return(ret);
+    }
+
+    ret = aebdb_txn_commit(txn, 0);
+    if(ret < 0)
+        return(ret);
+
+    printf("Committed value %d\n", intval);
+
+    return(0);
+}
+
+static __blocking int bdb_example_txn_cursor(DB_ENV* envp, DB *dbp, int i)
+{
+    int ret;
+    DB_TXN *txn;
+    DBT key, value;
+    DBC *cursorp;
+    int intval = 0;
+    int intkey = 0;
+
+    memset(&key, 0, sizeof(key));
+    key.data = &intkey;
+    key.size = sizeof(intkey);
+    key.ulen = sizeof(intkey);
+    key.flags = DB_DBT_USERMEM;
+
+    memset(&value, 0, sizeof(value));
+    value.data = &intval;
+    value.size = sizeof(intval);
+    value.ulen = sizeof(intval);
+    value.flags = DB_DBT_USERMEM;
+
+    ret = aebdb_txn_begin(envp, NULL, &txn, 0);
+    if(ret < 0)
+        return(ret);
+
+    ret = aebdb_cursor(dbp, txn, &cursorp, 0);
+    if(ret < 0)
+    {
+        aebdb_txn_abort(txn);
+        return(ret);
+    }
+
+    ret = aebdb_cursor_get(cursorp, &key, &value, DB_NEXT);
+    if(ret < 0)
+    {
+        aebdb_txn_abort(txn);
+        return(ret);
+    }
+    assert(intkey == 8675309);
+
+    ret = aebdb_cursor_close(cursorp);
+    if(ret < 0)
+    {
+        aebdb_txn_abort(txn);
+        return(ret);
+    }
+
+    ret = aebdb_txn_commit(txn, 0);
+    if(ret < 0)
+        return(ret);
+
+    return(0);
+}
+
+static __blocking int dotest(void)
+{
+    int ret;
+    double start, end;
+    DB_ENV *envp = NULL;
+    DB *dbp = NULL;
+    DBT key;
+    int intkey = 8675309;
+
+    /* open environment and db */
+    ret = db_env_create(&envp, 0);
+    assert(ret == 0);
+
+    ret = envp->set_lk_detect(envp, DB_LOCK_DEFAULT);
+    assert(ret == 0);
+
+    ret = envp->open(envp, ".", DB_CREATE|DB_INIT_LOG|DB_INIT_TXN|
+        DB_INIT_MPOOL|DB_RECOVER|DB_THREAD|DB_INIT_LOCK, 0);
+    assert(ret == 0);
+    
+    ret = db_create(&dbp, envp, 0);
+    assert(ret == 0);
+
+    ret = dbp->open(dbp, NULL, "dat.db", "dat.db", DB_BTREE, 
+        DB_CREATE | DB_AUTO_COMMIT, 0);
+    assert(ret == 0);
+
+    /* checkpoint and flush db
+     * Not really needed for this example; mainly just exercising API */
+    ret = aebdb_txn_checkpoint(envp, 0, 0, 0);
+    assert(ret == 0);
+    ret = aebdb_log_flush(envp, NULL);
+    assert(ret == 0);
+   
+    start = wtime();
+
+    pwait
+    {
+        pprivate int pret = 0;
+        pprivate int i;
+
+        /* run 100 concurrent pbranches */
+        for(i=0; i<100; i++)
+        {
+            pbranch
+            {
+                /* do a separate transaction in each pbranch */
+                /* retry if txn deadlocks */
+                do
+                {
+                    pret = bdb_example_txn(envp, dbp, i);
+                    if(pret == DB_LOCK_DEADLOCK)
+                        printf("Retrying txn after deadlock.\n");
+                }while(pret == DB_LOCK_DEADLOCK);
+                if(pret != 0)
+                {
+                    fprintf(stderr, "Error: txn example failed.\n");
+                    ret = -1;
+                }
+            }
+        }
+    }
+
+    if(ret < 0)
+        return(ret);
+
+    pwait
+    {
+        pprivate int pret = 0;
+        pprivate int i;
+
+        /* run 100 concurrent pbranches */
+        for(i=0; i<100; i++)
+        {
+            pbranch
+            {
+                /* do a separate transaction in each pbranch */
+                /* retry if txn deadlocks */
+                do
+                {
+                    pret = bdb_example_txn_cursor(envp, dbp, i);
+                    if(pret == DB_LOCK_DEADLOCK)
+                        printf("Retrying txn_cursor after deadlock.\n");
+                }while(pret == DB_LOCK_DEADLOCK);
+                if(pret != 0)
+                {
+                    fprintf(stderr, "Error: txn_cursor example failed.\n");
+                    ret = -1;
+                }
+            }
+        }
+    }
+
+    if(ret < 0)
+        return(ret);
+
+    /* delete key */
+    memset(&key, 0, sizeof(key));
+    key.data = &intkey;
+    key.size = sizeof(intkey);
+    key.ulen = sizeof(intkey);
+    key.flags = DB_DBT_USERMEM;
+
+    /* doing this without an explicit txn: berkeley db will make this an
+     * automatic transaction of its own
+     */
+    do
+    {
+        ret = aebdb_del(dbp, NULL, &key, 0);
+    } while(ret == DB_LOCK_DEADLOCK);
+
+    if(ret < 0)
+    {
+        fprintf(stderr, "Error: failed to del().\n");
+        return(ret);
+    }
+
+    end = wtime();
+
+    printf("Example complete: %f seconds.\n", (end-start));
+
+    return 0;
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    int ret;
+
+    ret = aebdb_init();
+    assert(ret == 0);
+
+    ret = dotest();
+    if(ret == 0)
+        printf("Success.\n");
+    else
+        printf("Failure.\n");
+
+    aebdb_finalize();
+
+    return(ret);
+}
+
+aesop_main_set(aesop_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

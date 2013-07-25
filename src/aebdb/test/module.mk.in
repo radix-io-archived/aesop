@@ -1,0 +1,6 @@
+DIR := src/aebdb/test
+
+# don't include aebdb in build unless db configure test succeeded
+ifneq (,@DB_ENABLED@)
+AETESTSRC += $(DIR)/aebdb-example.ae 
+endif

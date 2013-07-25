@@ -1,0 +1,8 @@
+DIR := src/aebdb
+
+# don't include aebdb in build unless db configure test succeeded
+ifneq (,@DB_ENABLED@)
+AESOP_HDR += $(DIR)/aebdb.hae
+INSTALL_HDR += $(DIR)/aebdb.hae
+AELIBSRC += $(DIR)/aebdb.ae
+endif

@@ -5,7 +5,6 @@
  */
 
 #include <aesop/aesop.h>
-#include <aesop/aesop-support.hae>
 #include <aesop/timer.hae>
 #include <aesop/aesocket.hae>
 
@@ -32,12 +31,12 @@ static __blocking int test1 ()
       {
          tret = aesop_timer (100);
          assert (tret != AE_SUCCESS && "File did not become read??");
-        // aesop_cancel_branches_wait ();
+        // aesop_cancel_branches ();
       } */
       pbranch
       {
          aesocket_ready (fd, AESOCKET_WRITE, &err);
-         //aesop_cancel_branches_wait ();
+         //aesop_cancel_branches ();
       } 
    }
 
@@ -137,7 +136,7 @@ static __blocking int test2 ()
          if (ret == AE_SUCCESS)
          {
             printf ("Test done... Cancelling timeout!\n");
-            aesop_cancel_branches_wait ();
+            aesop_cancel_branches ();
          }
          else
          {
@@ -151,7 +150,7 @@ static __blocking int test2 ()
          if (ret == AE_SUCCESS)
          {
             printf ("Cancelling!");
-            aesop_cancel_branches_wait ();
+            aesop_cancel_branches ();
          }
          else
          {
@@ -169,10 +168,12 @@ static __blocking int test2 ()
 static __blocking int dotest (int argc, char ** args)
 {
    // aesop_set_debugging ("ae_blocking", 1);
+   aesop_timer_init();
    aesocket_init ();
    test1 ();
    test2 ();
    aesocket_finalize ();
+   aesop_timer_finalize();
    return 0;
 }
 

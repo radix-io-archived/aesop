@@ -19,6 +19,9 @@
  * techniques (queue/polling, threads, immediate completion).
  */
 
+int btest_init(void);
+void btest_finalize(void);
+
 /* These three functions increment the integer pointer by 1, 2, and 3 respectively,
  * by first storing the operation on a queue and completing the operation through
  * a poll call.
@@ -27,6 +30,11 @@
 __blocking int btest1(int *a);
 __blocking int btest2(int *b);
 __blocking int btest3(int *c);
+
+/* This function is instrumented to look for a particular bug in aesop
+ * resource operation completion, see consecutive-resource-completions.ae
+ */
+__blocking int btest_consec(void);
 
 /* This function increments the integer by one each time it is called.  The
  * first 9 times it will return -EAGAIN, the 10th time (and

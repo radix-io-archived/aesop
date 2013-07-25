@@ -11,6 +11,12 @@
 struct mystruct
 {
     __blocking int (*myfun)(int a);
+/* see ticket #213 in Triton; aesop doesn't seem to allow function pointers
+ * to return void (produces a warning at compile time
+ */
+#if 0
+    __blocking void (*myfun2)(int a);
+#endif
     int a;
 };
 
@@ -34,6 +40,24 @@ static __blocking int blocking1(int a)
 
     return 0;
 }
+
+
+/* see ticket #213 in Triton; aesop doesn't seem to allow function pointers
+ * to return void (produces a warning at compile time
+ */
+#if 0
+static __blocking void blocking2(int a)
+{
+    int ret;
+    int b = a;
+
+    ret = btest1(&a);
+    assert(ret == 0);
+    assert(a == (b + 1));
+
+    return;
+}
+#endif
 
 static __blocking int do_blocking(struct mystruct *s)
 {
@@ -61,8 +85,16 @@ __blocking int aesop_main(int argc, char **argv)
 {
     struct mystruct s;
     mytype t;
+    
+    btest_init();
 
     s.myfun = blocking1;
+/* see ticket #213 in Triton; aesop doesn't seem to allow function pointers
+ * to return void (produces a warning at compile time
+ */
+#if 0
+    s.myfun2 = blocking2;
+#endif
     s.a = 0;
     do_blocking(&s);
 
@@ -77,6 +109,7 @@ __blocking int aesop_main(int argc, char **argv)
     t.p = &s;
     t.b = 100;
     do_atype_blocking(&t);
+    btest_finalize();
 
     return 0;
 }

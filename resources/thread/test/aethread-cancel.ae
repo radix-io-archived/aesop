@@ -12,7 +12,6 @@
 #include <aesop/aesop.h>
 #include <aesop/aethread.hae>
 #include <aesop/timer.hae>
-#include <aesop/aesop-support.hae>
 
 static double wtime(void)
 {
@@ -75,7 +74,7 @@ static __blocking int dotest(void)
             aesop_timer(100); 
 
             /* cancel what we can */
-            aesop_cancel_branches_wait();
+            aesop_cancel_branches();
         }
     }
     end = wtime();
@@ -90,11 +89,27 @@ __blocking int aesop_main(int argc, char **argv)
 {
     int ret;
 
+    ret = aethread_init();
+    if(ret != 0)
+    {
+        printf("Failure.\n");
+        return(ret);
+    }
+    ret = aesop_timer_init();
+    if(ret != 0)
+    {
+        printf("Failure.\n");
+        return(ret);
+    }
+
     ret = dotest();
     if(ret == 0)
         printf("Success.\n");
     else
         printf("Failure.\n");
+
+    aesop_timer_finalize();
+    aethread_finalize();
 
     return(ret);
 }

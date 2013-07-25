@@ -1,0 +1,113 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <unistd.h>
+#include <sys/time.h>
+
+#include <aesop/aesop.h>
+#include <aesop/timer.hae>
+
+triton_mutex_t mutex = TRITON_MUTEX_INITIALIZER;
+
+static __blocking int triton_dosleep(void)
+{
+    pwait
+    {
+        int i;
+
+        for(i = 0; i < 1000; ++i)
+        {
+            pbranch
+            {
+                aesop_timer(1000);
+            }
+        }
+    }
+
+    return 0;
+}
+
+static void *threadfun(void *cb)
+{
+    sleep(1);
+    return NULL;
+}
+
+static void thread_dosleep(void)
+{
+    int i, ret;
+    void *val;
+    pthread_t tid[100];
+    for(i = 0; i < 100; ++i)
+    {
+        ret = pthread_create(&tid[i], NULL, threadfun, NULL);
+        if(ret != 0)
+        {
+            perror("pthread_create failed!\n");
+            assert(ret == 0);
+        }
+    }
+
+    for(i = 0; i < 100; ++i)
+    {
+        pthread_join(tid[i], &val);
+    }
+
+    return;
+}
+
+
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    int ret;
+    struct timeval t1, t2, diff;
+
+    ret = aesop_timer_init();
+    if(ret != 0)
+    {
+        fprintf(stderr, "Error: failed to init.\n");
+        return(ret);
+    }
+
+    gettimeofday(&t1, NULL);
+    ret = triton_dosleep();
+    gettimeofday(&t2, NULL);
+    diff.tv_sec = t2.tv_sec - t1.tv_sec;
+    diff.tv_usec = t2.tv_usec - t1.tv_usec;
+    if(t2.tv_usec < t1.tv_usec) 
+    {
+    	diff.tv_sec--;
+	diff.tv_usec += 1e6;
+    }
+    printf("aesop time: %d.%06d secs\n", (int)diff.tv_sec, (int)diff.tv_usec);
+
+    gettimeofday(&t1, NULL);
+    thread_dosleep();
+    gettimeofday(&t2, NULL);
+    diff.tv_sec = t2.tv_sec - t1.tv_sec;
+    diff.tv_usec = t2.tv_usec - t1.tv_usec;
+    if(t2.tv_usec < t1.tv_usec) 
+    {
+    	diff.tv_sec--;
+	diff.tv_usec += 1e6;
+    }
+    printf("thread time: %d.%06d secs\n", (int)diff.tv_sec, (int)diff.tv_usec);
+    
+    aesop_timer_finalize();
+    return ret;
+}
+
+aesop_main_set(aesop_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

@@ -1,0 +1,154 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <stdio.h>
+#include "aesop.h"
+#include <aesop/resourcebuilder.hae>
+
+static int errors = 0;
+
+static void optputs (const char * s)
+{
+   if (getenv ("DEBUG"))
+      puts (s);
+}
+
+static void always_assert (int expr, const char * msg)
+{
+   if (!expr)
+   {
+      fprintf (stderr, "Assertion failed: %s\n", msg);
+      ++errors;
+   }
+}
+
+static __blocking int normal1 (void)
+{
+   rb_slot_t slot;
+
+   optputs ("==== Trying to complete 1 slot ====");
+
+   rb_slot_initialize (&slot);
+
+   pwait
+   {
+      pprivate int ret = 0;
+      
+      pbranch
+      {
+         optputs ("pbranch 1 about to capture slot");
+         ret = rb_slot_capture (&slot);
+         always_assert (ret == AE_SUCCESS, "capture");
+         optputs ("pbranch 1 completed");
+      }
+      pbranch
+      {
+         optputs ("pbranch 2 about to complete slot");
+         ret = rb_slot_complete (&slot);
+         always_assert (ret == AE_SUCCESS, "complete");
+         optputs ("pbranch 2 completed");
+      }
+   }
+
+   rb_slot_destroy (&slot);
+   return 0;
+}
+static __blocking int cancel1 (void)
+{
+   rb_slot_t slot;
+
+   optputs ("==== Trying to cancel 1 slot ====");
+
+   rb_slot_initialize (&slot);
+
+   pwait
+   {
+      pprivate int ret = 0;
+      
+      pbranch
+      {
+         optputs ("pbranch 1 about to capture slot");
+         ret = rb_slot_capture (&slot);
+         always_assert (ret != AE_SUCCESS, "capture");
+         optputs ("pbranch 1 completed");
+      }
+      pbranch
+      {
+         optputs ("pbranch 2 about to cancel pb1");
+         aesop_cancel_branches ();
+         optputs ("pbranch 2 completed");
+      }
+   }
+
+   rb_slot_destroy (&slot);
+   return 0;
+}
+
+
+static __blocking int cancel2 (void)
+{
+   rb_slot_t slot1;
+   rb_slot_t slot2;
+
+
+   optputs ("===== Trying to cancel 2 unrelated slots ====");
+
+   rb_slot_initialize (&slot1);
+   rb_slot_initialize (&slot2);
+
+   pwait
+   {
+      pprivate int ret = 0;
+
+      pbranch
+      {
+         optputs ("Capturing slot 1");
+         ret = rb_slot_capture (&slot1);
+         always_assert (ret != AE_SUCCESS, "cancel");
+         optputs ("pbranch 1 completed");
+      }
+
+      pbranch
+      {
+         optputs ("Capturing slot 2");
+         ret = rb_slot_capture (&slot2);
+         always_assert (ret != AE_SUCCESS, "cancel");
+         optputs ("pbranch 2 completed");
+      }
+
+      pbranch
+      {
+         optputs ("cancelling branches");
+         aesop_cancel_branches ();
+      }
+   }
+   optputs ("pwait completed");
+
+   rb_slot_destroy (&slot1);
+   rb_slot_destroy (&slot2);
+   return 0;
+}
+
+__blocking int test_main (int argc, char ** args)
+{
+   rb_init ();
+   normal1 ();
+   cancel1 ();
+   cancel2 ();
+   rb_finalize ();
+   return 0;
+}
+
+aesop_main_set (test_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

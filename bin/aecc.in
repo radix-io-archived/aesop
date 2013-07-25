@@ -1,10 +1,23 @@
-#!/bin/sh
+#!/bin/bash
 
 # find the location of this aecc script
-DIR="$( cd "$( dirname "$0" )" && pwd )"
+AESOP_HOME="$( cd "$( dirname "$0" )" && cd .. && pwd )"
+if [[ $? != 0 ]]; then
+    echo "aecc: could not find AESOP_HOME!"
+    exit 1
+fi
 
-# aecc utils should be in the same dir as aecc
-. ${DIR}/aecc-utils
+if [[ -n ${AESOP_DEBUG} ]]; then
+    echo "AESOP_HOME: $AESOP_HOME"
+    verbose="yes"
+fi
+
+# aecc-utils should be in the same dir as aecc
+source ${AESOP_HOME}/bin/aecc-utils
+if [[ $? != 0 ]]; then
+    echo "aecc: could not find aecc-utils!"
+    exit 1
+fi
 
 setUsageMessage "Usage: aecc <options> <file> -- <compiler options>.  Specify --help for a list of options."
 
@@ -41,7 +54,7 @@ exitIfFailed()
 {
     res=$1
     if test $res -ne 0; then
-        rm -f ${clean}
+        doClean ${clean}
         exit $1
     fi
 }
@@ -64,7 +77,7 @@ if test "${hasOpt_parse_hae}" = "yes"; then
         showUsage 1
     fi
 fi
- 
+
 if test "${hasOpt_from_interm}" != "yes"; then
     
     # This makes assumptions about current PWD!
@@ -74,7 +87,7 @@ if test "${hasOpt_from_interm}" != "yes"; then
 
     cppout=${buildifile}.i
     addToClean ${cppout}
- 
+
     if test -z "${INPUTFILES}"; then
         echo "No input file specified!"
         showUsage 1
@@ -90,10 +103,10 @@ if test "${hasOpt_from_interm}" != "yes"; then
     elif test "${hasOpt_parse_hae}" = "yes"; then
         poutfile=${outputfile}
     else
-        poutfile=${buildifile}.s
+        poutfile=${outputfile%.*}.s
         addToClean ${poutfile}
     fi
-        
+
     if test "${hasOpt_parse_hae}" = "yes"; then
         parseAesopHeader ${verbose} ${compiler} ${cppout} ${poutfile} "${INPUTFILES}" "${parseropts}" ${COMPILEROPTS}
         exitIfFailed $?
@@ -104,7 +117,7 @@ if test "${hasOpt_from_interm}" != "yes"; then
 
     # if only source file (.c) or header (.h) was supposed to be generated, stop here
     if test "${hasOpt_just_source}" = "yes" || test "${hasOpt_parse_hae}" = "yes"; then
-        rm -f ${clean}
+        doClean ${clean}
         exit 0
     fi
 fi
@@ -121,7 +134,13 @@ fi
 doCompile ${verbose} ${compiler} ${compileinput} ${outputfile} ${COMPILEROPTS}
 exitIfFailed $?
 
-rm -f ${clean}
+doClean ${clean}
+
 exit 0
 
 # Done!
+
+# Local Variables:
+# mode: sh
+# sh-basic-offset: 4
+# End:

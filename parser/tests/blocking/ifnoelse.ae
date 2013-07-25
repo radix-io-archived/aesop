@@ -29,7 +29,9 @@ static __blocking void run_ifnoelse(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
     run_ifnoelse();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

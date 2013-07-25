@@ -5,14 +5,15 @@
  */
 
 #include "aesocket.hae"
-#include "resources/resourcebuilder/resourcebuilder.hae"
 
 #include <unistd.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
-#include "libev/ev.h"
+
+#include <ev.h>
+#include <aesop/resourcebuilder.hae>
 
 /**
  * If true, before testing if the socket is ready, try to read/write under the
@@ -24,7 +25,7 @@ static int immediate_completion = 1;
 
 /* Number of zero byte reads in a row that we will observe before assuming
  * that the peer has closed the socket; this is a hack to weed out
- * spurious zero byte reads that can show up on some systems. 
+ * spurious zero byte reads that can show up on some systems.
  */
 #define ZERO_BYTE_READ_THRESHOLD 0
 
@@ -114,6 +115,8 @@ int aesocket_init (void)
       ev_async_init (&socket_thread_wake, &socket_thread_wake_cb);
 
       pthread_create (&socket_thread, 0, aesocket_thread_main, 0);
+
+      rb_init ();
    }
    triton_mutex_unlock (&mutex);
    return AE_SUCCESS;
@@ -127,6 +130,8 @@ int aesocket_finalize (void)
       socket_thread_done = 1;
       aesocket_thread_wakeup ();
       pthread_join (socket_thread, 0);
+
+      rb_finalize ();
 
       ev_loop_destroy (socket_ev_loop);
    }
@@ -155,7 +160,7 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
 
    entry.flags = flags;
    ev_io_init (&entry.watcher, &aesocket_fd_ready, fd,
-         (flags & AESOCKET_READ ? EV_READ : 0) 
+         (flags & AESOCKET_READ ? EV_READ : 0)
        | (flags & AESOCKET_WRITE ? EV_WRITE : 0));
 
    entry.watcher.data = &entry;
@@ -208,7 +213,7 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
 
       if (added)
       {
-         /* we need to add it to the remove list and wait 
+         /* we need to add it to the remove list and wait
           * until it is removed */
          entry.next = socket_thread_remove;
          socket_thread_remove = &entry;

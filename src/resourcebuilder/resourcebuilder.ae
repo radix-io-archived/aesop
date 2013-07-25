@@ -1,0 +1,95 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include "resourcebuilder.hae"
+
+
+/**
+ * Initialize the ResourceBuilder component.
+ */
+int rb_init (void)
+{
+   return aesop_sem_module_init ();
+}
+
+/**
+ * Release the ResourceBuilder component
+ */
+void rb_finalize (void)
+{
+   aesop_sem_module_finalize ();
+}
+
+
+/**
+ * Create a slot to hold the callback context.
+ * Sets the private slot pointer.
+ */
+void rb_slot_initialize (rb_slot_t * slot)
+{
+   aesop_sem_init (&slot->sem, 0);
+}
+
+int rb_slot_reinitialize (rb_slot_t * slot)
+{
+   /* nothing todo */
+   return AE_SUCCESS;
+}
+
+/**
+ * Clears the state of the slot and
+ * returns it to the uninitialized state
+ *
+ * There should not be any callers blocked on the semaphore
+ * when calling this function.
+ */
+void rb_slot_clear (rb_slot_t * slot)
+{
+   aesop_sem_set (&slot->sem, 0);
+}
+
+/**
+ * Complete the callback stored in a slot.
+ * Does not release the private data.
+ * Returns AE_SUCCESS if the slot completed, error code if the slot was or
+ * already completed (due to cancel or reguler complete).
+ */
+int rb_slot_complete (rb_slot_t * slot)
+{
+   return aesop_sem_up (&slot->sem);
+}
+
+/**
+ * Free slot. Slot must be empty. Invalidates private data.
+ */
+void rb_slot_destroy (rb_slot_t * slot)
+{
+   aesop_sem_destroy (&slot->sem);
+}
+
+/**
+ * Capture the caller's context into a slot.
+ *
+ * This call will block until the somebody calls rb_slot_complete on the slot.
+ * Returns AE_SUCCESS if the slot completed normally, or an unspecified
+ * AE_xxxx error code if it was cancelled.
+ */
+__blocking int rb_slot_capture (rb_slot_t * slot)
+{
+   int ret;
+   ret = aesop_sem_down (&slot->sem);
+   return ret;
+}
+
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

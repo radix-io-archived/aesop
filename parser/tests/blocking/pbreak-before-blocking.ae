@@ -5,7 +5,6 @@
  */
 
 #include <aesop/aesop.h>
-#include <aesop/aesop-support.hae>
 #include "parser/tests/blocking/btest.hae"
 #include <assert.h>
 
@@ -23,8 +22,8 @@ static __blocking void run_par1(void)
                 {
                     printf("pbranch cancelled.\n");
                     /* NOTE: In this case we know that another branch is
-                     * already calling aesop_cancel_branches_wait().  If we 
-                     * were to call aesop_cancel_branches_wait() here also,
+                     * already calling aesop_cancel_branches().  If we 
+                     * were to call aesop_cancel_branches() here also,
                      * then the program would deadlock because two
                      * pbranches would both be waiting for the other to exit
                      * before continuing.  Since we know that the other
@@ -48,7 +47,7 @@ static __blocking void run_par1(void)
                 if(ret2 != 0)
                 {
                     printf("Error in branch 2.\n");
-                    aesop_cancel_branches_wait();
+                    aesop_cancel_branches();
                     pbreak;
                     assert(0);
                 }
@@ -57,7 +56,7 @@ static __blocking void run_par1(void)
                 if(ret2 != 0)
                 {
                     printf("Error in branch 2.\n");
-                    aesop_cancel_branches_wait();
+                    aesop_cancel_branches();
                     pbreak;
                 }
 
@@ -72,7 +71,7 @@ static __blocking void run_par1(void)
 	
 	    pbranch
 	    {
-                aesop_cancel_branches_wait();
+                aesop_cancel_branches();
                 pbreak;
                 assert(0);
 
@@ -89,7 +88,9 @@ static __blocking void run_par1(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
     run_par1();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

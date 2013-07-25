@@ -6,9 +6,9 @@
 
 #include <unistd.h>
 #include <aesop/aesop.h>
+#include <aesop/timer.hae>
 #include "parser/tests/blocking/btest.hae"
 #include <assert.h>
-#include <aesop/aesop-support.hae>
 
 static __blocking void foo_fn(void)
 {
@@ -60,8 +60,8 @@ static __blocking void run_test(void)
                 aesop_timer(1000);
                 printf("pbranch2: timer done.\n");
                 /* cancel the other pbranch */
-                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
-                aesop_cancel_branches_wait();
+                printf("pbranch2: calling aesop_cancel_branches().\n");
+                aesop_cancel_branches();
                 printf("pbranch2: done.\n");
 	    }
 	}
@@ -85,8 +85,8 @@ static __blocking void run_test(void)
                 aesop_timer(1000);
                 printf("pbranch2: timer done.\n");
                 /* cancel the other pbranch */
-                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
-                aesop_cancel_branches_wait();
+                printf("pbranch2: calling aesop_cancel_branches().\n");
+                aesop_cancel_branches();
                 printf("pbranch2: done.\n");
 	    }
 	}
@@ -113,8 +113,8 @@ static __blocking void run_test(void)
                 aesop_timer(1000);
                 printf("pbranch2: timer done.\n");
                 /* cancel the other pbranch */
-                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
-                aesop_cancel_branches_wait();
+                printf("pbranch2: calling aesop_cancel_branches().\n");
+                aesop_cancel_branches();
                 printf("pbranch2: done.\n");
 	    }
 	}
@@ -135,8 +135,8 @@ static __blocking void run_test(void)
                 printf("pbranch1: about to sleep for 5 seconds.\n");
                 sleep(5);
                 printf("pbranch1: done.\n");
-                printf("pbranch1: calling aesop_cancel_branches_wait().\n");
-                aesop_cancel_branches_wait();
+                printf("pbranch1: calling aesop_cancel_branches().\n");
+                aesop_cancel_branches();
                 printf("pbranch1: done.\n");
 	    }
 
@@ -147,8 +147,8 @@ static __blocking void run_test(void)
                 aesop_timer(1000);
                 printf("pbranch2: timer done.\n");
                 /* cancel the other pbranch */
-                printf("pbranch2: calling aesop_cancel_branches_wait().\n");
-                aesop_cancel_branches_wait();
+                printf("pbranch2: calling aesop_cancel_branches().\n");
+                aesop_cancel_branches();
                 printf("pbranch2: done.\n");
 	    }
 	}
@@ -161,7 +161,11 @@ static __blocking void run_test(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
+    aesop_timer_init();
     run_test();
+    aesop_timer_finalize();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

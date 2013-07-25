@@ -48,11 +48,22 @@ __blocking void do_blocking1(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    int ret;
+
     ae_hints_type_register("aesop.test.sleepy_time", 0);
+
+    ret = aesop_timer_init();
+    if(ret != 0)
+    {
+        fprintf(stderr, "Error: failed to initialize timers.\n");
+        return(-1);
+    }
 
     do_blocking1();
 
     do_blocking3();
+
+    aesop_timer_finalize();
 
     return 0;
 }

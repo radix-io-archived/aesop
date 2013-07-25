@@ -38,12 +38,12 @@ sbindir = $(DESTDIR)@sbindir@
 bindir = $(DESTDIR)@bindir@
 libdir = $(DESTDIR)@libdir@
 
+# tests
+TEST_RUNNER=${builddir}/tests/testrunner.sh
+
 # tools
 A2X = @A2X@
 ASCIIDOC = @ASCIIDOC@
-
-# subdirs that contain configure/make
-SUBDIRS = @subdirs@
 
 VPATH = $(srcdir)
 AEPRETTY =
@@ -78,7 +78,9 @@ ifeq ($(BUILD_SSM),1)
    LIBS += -lssm_ref -lssmp_mpi
 endif
 
-CFLAGS= -I$(srcdir)/src/c-utils -I$(srcdir)/include -I. -Iinclude -I src/c-utils -I$(srcdir) @CFLAGS@ $(CPPFLAGS)
+CFLAGS=-I$(srcdir)/include -I. -Iinclude \
+ -I$(srcdir) \
+ @CFLAGS@ @DB_CFLAGS@ $(CPPFLAGS)
 
 # enable relocatable
 #CFLAGS += -fPIC
@@ -107,13 +109,17 @@ CWARNS += -Wno-format-security
 CWARNS += -Wno-format-zero-length
 # ... or when we have unused labels, which are common in generated aesop
 # code
-CWARNS += -Wno-unused-label 
+CWARNS += -Wno-unused-label
 
 LDSHARED = $(TCC) -shared
 
 LIBCFLAGS=@LIBCFLAGS@
-LDFLAGS += @LDFLAGS@ -Lsrc/c-utils 
-LIBS += @LIBS@ -lc-utils -lm -lpthread
+LDFLAGS += @LDFLAGS@ 
+
+# hack for now
+LDFLAGS += @LDFLAGS@ 
+
+LIBS += @LIBS@ @DB_LIB@ -lm -lpthread
 
 DEPLIBS += @THREAD_LIB@
 
@@ -142,8 +148,6 @@ HSSRC :=
 HSBINSRC :=
 TESTSRC :=
 PROGRAMSRC :=
-TEST_OUT :=
-TEST_RESULTS :=
 
 ASCIIDOCSRC :=
 
@@ -193,7 +197,7 @@ endif
 #    of a file that has the same name as the target.  Listing them
 #    here keeps make from accidentally doing too much work (see GNU
 #    make manual).
-.PHONY: all clean parserclean test_results 
+.PHONY: all clean parserclean 
 
 ################################################################
 # Find project subdirectories
@@ -201,24 +205,21 @@ endif
 # MODULES is a list of subdirectories that we wish to operate on.
 #    They are identified by the presence of module.mk files (makefile
 #    includes).
-MODULES := $(shell find . -name "*.mk" |grep -v c-utils| sed -e 's/^.\///;s/module.mk//')
+MODULES := $(shell find . -name "*.mk" |sed -e 's/^.\///;s/module.mk//')
 
 
 ################################################################
 # Default target forward pointer, to avoid other targets in make stubs
 all::
 
-all:: subdirs
+###############################################################
+# HACK for broken .hae headers
+.PHONY:
+headers: resources/sem/sem.h \
+   resources/thread/aethread.h parser/tests/blocking/btest.h
 
+###############################################################
 
-################################################################
-# Subdir configure
-################################################################
-.PHONY: subdirs $(SUBDIRS)
-subdirs: $(SUBDIRS)
-
-$(SUBDIRS) :
-	make -C $@ $(MAKECMDGOALS)
 
 ################################################################
 # Auto regenerate makefile / rerun configure                   #
@@ -317,9 +318,6 @@ MCC_AER = $(call modcc,$(1))
 MCC_AE = $(call modcc,$(1))
 MCC_C = $(call modcc,$(1))
 
-# Get the parameters for a given test
-testparams = $(TESTPARAMS_$(1))
-
 # The object files for the triton library generated from .ae files
 AELIBOBJS=$(patsubst %.ae,%.o,$(AELIBSRC))
 aelibobjs: $(AELIBOBJS)
@@ -374,10 +372,6 @@ DEPENDS=$(TESTDEPS) $(GENLIBDEPS) $(LIBDEPS) $(AEDEPS) $(AESOP_TRHDR_DEPS) $(TES
 PROGRAMS = $(AEPROGRAM) $(PROGRAM)
 
 TESTS = $(AETEST) $(TEST)
-
-# TODO: Need a way to take mpiexec tests out of this
-runTESTS = $(patsubst %,run%,$(TESTS))
-runVALGRIND = $(patsubst %,valgrind%,$(TESTS))
 
 # for now we just use static if we're not on a mac
 ifneq (,$(USE_DYLIBS))
@@ -510,7 +504,7 @@ $(AEDEPS): %.ae.d: %.ae include/aesop/.done
 # version of the .hae file that defines the resource interface
 $(AESOP_TRHDR): %.h: %.hae $(HSBIN)
 
-	$(Q) "  AECC		$*.hae"
+	$(Q) "  AECC [H]	$*.hae"
 	$(E)$(builddir)/bin/aecc -o $(builddir)/$*.h $(srcdir)/$*.hae \
                 -j $(VA) $(DA) $(AEPRETTY) \
                 -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
@@ -546,20 +540,9 @@ $(HSBIN): %: $(srcdir)/%.lhs $(HSSRC)
 
 all::  $(PROGRAMS) $(LIBRARIES)
 
-$(runTESTS): run%: %
-	@if test -n "$(call testparams,$<)"; then \
-		for p in $(call testparams,$<); do \
-			echo -n "Running $< $$p..."; \
-			./$< $$p > /dev/null; \
-			echo "done."; \
-		done \
-	else \
-		echo -n "Running $<..."; \
-		./$< > /dev/null; \
-		echo "done."; \
-	fi
-
-check: $(runTESTS) test_results
+.PHONY: check
+check: $(TESTS)
+	@$(TEST_RUNNER) -d ${srcdir}/SKIPPED_TESTS -v -o ${builddir}/tests/test_results.tap $(TESTS)
 
 .PHONY: tests
 tests: test
@@ -567,39 +550,29 @@ tests: test
 .PHONY: test
 test: $(TESTS)
 
-test_results: $(TEST_RESULTS)
-
-$(runVALGRIND): valgrind%: %
-	@if test -n "$(call testparams,$<)"; then \
-		for p in $(call testparams,$<); do \
-			echo -n "Running valgrind $< $$p..."; \
-			valgrind --error-exitcode=1 ./$< $$p > /dev/null 2>./.vout; \
-			grep "All heap blocks were freed" ./.vout >/dev/null 2>&1; \
-			if test $$? != 0; then \
-				echo "\nErrors found in $<. Rerun valgrind ./$<"; \
-				exit 1; \
-			fi; \
-			echo "done."; \
-		done; \
-	else \
-		echo -n "Running valgrind $<..."; \
-		valgrind --error-exitcode=1 ./$< > /dev/null 2>./.vout; \
-		grep "All heap blocks were freed" ./.vout >/dev/null 2>&1; \
-		if test $$? != 0; then \
-			echo "\nErrors found in $<.  Rerun valgrind ./$<"; \
-			exit 1; \
-		fi; \
-		echo "done."; \
-	fi
-
-runvalgrind: $(runVALGRIND)
-
-%.result: % %.sh
-	$(Q) "  SH		$@"
-	$(E) SRCDIR=$(srcdir) $(srcdir)/$(patsubst %,%.sh,$<) > \
-		$*.tmp 2>&1
-	$(E) mv $*.tmp $@
-	$(E) echo -n "    		$@ : " && cat $@
+#$(runVALGRIND): valgrind%: %
+#	@if test -n "$(call testparams,$<)"; then \
+#		for p in $(call testparams,$<); do \
+#			echo -n "Running valgrind $< $$p..."; \
+#			valgrind --error-exitcode=1 ./$< $$p > /dev/null 2>./.vout; \
+#			grep "All heap blocks were freed" ./.vout >/dev/null 2>&1; \
+#			if test $$? != 0; then \
+#				echo "\nErrors found in $<. Rerun valgrind ./$<"; \
+#				exit 1; \
+#			fi; \
+#			echo "done."; \
+#		done; \
+#	else \
+#		echo -n "Running valgrind $<..."; \
+#		valgrind --error-exitcode=1 ./$< > /dev/null 2>./.vout; \
+#		grep "All heap blocks were freed" ./.vout >/dev/null 2>&1; \
+#		if test $$? != 0; then \
+#			echo "\nErrors found in $<.  Rerun valgrind ./$<"; \
+#			exit 1; \
+#		fi; \
+#		echo "done."; \
+#	fi
+#
 
 # other intermediates may exist from aecc and aercc
 INTERM_AESRC=$(patsubst %.o,%.ae.s,$(AEOBJS))
@@ -614,7 +587,7 @@ clean:: docclean
 	$(Q) "  CLEAN"
 	$(E)rm -f $(AEOBJS) $(LIBOBJS) $(GENLIBOBJS) $(AETEST) $(AEPROGRAM) $(TEST) $(PROGRAM) \
 	        $(AESOP_TRHDR) $(TESTLIBOBJS) \
-	        $(LIBRARIES) $(TEST_LIBRARIES) $(DEPENDS) $(TEST_RESULTS) $(TEST_OUT) \
+	        $(LIBRARIES) $(TEST_LIBRARIES) $(DEPENDS) \
                 $(INTERM)
 
 parserclean::
@@ -676,28 +649,30 @@ doc: $(DOCPDF)
 docshtml: $(DOCHTML)
 dochtml: $(DOCHTML)
 
-# manually add some c-utils headers to the install list 
-
-INSTALL_HDR += src/c-utils/triton-list.h \
- src/c-utils/triton-thread.h \
- src/c-utils/triton-base.h \
- src/c-utils/triton-uint128.h
-
 INSTALL_HDR_SRC=$(patsubst %,$(abs_srcdir)/%,$(INSTALL_HDR))
 
+ifeq ($(AESOP_DEBUG), 1)
+# If debugging Aesop, make shell tools verbose
+	LN_V = v
+	MKDIR_V = v
+endif
+
 include/aesop/.done:
-	mkdir -p include/aesop
-	for hdr in $(INSTALL_HDR_SRC); do \
-		ln -s $$hdr include/aesop 2> /dev/null; \
+	$(Q) "  constructing include/aesop..."
+	@mkdir -p$(MKDIR_V) include/aesop
+	@for hdr in $(INSTALL_HDR_SRC); do \
+		ln -s$(LN_V) $$hdr include/aesop 2> /dev/null; \
 	done
-	touch include/aesop/.done
+	$(E) touch include/aesop/.done
 
 install:: all
-	install -d $(bindir)
-	install -d $(libdir)
-	install -d $(includedir)
-	install -m 755 parser/ae-blocking-parser $(bindir)
-	install -m 755 bin/aecc $(bindir)
-	install -m 755 bin/aecc-utils $(bindir)
-	install -m 644 lib/libaesop.* $(libdir)
-	install -m 644 $(INSTALL_HDR_SRC) $(includedir)
+	install -Cv -d $(bindir)
+	install -Cv -d $(libdir)
+	install -Cv -d $(libdir)/pkgconfig
+	install -Cv -d $(includedir)
+	install -Cv -m 755 parser/ae-blocking-parser $(bindir)
+	install -Cv -m 755 bin/aecc $(bindir)
+	install -Cv -m 755 bin/aecc-utils $(bindir)
+	install -Cv -m 644 lib/libaesop.* $(libdir)
+	install -Cv -m 644 maint/aesop.pc $(libdir)/pkgconfig/
+	install -Cv -m 644 $(INSTALL_HDR_SRC) $(includedir)

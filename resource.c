@@ -4,7 +4,7 @@
  * See COPYRIGHT in top-level directory.
  */
 
-#include "libev/ev.h"
+#include <ev.h>
 #include <stddef.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -12,28 +12,14 @@
 #include "resource.h"
 #include "aesop.h"
 #include "ae-debug.h"
+#include "op.h"
 
 struct ae_poll_data
 {
     ev_async async;
-    int (*poll_context)(ae_context_t context, void *user_data);
-    ae_context_t context;
+    int (*poll)(void *user_data);
     void *user_data;
 };
-
-/* data structures and tables used to track information for
- * resources that are available to be initialized
- */
-struct ae_resource_init_data
-{
-    char* name;
-    int (*init)(void);
-    void (*finalize)(void);
-    unsigned int count;
-};
-#define MAX_RESOURCES 32
-static struct ae_resource_init_data ae_resource_init_table[MAX_RESOURCES];
-static int ae_resource_init_table_count = 0;
 
 /* data structures and tables used to track information for resources that
  * actually have been initialized and are now active
@@ -47,30 +33,13 @@ struct ae_resource_entry
 };
 
 static int ae_resource_count = 0;
-static struct ae_resource_entry ae_resource_entries[AE_MAX_RESOURCES]; 
+#define MAX_RESOURCES 32
+static struct ae_resource_entry ae_resource_entries[MAX_RESOURCES]; 
 static struct ev_loop *eloop = NULL;
 ev_async eloop_breaker;
-static pthread_t ev_loop_thread;
 
 #define AE_RESOURCE_IDX2ID(reindex) (reindex+16)
 #define AE_RESOURCE_ID2IDX(rid) (rid-16)
-
-struct ae_context
-{
-    int id;
-    int resource_count;
-    int* resource_ids;
-    struct ae_poll_data* poll_data;
-    struct ev_loop *eloop;
-    ev_async eloop_breaker;
-};
-
-static int ae_context_count = 0;
-static struct ae_context ae_context_entries[AE_MAX_CONTEXTS];
-
-static ae_op_id_t * ae_children_get(ae_context_t context, struct ae_ctl *ctl, int *count);
-static void ae_children_put(ae_op_id_t* children, int count);
-static inline void ae_op_id_addref(ae_op_id_t id);
 
 static void ev_break_cb(EV_P_ ev_async *w, int revents)
 {
@@ -88,8 +57,8 @@ static void ev_async_cb(EV_P_ ev_async *w, int revents)
     struct ae_poll_data* poll_data = 
         (struct ae_poll_data*)(((char*)w)-offsetof(struct ae_poll_data, async));
 
-    assert(poll_data->poll_context);
-    ret = poll_data->poll_context(poll_data->context, poll_data->user_data);
+    assert(poll_data->poll);
+    ret = poll_data->poll(poll_data->user_data);
     /* TODO: error handling? */
     aesop_error_assert(ret);
     
@@ -98,53 +67,6 @@ static void ev_async_cb(EV_P_ ev_async *w, int revents)
      */
     ev_break(EV_A_ EVBREAK_ONE);
     return;
-}
-
-int ae_resource_init_register(const char* resource_name, 
-    int (*init)(void),
-    void (*finalize)(void))
-{
-    int i;
-
-    /* see if we have already registered this resource */
-    for(i=0; i<ae_resource_init_table_count; i++)
-    {
-        if(strcmp(ae_resource_init_table[i].name, resource_name) == 0)
-        {
-            return(AE_SUCCESS);
-        }
-    }
-
-    if(ae_resource_init_table_count > MAX_RESOURCES)
-    {
-        return(AE_ERR_OVERFLOW);
-    }
-    ae_resource_init_table[ae_resource_init_table_count].name = 
-        strdup(resource_name);
-    if(!ae_resource_init_table[ae_resource_init_table_count].name)
-        return(AE_ERR_SYSTEM);
-
-    ae_resource_init_table[ae_resource_init_table_count].init = init;
-    ae_resource_init_table[ae_resource_init_table_count].finalize = finalize;
-    ae_resource_init_table[ae_resource_init_table_count].finalize = finalize;
-    ae_resource_init_table_count++;
-
-    return(AE_SUCCESS);
-}
-
-
-static int ae_resource_init_register_cleanup (void)
-{
-   int i;
-
-   for(i=0; i<ae_resource_init_table_count; i++)
-   {
-      free (ae_resource_init_table[i].name);
-      ae_resource_init_table[i].name = 0;
-   }
-   ae_resource_init_table_count = 0;
-
-   return AE_SUCCESS;
 }
 
 int ae_resource_register(struct ae_resource *resource, int *newid)
@@ -170,7 +92,6 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
         }
     }
 
-    ev_loop_thread = pthread_self();
     if(eloop == NULL)
     {
         /* This is the first resource to be registered.  Initialize the
@@ -182,13 +103,13 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
         ev_async_start(eloop, &eloop_breaker);
     }
 
-    if(ae_resource_count == AE_MAX_RESOURCES)
+    if(ae_resource_count == MAX_RESOURCES)
     {
 	return AE_ERR_INVALID;
     }
 
     /* find a free entry */
-    for(i=0; i<AE_MAX_RESOURCES; i++)
+    for(i=0; i<MAX_RESOURCES; i++)
     {
         if(ae_resource_entries[i].id == -1)
         {
@@ -199,9 +120,7 @@ int ae_resource_register_with_data(struct ae_resource *resource, int *newid,
     assert(reindex > -1 && reindex < MAX_RESOURCES);
 
     ev_async_init(&ae_resource_entries[reindex].poll_data.async, ev_async_cb);
-    ae_resource_entries[reindex].poll_data.poll_context =
-        resource->poll_context;
-    ae_resource_entries[reindex].poll_data.context = NULL;
+    ae_resource_entries[reindex].poll_data.poll = resource->poll;
     ae_resource_entries[reindex].poll_data.user_data = user_data;
     ev_async_start(eloop, &ae_resource_entries[reindex].poll_data.async);
 
@@ -217,10 +136,6 @@ void ae_resource_unregister(int id)
 {
     int idx = AE_RESOURCE_ID2IDX(id);
 
-    /* TODO: what about contexts that might include this resource?  Do we
-     * just assume that contexts are always closed before resources are
-     * unregistered?
-     */
     ev_async_stop(eloop, &ae_resource_entries[idx].poll_data.async);
 
     memset(&ae_resource_entries[idx], 0, sizeof(ae_resource_entries[idx]));
@@ -229,53 +144,23 @@ void ae_resource_unregister(int id)
     ae_resource_count--;
 }
 
-static void find_async_watcher(ae_context_t context, int resource_id, ev_async** async_out, struct ev_loop** loop_out)
+static void find_async_watcher(int resource_id, ev_async** async_out)
 {
     ev_async* async = NULL;
-    int i;
     int ridx;
-    struct ev_loop *target_loop = NULL;
-
-    if(context)
-    {
-        /* find this resource in the context */
-        for(i=0; i<context->resource_count; i++)
-        {
-            if(resource_id == context->resource_ids[i])
-            {
-                async = &context->poll_data[i].async;
-                target_loop = context->eloop;
-                break;
-            }
-        }
-    }
-    else
-    {   
-        /* find this resource in the global list */
-        ridx = AE_RESOURCE_ID2IDX(resource_id);
-        async = &ae_resource_entries[ridx].poll_data.async;
-        target_loop = eloop;
-    }
+   
+    /* find this resource in the global list */
+    ridx = AE_RESOURCE_ID2IDX(resource_id);
+    async = &ae_resource_entries[ridx].poll_data.async;
 
     if(!async)
     {
-        aesop_err("Error: context %p is not configured to handle resource with id %d", context, resource_id);
-        for(i=0; i<MAX_RESOURCES; i++)
-        {
-            if(ae_resource_entries[i].id == resource_id)
-            {
-                aesop_err("Consider adding the \"%s\" resource your aesop context.", ae_resource_entries[i].resource->resource_name);
-                assert(0);
-            }
-        }
-        aesop_err("Error: resource_id %d is unknown to aesop.  Are you using a resource that was not initialized?\n", resource_id);
+        aesop_err("Error: resource_id %d is unknown to aesop.  Are you using"
+                " a resource that was not initialized?\n", resource_id);
         assert(0);
     }
 
-    assert(target_loop);
-
     *async_out = async;
-    *loop_out = target_loop;
 
     return;
 }
@@ -286,143 +171,34 @@ static void find_async_watcher(ae_context_t context, int resource_id, ev_async**
  * functions to allow the c program to continue execution after the final
  * aesop callback has completed.
  */
-void ae_poll_break(ae_context_t context)
+void ae_poll_break()
 {
-    ev_async* breaker = NULL;
-    struct ev_loop *target_loop = NULL;
-
-    if(context)
-    {
-        breaker = &context->eloop_breaker;
-        target_loop = context->eloop;
-    }
-    else
-    {
-        breaker = &eloop_breaker;
-        target_loop = eloop;
-    }
-
-    if(pthread_equal(ev_loop_thread, pthread_self()))
-    {
-        /* this was called from the event loop thread, so we know that it is
-         * already awake.  Just make sure that it exits if the
-         * ae_poll_break() as called from a libev callback.
-         */
-        ev_break(target_loop, EVBREAK_ONE);
-        return;
-    }
-
-    ev_async_send(target_loop, breaker);
+    // Note: it is safe to call ev_break from outside of ev_run
+    // (in which case it has no effect), so we don't care if this is
+    // called from within the main event loop thread or from some other
+    // thread.
+    //
+    // This might (but probably not, as ev_break will still process all
+    // pending events before breaking) cause the next ev_run call to return
+    // early, but that should be OK as the event loop will typically call
+    // ev_run forever.
+    ev_async_send(eloop, &eloop_breaker);
+    ev_break(eloop, EVBREAK_ONE);
 }
 
 /**
  * ae_resource_request_poll() is used by a resource to inform aesop that the
  * resource needs to be polled.
  */
-void ae_resource_request_poll(ae_context_t context, int resource_id)
+void ae_resource_request_poll(int resource_id)
 {
     ev_async* async = NULL;
-    struct ev_loop *target_loop = NULL;
 
-    find_async_watcher(context, resource_id, &async, &target_loop);
+    find_async_watcher(resource_id, &async);
 
-    ev_async_send(target_loop, async);
+    ev_async_send(eloop, async);
 
     return;
-}
-
-/**
- * ae_cancel_op tries to cancel the operation with the given id.  This
- * function returns AE_SUCCESS if the operation was successfully cancelled,
- * the callback for the operation is responsible for returning
- * TRITON_ERR_CANCELLED
- * in the callback or somehow notifying through the callback that the
- * operation was
- * cancelled.
- */
-int ae_cancel_op(ae_context_t context, ae_op_id_t op_id)
-{
-    struct ae_ctl *ctl;
-    int resource_id, ridx;
-    int ret;
-    int error;
-
-    ae_debug_cancel("ae_cancel_op: %llu:%llu\n", llu(op_id.u), llu(op_id.l));
-
-    if(triton_uint128_iszero(op_id))
-    {
-        return AE_SUCCESS;
-    }
-
-    ae_id_lookup(op_id, &resource_id);
-
-    if(resource_id == 0)
-    {
-        intptr_t tmp = ae_id_lookup (op_id, NULL);
-	ctl = (struct ae_ctl *) tmp;
-        if(!ctl)
-        {
-            /* No blocking operation associated with this op_id.  Nothing to
-             * cancel. */
-            return AE_SUCCESS;
-        }
-
-	error = triton_mutex_lock(&ctl->mutex);
-        assert(!error);
-
-	if(ctl->in_pwait)
-	{
-            ae_op_id_t *children_ids;
-            int count, ind;
-      
-            children_ids = ae_children_get(context, ctl, &count);
-            error = triton_mutex_unlock(&ctl->mutex);
-            assert(!error);
-
-            for(ind = 0; children_ids && ind < count; ++ind)
-            {
-                ret = ae_cancel_op(context, children_ids[ind]);
-                if(ret != AE_SUCCESS)
-                {
-                    /* cancel failed */
-                    ae_children_put(children_ids, count);
-                    return ret;
-                }
-            }
-            ae_children_put(children_ids, count);
-            return AE_SUCCESS;
-	}
-	else
-	{
-            ae_op_id_t tmpid;
-            triton_uint128_set(ctl->current_op_id, tmpid);
-            triton_uint128_setzero(ctl->current_op_id);
-            error = triton_mutex_unlock(&ctl->mutex);
-            assert(!error);
-
-	    ret = ae_cancel_op(context, tmpid);
-            return ret;
-	}
-    }
-    else
-    {
-        ridx = AE_RESOURCE_ID2IDX(resource_id);
-        assert(ridx > -1 && ridx < MAX_RESOURCES);
-
-        if(ae_resource_entries[ridx].id != resource_id)
-        {
-            return AE_ERR_INVALID;
-        }
-
-        if(ae_resource_entries[ridx].resource->cancel)
-        {
-            return ae_resource_entries[ridx].resource->cancel(context, op_id);
-        }
-        else
-        {
-            return AE_SUCCESS;
-        }
-    }
 }
 
 ae_op_id_t ae_id_gen(int resource_id, intptr_t ptr)
@@ -433,6 +209,10 @@ ae_op_id_t ae_id_gen(int resource_id, intptr_t ptr)
     return newid;
 }
 
+/**
+ * Returns the resouce ID of the op in *resource_id, and the user data as the
+ * return of the function.
+ */
 intptr_t ae_id_lookup(ae_op_id_t id, int *resource_id)
 {
     if(resource_id) *resource_id = id.u;
@@ -445,94 +225,6 @@ struct op_id_entry
     triton_list_link_t link;
 };
 
-/** 
- * ae_children_get() retrieves a list of all children in this context and
- * increments their reference counts.  The caller is responsible for calling
- * ae_children_put() once it has finished operating on the children.
- *
- * NOTE: this function assumes that the caller is holding the parent ctrl
- * mutex while calling this function.
- */
-static ae_op_id_t * ae_children_get(ae_context_t context, struct ae_ctl *ctl, int *count)
-{
-    struct ae_ctl *child_ctl;
-    struct triton_list_link *entry, *safe;
-    ae_op_id_t *op_ids;
-    int ind, c;
-
-    ae_debug_cancel("ae_children_get: %p\n", ctl);
-
-    if(triton_list_empty(&ctl->children))
-    {
-        /* don't do anything here because there are no children
-         * to cancel
-         */
-        *count = 0;
-	return NULL;
-    }
-
-    /* need to allocate space here for op ids, since the entire control
-     * structure could go away while we're cancelling
-     */
-    c = triton_list_count(&ctl->children);
-    op_ids = malloc(sizeof(*op_ids) * c);
-    if(!op_ids)
-    {
-        *count = 0;
-        return NULL;
-    }
-    *count = c;
-
-    ind = 0;
-    triton_list_for_each(entry, safe, &ctl->children)
-    {
-	child_ctl = triton_list_get_entry(entry, struct ae_ctl, link);
-        triton_uint128_set(child_ctl->current_op_id, op_ids[ind]);
-        triton_uint128_setzero(child_ctl->current_op_id);
-        ae_op_id_addref(op_ids[ind]);
-        ++ind;
-    }
-
-    assert(ind == c);
-    *count = c;
-    return op_ids;
-}
-
-static inline void ae_op_id_addref(ae_op_id_t id)
-{
-    intptr_t tmp;
-    struct ae_ctl *ctl;
-
-    if(triton_uint128_iszero(id))
-        return;
-
-    tmp = ae_id_lookup (id, NULL);
-    ctl = (struct ae_ctl *) tmp;
-    ae_ctl_addref(ctl);
-}
-
-static void ae_children_put(ae_op_id_t* children, int count)
-{
-    int i;
-    intptr_t tmp;
-    struct ae_ctl *ctl;
-
-    for(i=0; i<count; i++)
-    {
-
-        tmp = ae_id_lookup (children[i], NULL);
-	ctl = (struct ae_ctl *) tmp;
-        if(ctl)
-        {
-            ae_ctl_done(ctl);
-        }
-    }
-
-    if(children)
-       free(children);
-
-    return;
-}
 
 #include <execinfo.h>
 #include <stdio.h>
@@ -561,37 +253,25 @@ static void timeout_cb(EV_P_ ev_timer *w, int revents)
     ev_break(EV_A_ EVBREAK_ONE);
 }
 
-int ae_poll(ae_context_t context, int millisecs)
+int ae_poll(int millisecs)
 {
-    struct ev_loop* target_loop;
     ev_timer timeout;
     int hit_timeout = 0;
-
-    if(context)
-    {
-        /* use context specific event loop */
-        target_loop = context->eloop;
-    }
-    else
-    {
-        /* use global event loop */
-        target_loop = eloop;
-    }
 
     if(millisecs > 0)
     {
         timeout.data = &hit_timeout;
         ev_timer_init(&timeout, timeout_cb, (double)millisecs * 1000.0, 0);
-        ev_timer_start(target_loop, &timeout);
-        ev_run(target_loop, 0);
+        ev_timer_start(eloop, &timeout);
+        ev_run(eloop, 0);
     }
     else
     {
-        ev_run(target_loop, EVRUN_NOWAIT);
+        ev_run(eloop, EVRUN_NOWAIT);
     }
 
     if(millisecs > 0)
-        ev_timer_stop(target_loop, &timeout);
+        ev_timer_stop(eloop, &timeout);
 
     /* this means that the event loop timed out without finding any work */
     if(hit_timeout == 1)
@@ -604,165 +284,171 @@ int ae_poll(ae_context_t context, int millisecs)
 
 #include <stdarg.h>
 
-int _ae_context_create(ae_context_t *context, const char *format __attribute__((unused)), int resource_count, ...)
+/**
+ * Given an op_id, try to call the resource to cancel
+ * the operation if it was generated by a resource.
+ * Otherwise, do nothing.
+ */
+static int ae_cancel_resource_op (ae_op_id_t op)
 {
-    va_list ap;
-    char *rname;
-    int cindex = ae_context_count;
-    ae_context_t c;
-    int i, j, reindex;
-    int ret;
+   int resource_id;
 
-    if(ae_context_count == AE_MAX_CONTEXTS)
-    {
-        return AE_ERR_INVALID;
-    }
+   intptr_t data = ae_id_lookup (op, &resource_id);
+   
+   ae_debug_cancel(" ae_cancel_resource_op: %lu,%i\n", (long unsigned) data,
+         resource_id);
 
-    c = &(ae_context_entries[cindex]);
-    c->id = ae_context_count;
-    ae_context_count++;
-    c->resource_count = resource_count;
-    c->resource_ids = malloc(sizeof(*c->resource_ids) * resource_count);
-    if(!c->resource_ids)
-    {
-        return AE_ERR_SYSTEM;
-    }
-    c->poll_data = malloc(sizeof(*c->poll_data) * resource_count);
-    if(!c->poll_data)
-    {
-        free(c->resource_ids);
-        return AE_ERR_SYSTEM;
-    }
+   /** if !resource_id, then this is not a resource op */
+   assert (resource_id);
 
-    c->eloop = ev_loop_new(EVFLAG_AUTO);
-    if(!c->eloop)
-    {
-        aesop_err("Error: could not create libev event loop.\n");
-        free(c->resource_ids);
-        free(c->poll_data);
-        return(AE_ERR_SYSTEM);
-    }
-    ev_async_init(&c->eloop_breaker, ev_break_cb);
-    ev_async_start(c->eloop, &c->eloop_breaker);
+   if (!resource_id)
+   {
+      return AE_ERR_INVALID;
+   }
 
-    reindex = 0;
+   int ridx = AE_RESOURCE_ID2IDX(resource_id);
 
-    /* step through the resource names passed in and register the context with them */
-    va_start(ap, resource_count);
-    for(i = 0; i < resource_count; ++i)
-    {
-        int resource_found = 0;
-        rname = va_arg(ap, char *);
+   assert(ridx > -1 && ridx < MAX_RESOURCES);
 
-        /* find the matching resource and register the context with that resource */
+   assert (ae_resource_entries[ridx].id == resource_id);
 
-        for(j = 0; j < MAX_RESOURCES; ++j)
-        {
-            if(!strcmp(ae_resource_entries[j].resource->resource_name, rname))
-            {
-                ev_async_init(&c->poll_data[reindex].async, ev_async_cb);
-                c->poll_data[reindex].poll_context = 
-                    ae_resource_entries[j].poll_data.poll_context;
-                c->poll_data[reindex].context = c;
-                c->poll_data[reindex].user_data = 
-                    ae_resource_entries[j].poll_data.user_data;
-
-                if(ae_resource_entries[j].resource->register_context)
-                {
-                    ret = ae_resource_entries[j].resource->register_context(c);
-                    if(ret != AE_SUCCESS)
-                    {
-                        /* what do we do if a context fails to register with a resource? */
-                        va_end(ap);
-                        return ret;
-                    }
-                }
-                ev_async_start(c->eloop, &c->poll_data[reindex].async);
-
-                c->resource_ids[reindex] = ae_resource_entries[j].id;
-
-                reindex++;
-                resource_found = 1;
-                break;
-            }
-        }
-        if(!resource_found)
-        {
-            va_end(ap);
-            return AE_ERR_NOT_FOUND;
-        }
-    }
-    va_end(ap);
-
-    *context = c;
-    return AE_SUCCESS;
+   if(ae_resource_entries[ridx].resource->cancel)
+   {
+      return ae_resource_entries[ridx].resource->cancel(op);
+   }
+   else
+   {
+      /**
+       * If the resource has no cancel function, we have to assume the
+       * operation can wait indefinitely. Return error.
+       */
+      return AE_ERR_INVALID;
+   }
 }
 
-int ae_context_destroy(ae_context_t context)
-{
-    int rid, idx, i;
+/**
+ * Set the cancel flag for this ae_ctl and all of its child ae_ctl,
+ * and tries to cancel each active resource operation along the way.
+ *
+ * Returns AE_SUCCESS if all ongoing operations were signalled to cancel,
+ * and an AE_ERR_ code if one of the operations could not be cancelled.
+ */
+int ae_cancel_ctl (struct ae_ctl * ctl);
 
-    for(i = 0; i < context->resource_count; ++i)
-    {
-        rid = context->resource_ids[i];
-        idx = AE_RESOURCE_ID2IDX(rid);
-        if(ae_resource_entries[idx].resource->unregister_context)
-        {
-            ae_resource_entries[idx].resource->unregister_context(context);
-        }
-        ev_async_stop(context->eloop, &context->poll_data[i].async);
-    }
-    free(context->resource_ids);
-    free(context->poll_data);
-    context->resource_ids = NULL;
-    context->poll_data = NULL;
-    context->id = -1;
-    context->resource_count = -1;
-    ev_loop_destroy(context->eloop);
-    return AE_SUCCESS;
+int ae_cancel_ctl (struct ae_ctl * ctl)
+{
+   int finalret;
+    
+   triton_mutex_lock (&ctl->mutex);
+
+   ae_debug_cancel("ae_cancel_ctl: %p\n (%s)", ctl, ctl->name);
+
+   ctl->op_state |= OP_REQUEST_CANCEL;
+
+   /* since this ctl is locked, we know that no pbranch can start/stop while
+    * we have the lock (and thus no children created).
+    *
+    * Also, since we locked the ctl, no new operation can be posted.
+    *
+    * We set the cancel flag and cancel and send a request to cancel any
+    * ongoing operations.
+    */
+   struct triton_list_link * entry;
+   struct triton_list_link * safe;
+
+   finalret = AE_SUCCESS;
+
+   /* First do all the children */
+   triton_list_for_each (entry, safe, &ctl->children)
+   {
+      struct ae_ctl * child_ctl = triton_list_get_entry(entry,
+            struct ae_ctl, link);
+
+      int ret = ae_cancel_ctl (child_ctl);
+
+      if (ret != AE_SUCCESS)
+         finalret = ret;
+
+   }
+
+
+   /* Check if we have something going on */
+   int resource_id;
+   intptr_t data = ae_id_lookup (ctl->current_op_id,
+         &resource_id);
+
+   if (!resource_id)
+   {
+      int ret = AE_SUCCESS;
+      /* We're in a context that called another blocking
+       * function or is currently calling a non-blocking function;
+       * Recurse if there is another context */
+      if (data)
+      {
+         ret = ae_cancel_ctl ((struct ae_ctl *) data);
+      }
+
+      if (ret != AE_SUCCESS)
+         finalret = ret;
+   }
+   else
+   {
+      /* we actually called a true resource function from this context */
+      // Request a cancellation of each resource function
+      // if it didn't complete yet  / wasn't cancelled
+      if (!(ctl->op_state & OP_COMPLETED))
+      {
+         int ret = AE_SUCCESS;
+
+         assert (resource_id);
+         /* We're in a context that actually called a resource function */
+         ret = ae_cancel_resource_op (ctl->current_op_id);
+
+
+         if (ret == AE_SUCCESS)
+         {
+            /* only mark as cancelled if there was no problem with the
+             * cancellation; if there was, we return the error and leave it up
+             * to the programmer to try again by calling cancel_branches
+             * again.
+             */
+            ctl->op_state &= OP_COMPLETED_CANCELLED;
+         }
+
+         if (ret != AE_SUCCESS)
+            finalret = ret;
+      }
+   }
+
+   triton_mutex_unlock (&ctl->mutex);
+   return finalret;
 }
 
+/**
+ * This function is called with the ctl structure of parent of the pwait.
+ */
 int ae_cancel_branches(struct ae_ctl *ctl)
 {
-    int ret;
-    ae_op_id_t *children_ids;
-    int ind, count, error;
-    ae_context_t context;
+
+    //int ret;
+    //ae_op_id_t *children_ids;
+    //int ind, count, error;
 
     ae_debug_cancel("ae_cancel_branches: %p\n", ctl);
 
-    if(!ctl)
+    if(!ctl || !ctl->in_pwait)
     {
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
         assert(ctl);
     }
 
-    error = triton_mutex_lock(&ctl->mutex);
-    assert(!error);
-
-    context = ctl->context;
-    children_ids = ae_children_get(context, ctl, &count);
-
-    error = triton_mutex_unlock(&ctl->mutex);
-    assert(!error);
-
-    for(ind = 0; children_ids && ind < count; ++ind)
-    {
-        ret = ae_cancel_op(context, children_ids[ind]);
-        if(ret != AE_SUCCESS)
-        {
-            ae_children_put(children_ids, count);
-            return ret;
-        }
-    }
-    ae_children_put(children_ids, count);
-    return AE_SUCCESS;
+    return ae_cancel_ctl (ctl);
 }
 
 int ae_count_branches(struct ae_ctl *ctl)
 {
     int r, error;
-    if(!ctl)
+    if(!ctl || !ctl->in_pwait)
     {
         fprintf(stderr, "can't call ae_cancel_branches from outside of a pbranch context\n");
         assert(ctl);
@@ -809,43 +495,35 @@ void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
     }
 }
 
-struct ev_loop * ae_resource_get_eloop(ae_context_t context)
-{
-    if(!context)
-        return(eloop);
-    else
-        return(context->eloop);
-}
-
-int aesop_set_config(const char* key, const char* value)
-{
-    int i;
-    int ret;
-    struct ae_resource_config* config;
-
-    for(i=0; i<MAX_RESOURCES; i++)
-    {
-        if(ae_resource_entries[i].id == -1)
-            continue;
-
-        config = ae_resource_entries[i].resource->config_array; 
-        while(config != NULL && config->name != NULL)
-        {
-            if(strcmp(config->name, key) == 0)
-            {
-                ret = config->updater(key, value);
-                return(ret);
-            }
-            config++;
-        }
-    }
-
-    return(AE_ERR_NOT_FOUND);
-}
-
 int aesop_dbg_blocking = 0;
 int aesop_dbg_cancel = 0;
 int aesop_dbg_pbranch = 0;
+
+
+int aesop_debug_from_env (void)
+{
+   const char * SPLIT = ",";
+   const char * d = getenv ("AESOP_DEBUG");
+   if (!d)
+   {
+      return AE_SUCCESS;
+   }
+
+   char * token = strdup (d);
+
+   char * saveptr;
+   const char * current = strtok_r (token, SPLIT, &saveptr);
+
+   while (current)
+   {
+      aesop_set_debugging (current, 1);
+      current = strtok_r (0, SPLIT, &saveptr);
+   }
+
+   free (token);
+
+   return AE_SUCCESS;
+}
 
 int aesop_set_debugging(const char* resource, int value)
 {
@@ -876,16 +554,19 @@ int aesop_set_debugging(const char* resource, int value)
     }
 
     /* check for matching resources and set their debugging value */
-    for(i=0; i<MAX_RESOURCES; i++)
+    if (ae_resource_count)
     {
-        if(ae_resource_entries[i].id == -1)
-            continue;
+       for(i=0; i<MAX_RESOURCES; i++)
+       {
+          if(ae_resource_entries[i].id == -1 || !ae_resource_entries[i].resource)
+             continue;
 
-        if(!strcmp(ae_resource_entries[i].resource->resource_name, resource))
-        {
-            ae_resource_entries[i].debug = value;
-            return(0);
-        }
+          if(!strcmp(ae_resource_entries[i].resource->resource_name, resource))
+          {
+             ae_resource_entries[i].debug = value;
+             return(0);
+          }
+       }
     }
 
     return(AE_ERR_NOT_FOUND);
@@ -899,118 +580,35 @@ int ae_check_debug_flag(int resource_id)
     return(ae_resource_entries[idx].debug);
 }
 
-static int ae_resource_init_helper (int i)
-{
-   int ret = AE_SUCCESS;
-
-   if (!ae_resource_init_table[i].count)
-   {
-      ret = ae_resource_init_table[i].init();
-      if (ret != AE_SUCCESS)
-         return ret;
-   }
-
-   ++ae_resource_init_table[i].count;
-
-   return ret;
-}
-
-static int ae_resource_finalize_helper (int i)
-{
-   int ret = AE_SUCCESS;
-
-   assert (ae_resource_init_table[i].count);
-
-   --ae_resource_init_table[i].count;
-
-   if(!ae_resource_init_table[i].count)
-   {
-      ae_resource_init_table[i].finalize();
-   }
-
-   return ret;
-}
-
-static int ae_resource_string_helper (const char* resource, int init)
-{
-    int i;
-
-    for(i=0; i<ae_resource_init_table_count; i++)
-    {
-        if(!strcmp(resource, ae_resource_init_table[i].name))
-        {
-           if (init)
-              ae_resource_init_helper (i);
-           else
-              ae_resource_finalize_helper (i);
-        }
-    }
-
-    return(AE_ERR_NOT_FOUND);
-}
-
-static int ae_resource_all_helper (int init)
-{
-    int i;
-    int ret = AE_SUCCESS;
-
-    for(i=0; i<ae_resource_init_table_count; i++)
-    {
-        ret = (init ? ae_resource_init_helper (i) 
-                    : ae_resource_finalize_helper (i));
-
-        if(ret != AE_SUCCESS)
-           break;
-    }
-
-    return ret;
-}
-
-int ae_resource_init (const char * s)
-{
-   return ae_resource_string_helper (s, 1);
-}
-
-int ae_resource_finalize (const char * s)
-{
-   return ae_resource_string_helper (s, 0);
-}
-
-int ae_resource_finalize_all (void)
-{
-   return ae_resource_all_helper (0);
-}
-
-int ae_resource_init_all (void)
-{
-   return ae_resource_all_helper (1);
-}
-
-int ae_resource_finalize_active (void)
-{
-    int i;
-    int ret = AE_SUCCESS;
-
-    for(i=0; i<ae_resource_init_table_count; i++)
-    {
-       while (ae_resource_init_table[i].count)
-       {
-          ret = ae_resource_finalize_helper (i);
-          if (ret != AE_SUCCESS)
-             return ret;
-       }
-    }
-
-    return ret;
-}
-
 int ae_resource_cleanup (void)
 {
-   ae_resource_init_register_cleanup ();
    ev_async_stop (eloop, &eloop_breaker);
    ev_default_destroy ();
 
    return(0);
+}
+
+
+/* Returns 0 if a cancel() operation is already in progress, returns 1 if no
+ * cancel() operation is in progress.  In the latter case the caller is
+ * expected to complete the operation normally.
+ */
+int ae_op_complete (struct ae_op * op)
+{
+   int ret = 0;
+   struct ae_ctl * ctl = op->user_ptr;
+
+   triton_mutex_lock (&ctl->mutex);
+
+   if (!(ctl->op_state & OP_COMPLETED))
+   {
+      ctl->op_state |= OP_COMPLETED_NORMAL;
+      ret = 1;
+   }
+
+   triton_mutex_unlock (&ctl->mutex);
+
+   return ret;
 }
 
 /*

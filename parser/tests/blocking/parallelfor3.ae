@@ -12,7 +12,7 @@ static __blocking void run_parfor(
 {
     pwait
     {
-        pprivate int i;
+        pprivate int i = 0;
         for (i = 0; i < 10; ++i)
         {
             pbranch
@@ -37,7 +37,9 @@ static __blocking void run_parfor(
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
     run_parfor();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

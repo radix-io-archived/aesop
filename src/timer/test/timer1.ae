@@ -1,0 +1,65 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+
+#include <stdio.h>
+#include <aesop/aesop.h>
+#include <aesop/timer.hae>
+
+static __blocking int dotimer(void)
+{
+    pwait
+    {
+        pbranch
+        {
+            printf("sleeping for 100 ms\n");
+            aesop_timer(100);
+            printf("100 ms done.\n");
+        }
+
+        pbranch
+        {
+            printf("sleeping for 1000 ms\n");
+            aesop_timer(1000);
+            printf("1000 ms done.\n");
+        }
+
+        pbranch
+        {
+            printf("sleeping for 10 ms\n");
+            aesop_timer(10);
+            printf("10 ms done.\n");
+        }
+    }
+    return 0;
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    int ret;
+
+    ret = aesop_timer_init();
+    if(ret != 0)
+    {
+        fprintf(stderr, "Error: failed to init.\n");
+        return(ret);
+    }
+
+    ret = dotimer();
+
+    aesop_timer_finalize();
+    return ret;
+}
+
+aesop_main_set(aesop_main);
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

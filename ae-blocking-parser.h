@@ -19,6 +19,11 @@
 #include <aesop/ae-log.h>
 #include <aesop/ae-debug.h>
 
+#warning AESOP ae-blocking-parser.h
+
+typedef triton_list_t* triton_state_table_list_t;
+typedef triton_list_t* triton_state_data_list_t;
+
 #define AE_MK_START_OF_BLOCKING(__fname__) \
     ae_debug_blocking("[START]: %s (%p)\n", #__fname__, __ae_ctl);
 
@@ -35,7 +40,6 @@
 #define AE_MK_BLOCKING_PARAMS_FUN_PTR_DECLS() \
     void *__ae_user_ptr; \
     ae_hints_t *__ae_hints; \
-    ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal;
 
@@ -47,13 +51,11 @@
     struct __fname##_ctl *__ae_ctl_done __unused__;    \
                                                        \
     __ae_ctl = (struct __fname##_ctl *)__ae_ptr;       \
-    /* Don't know why lock was here: manipulating */   \
-    /* variables local to this code block ... */       \
     state = AE_CTL_CALL_COMPLETE;                      \
-    /* triton_mutex_lock(&__ae_ctl->gen.mutex);  */        \
+    triton_mutex_lock(&__ae_ctl->gen.mutex);           \
     ae_op_id_clear(__ae_ctl->gen.current_op_id);       \
-    /* triton_mutex_unlock(&__ae_ctl->gen.mutex); */
- 
+    triton_mutex_unlock(&__ae_ctl->gen.mutex);
+
 #define AE_MK_CB_FN_INVOKE_WORKER(__bfun, __fname, __pos_str) \
     cbret = __ae_worker_##__bfun(__ae_ctl, &state);           \
     if(cbret != AE_SUCCESS)                                   \
@@ -82,12 +84,12 @@
         ae_ctl_done(&__ae_ctl->gen);                          \
         return;                                               \
     }
- 
+
 #define AE_MK_DONE_DECLS()                       \
         void * __ae_local_up;                    \
         __ae_local_cb = __ae_ctl->__ae_callback; \
         __ae_local_up = __ae_ctl->user_ptr;
- 
+
 #define AE_MK_CALLBACK_FN(__bfun, __fname, __pos_str, __fret_type, __cb_ret_type, __cb_ret_param)     \
 static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr, __cb_ret_type __cb_ret_param) \
 {                                                                                                     \
@@ -183,7 +185,6 @@ static void __bfun##_##__fname##_##__pos_str##_callback(void *__ae_ptr) \
     __ae_postret = __bcall(__fname##_##__bcallName##_##__pos_str##_callback, \
                            __ae_ctl,                                         \
                            __ae_ctl->gen.hints,                              \
-                           __ae_ctl->gen.context,                            \
                            &__ae_ctl->gen.current_op_id,                     \
                            1);
 
@@ -232,12 +233,20 @@ __ae_blocking_function_done:     \
     goto __ae_blocking_function_done;         \
 }
 
+
+/**
+ * We lock the ctl structure before posting an operation to make sure
+ * that a cancel request cannot proceed while we're posting a function in this
+ * context.
+ */
 #define AE_MK_WORKER_BEFORE_POST(__fname, __bcall, __pos_str) \
     __fname##_##__bcall##_##__pos_str##_before_label:         \
     __ae_ctl->gen.state_label =                               \
-        &&__fname##_##__bcall##_##__pos_str##_after_label;
+        &&__fname##_##__bcall##_##__pos_str##_after_label;    \
+    triton_mutex_lock (&__ae_ctl->gen.mutex);
 
 #define AE_MK_WORKER_AFTER_POST(__fname, __bcall, __pos_str) \
+    triton_mutex_unlock (&__ae_ctl->gen.mutex);              \
     if(__ae_postret == AE_SUCCESS)                           \
     {                                                        \
        __ae_myret = AE_SUCCESS;                              \
@@ -252,14 +261,17 @@ __ae_blocking_function_done:     \
     }                                                        \
     __fname##_##__bcall##_##__pos_str##_after_label: {}
 
+
 #define AE_MK_WORKER_BEFORE_POST_IN_PBRANCH(__fname, __bcall, __pos_str, __pbranch_pos_str) \
     __fname##_##__bcall##_##__pos_str##_before_label:                                       \
     __ae_ctl->gen.state_label =                                                             \
         &&__fname##_##__bcall##_##__pos_str##_after_label;                                  \
-    ae_debug_pbranch("ctl_addref: before post: %p\n", __ae_ctl);                            \
-    ae_ctl_addref(&__ae_ctl->gen);
+    /*ae_debug_pbranch("ctl_addref: before post: %p (gen=%s)\n", __ae_ctl, __ae_ctl->gen.name); */      \
+    ae_ctl_addref(&__ae_ctl->gen); \
+    triton_mutex_lock (&__ae_ctl->gen.mutex);
 
 #define AE_MK_WORKER_AFTER_POST_IN_PBRANCH(__fname, __bcall, __pos_str, __pbranch_pos_str) \
+   triton_mutex_unlock (&__ae_ctl->gen.mutex); \
    if(__ae_postret == AE_SUCCESS)                                                          \
    {                                                                                       \
        *__ae_state |= AE_CTL_POST_SUCCESS;                                                 \
@@ -268,7 +280,7 @@ __ae_blocking_function_done:     \
    }                                                                                       \
    else if(__ae_postret == AE_IMMEDIATE_COMPLETION)                                        \
    {                                                                                       \
-       ae_debug_pbranch("ctl_done: post ic: %p\n", __ae_ctl);                              \
+       ae_debug_pbranch("ctl_done: post ic: %p (gen=%s)\n", __ae_ctl, __ae_ctl->gen.name);                              \
        ae_ctl_done(&__ae_ctl->gen);                                                        \
    }                                                                                       \
    else                                                                                    \
@@ -287,7 +299,7 @@ __ae_blocking_function_done:     \
     __ae_ctl->return_params.__bcall##_##__pos_str##_ret;
 
 #define AE_MK_WORKER_PBRANCH_DECLS(__fname, __pbranch_pos_str) \
-    enum ae_pbranch_state __ae_pbranch_##__pbranch_pos_str##_state;
+    enum ae_pbranch_state __ae_pbranch_##__pbranch_pos_str##_state = 0;
 
 #define AE_MK_WORKER_PBRANCH_START_STMTS(__fname, __pwait_pos_str, __pbranch_pos_str) \
 __ae_pbranch_##__pbranch_pos_str##_start:                                             \
@@ -304,7 +316,6 @@ __ae_pbranch_##__pbranch_pos_str##_start:                                       
                 __ae_ctl,                                                             \
                 #__fname "_ctl:pbranch_" #__pbranch_pos_str,                          \
                 NULL,                                                                 \
-                __ae_ctl_parent->gen.context,                                         \
                 1,                                                                    \
                 __ae_ctl_parent);                                                     \
     ae_debug_pbranch("starting pbranch: %s (ctl=%p, parent=%p)\n",                    \
@@ -434,13 +445,12 @@ __ae_pbranch_##__pbranch_pos_str##_start:                                 \
     }                                                                     \
     ae_ctl_init(&__ae_ctl->gen,                                           \
                 __ae_ctl,                                                 \
-                #__fname "_ctl:pbranch_" #__pbranch_pos_str,              \
+                #__fname "_ctl:[L]pbranch_" #__pbranch_pos_str,              \
                 NULL,                                                     \
-                __ae_ctl_parent->gen.context,                             \
                 1,                                                        \
                 __ae_ctl_parent);                                         \
     ae_debug_pbranch("starting lone pbranch: %s (ctl=%p, parent=%p)\n",   \
-                     #__fname "_ctl:pbranch_" #__pbranch_pos_str,         \
+                     __ae_ctl->gen.name,         \
                      __ae_ctl,                                            \
                      __ae_ctl_parent);                                    \
     __ae_ctl->parent = __ae_ctl_parent;                                   \
@@ -509,14 +519,12 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
 #define AE_MK_BFUN_PARAMS_DECLS() \
     void *__ae_user_ptr; \
     ae_hints_t *__ae_hints; \
-    ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal;
 
 #define AE_MK_BFUN_PARAMS_FUN_PTR_DECLS(__ret_type) \
     void *__ae_user_ptr; \
     ae_hints_t *__ae_hints; \
-    ae_context_t __ae_context; \
     ae_op_id_t *__ae_op_id; \
     int __ae_internal; \
     __ret_type *retval;
@@ -536,7 +544,6 @@ __ae_pbranch_##__pbranch_pos_str##_after: {}
                 __ae_ctl,                                             \
                 #__fname,                                             \
                 __ae_hints,                                           \
-                __ae_context,                                         \
                 __ae_internal,                                        \
                 __ae_user_ptr);                                       \
     AE_MK_START_OF_BLOCKING(__fname);                                 \

@@ -32,7 +32,9 @@ static __blocking int pbranch_with_return(void)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
     pbranch_with_return();
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

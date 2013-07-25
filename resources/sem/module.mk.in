@@ -1,0 +1,9 @@
+DIR := resources/sem
+
+AESOP_HDR += $(DIR)/sem.hae
+
+INSTALL_HDR += $(DIR)/sem.hae
+
+LIBSRC += $(DIR)/sem.c
+
+

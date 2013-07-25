@@ -1,0 +1,493 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+/* This is a set of aesop-enabled wrappers for common Berkeley DB functions
+ *
+ * Implementation notes:
+ *
+ * - Aesop semaphores are used to limit the number of concurrent
+ *   transactions.  See the set_tx_max() function in Berkeley
+ *   DB: Berkeley DB will return an error if you attemp to open too many
+ *   concurrent transactions.  The limit is set to max_txns, which is
+ *   hard coded right now but could be made configurable if needed.
+ *
+ * - Like the aefile resource, aebdb uses the aethread resource to convert
+ *   conventional function calls (Berkeley DB API calls in this case) 
+ *   into asynchronous calls.  The usage is a little bit unusual here,
+ *   however.  Berkeley DB will deadlock if the same thread is used to make
+ *   interleaved calls to different transactions.  In order to work around 
+ *   this limitation, each transaction opened using aebdb is assigned its 
+ *   own thread pool of size 1.  Each subsequent operation on that
+ *   transaction is mapped to the same thread pool.  The thread pool is 
+ *   destroyed when the transaction is committed or aborted.
+ *
+ *   This would probably be a little more efficient if we reused threads
+ *   instead of creating/destroying them for each transaction, but that
+ *   would require some changes to the aethread architecture to support
+ *   multiple work queues and thread affinity for those work queues.
+ */
+
+#include <assert.h>
+
+#include "src/aebdb/aebdb.hae"
+#include "resources/thread/aethread.hae"
+#include "resources/sem/sem.hae"
+#include <triton-hash.h>
+
+static struct aethread_group* general_thread_group = NULL;
+static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
+static int module_refcount = 0;
+
+/* maximum number of concurrent bdb transactions */
+static int max_txns = 16;
+/* semaphore to restrict number of concurrent transactions */
+aesop_sem_t txn_sem; 
+/* hash table of in progress txns */
+struct triton_hash_table *txn_table;
+static triton_mutex_t txn_table_mutex = TRITON_MUTEX_INITIALIZER;
+
+/* struct to associate transactions with specific thread pools */
+struct open_txn
+{
+    DB_TXN* tid;    
+    struct aethread_group* th_group;
+    triton_list_link_t hash_link;
+};
+
+static int open_txn_compare(const void *k, struct triton_hash_link *l);
+static struct open_txn* lookup_txn(DB_TXN *txnid);
+
+#define AETHREAD_RUN(__tg) \
+do { \
+    int __ret; \
+    if((__tg) == NULL) \
+        __ret = aethread_hint(general_thread_group); \
+    else \
+        __ret = aethread_hint(__tg); \
+    if(__ret == AE_ERR_SYSTEM) \
+        return(-EIO); \
+    if(__ret == AE_ERR_CANCELLED) \
+        return(-EINTR); \
+}while(0) 
+
+#define AETHREAD_RUN_REPLACE_TXN(__tg) \
+do { \
+    int __ret; \
+    if((__tg) == NULL) \
+        __ret = aethread_hint(general_thread_group); \
+    else \
+        __ret = aethread_hint(__tg); \
+    if(__ret != 0){\
+        triton_mutex_lock(&txn_table_mutex); \
+        triton_hash_add(txn_table, ot->tid, &ot->hash_link); \
+        triton_mutex_unlock(&txn_table_mutex); \
+    }\
+    if(__ret == AE_ERR_SYSTEM) \
+        return(-EIO); \
+    if(__ret == AE_ERR_CANCELLED) \
+        return(-EINTR); \
+}while(0) 
+
+
+int aebdb_init(void)
+{
+    int ret;
+
+    triton_mutex_lock(&module_lock);
+
+    if(!module_refcount)
+    {
+        /* hash table of current transactions */
+        txn_table = triton_hash_init(open_txn_compare, triton_hash_ptr_hash, max_txns);
+        if(!txn_table)
+        {
+            triton_mutex_unlock(&module_lock);
+            return(AE_ERR_SYSTEM);
+        }
+
+        /* initialize required thread resource */
+        ret = aethread_init();
+        if(ret != 0)
+        {
+            triton_hash_finalize(txn_table);
+            triton_mutex_unlock(&module_lock);
+            return(ret);
+        }
+        
+        /* initialize semaphore resource */
+        ret = aesop_sem_module_init();
+        if(ret != 0)
+        {
+            aethread_finalize();
+            triton_hash_finalize(txn_table);
+            triton_mutex_unlock(&module_lock);
+            return(ret);
+        }
+
+        /* set semaphore to limit number of concurrent txn operation */
+        ret = aesop_sem_init(&txn_sem, max_txns);
+        if(ret != 0)
+        {
+            aesop_sem_module_finalize();
+            aethread_finalize();
+            triton_hash_finalize(txn_table);
+            triton_mutex_unlock(&module_lock);
+            return(ret);
+        }
+
+        /* Pool of threads for operations that aren't associated with a
+         * specific existing transaction
+         */
+        general_thread_group = aethread_create_group_pool(4);
+        if(!general_thread_group)
+        {
+            aesop_sem_destroy(&txn_sem);
+            aesop_sem_module_finalize();
+            aethread_finalize();
+            triton_hash_finalize(txn_table);
+            triton_mutex_unlock(&module_lock);
+            return(AE_ERR_SYSTEM);
+        }
+    }
+    module_refcount++;
+    triton_mutex_unlock(&module_lock);
+
+    return(0);
+}
+
+void aebdb_finalize(void)
+{
+    triton_mutex_lock(&module_lock);
+    module_refcount--;
+
+    if(!module_refcount)
+    {
+        aesop_sem_destroy(&txn_sem);
+        aesop_sem_module_finalize();
+        aethread_destroy_group(general_thread_group);
+        triton_hash_finalize(txn_table);
+        aethread_finalize();
+    }
+    triton_mutex_unlock(&module_lock);
+
+    return;
+}
+
+__blocking int aebdb_txn_begin(DB_ENV *env,
+    DB_TXN *parent, 
+    DB_TXN **tid, 
+    u_int32_t flags)
+{
+    int ret;
+    struct open_txn *ot;
+
+    /* check concurrency */
+    ret = aesop_sem_down(&txn_sem);
+    if(ret != 0)
+    {
+        /* NOTE: db-specific errors are in the -30,800 to -30,999 range, so
+         * we can safely use aesop error codes here without overlap
+         */
+        return(ret);
+    }
+
+    /* track mapping of this transaction to a particular thread pool */
+    ot = malloc(sizeof(*ot));
+    if(!ot)
+    {
+        aesop_sem_up(&txn_sem);
+        return(AE_ERR_NOMEM);
+    }
+
+    triton_list_link_clear(&ot->hash_link);
+    ot->th_group = aethread_create_group_pool(1);
+    if(!ot->th_group)
+    {
+        free(ot);
+        aesop_sem_up(&txn_sem);
+        return(AE_ERR_SYSTEM);
+    }
+
+    /* actually begin the bdb transaction */
+    /* NOTE: we aren't running this in a thread pool; we don't expect a txn
+     * begin call in bdb to block on any significant I/O or lock operations
+     */
+    ret = env->txn_begin(env, parent, tid, flags);
+
+    /* store the tid */
+    ot->tid = *tid;
+    triton_mutex_lock(&txn_table_mutex);
+    triton_hash_add(txn_table, ot->tid, &ot->hash_link);
+    triton_mutex_unlock(&txn_table_mutex);
+
+    return(ret);
+}
+
+__blocking int aebdb_txn_abort(DB_TXN *tid)
+{
+    struct open_txn *ot;
+    int ret;
+
+    ot = lookup_txn(tid);
+
+    /* Go ahead and remove the txn from the table.  Regardless of the outcome of the
+     * upcoming abort(), it is no longer valid to submit operations on this txn, and bdb
+     * may elect to reuse the txn pointer as soon as the abort() is complete.
+     */
+    triton_mutex_lock(&txn_table_mutex);
+    triton_list_del(&ot->hash_link);
+    triton_mutex_unlock(&txn_table_mutex);
+
+    AETHREAD_RUN_REPLACE_TXN(ot->th_group);
+    ret = tid->abort(tid);
+
+    /* shut down the thread pool for this txn */
+    aethread_destroy_group(ot->th_group);
+
+    /* up semaphore to allow other transactions to proceed */
+    aesop_sem_up(&txn_sem);
+    
+    free(ot);
+
+    return(ret);
+}
+
+__blocking int aebdb_get(
+    DB *db, 
+    DB_TXN *txnid, 
+    DBT *key, 
+    DBT *data, 
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(txnid);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(th_group);
+    ret = db->get(db, txnid, key, data, flags);
+
+    return(ret);
+}
+
+
+__blocking int aebdb_put(
+    DB *db, 
+    DB_TXN *txnid, 
+    DBT *key, 
+    DBT *data, 
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(txnid);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(th_group);
+    ret = db->put(db, txnid, key, data, flags);
+
+    return(ret);
+}
+
+__blocking int aebdb_del(
+    DB *db,
+    DB_TXN *txnid,
+    DBT *key,
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(txnid);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(th_group);
+    ret = db->del(db, txnid, key, flags);
+
+    return(ret);
+}
+
+__blocking int aebdb_txn_commit(DB_TXN *tid, u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+
+    ot = lookup_txn(tid);
+
+    /* Go ahead and remove the txn from the table.  Regardless of the outcome of the
+     * upcoming commit(), it is no longer valid to submit operations on this txn, and bdb
+     * may elect to reuse the txn pointer as soon as the commit() is complete.
+     */
+    triton_mutex_lock(&txn_table_mutex);
+    triton_list_del(&ot->hash_link);
+    triton_mutex_unlock(&txn_table_mutex);
+
+    AETHREAD_RUN_REPLACE_TXN(ot->th_group);
+   
+    ret = tid->commit(tid, flags);
+
+    /* destroy the thread pool for this txn */
+    aethread_destroy_group(ot->th_group);
+
+    /* up semaphore to allow other transactions to proceed */
+    aesop_sem_up(&txn_sem);
+
+    free(ot);
+
+    return(ret);
+}
+
+__blocking int aebdb_txn_checkpoint(
+    DB_ENV *env,
+    u_int32_t kbyte,
+    u_int32_t min,
+    u_int32_t flags)
+{
+    int ret;
+
+    AETHREAD_RUN(NULL);
+    ret = env->txn_checkpoint(env, kbyte, min, flags);
+
+    return(ret);
+}
+
+__blocking int aebdb_log_flush(
+    DB_ENV *env,
+    DB_LSN *lsn)
+{
+    int ret;
+
+    AETHREAD_RUN(NULL);
+    ret = env->log_flush(env, lsn);
+
+    return(ret);
+}
+
+__blocking int aebdb_cursor(
+    DB *db,
+    DB_TXN *txnid,
+    DBC **cursorp,
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(txnid);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(th_group);
+    ret = db->cursor(db, txnid, cursorp, flags);
+
+    return(ret);
+}
+
+__blocking int aebdb_cursor_close(
+    DBC *DBCursor)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(DBCursor->txn);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(NULL);
+    ret = DBCursor->c_close(DBCursor);
+
+    return(ret);
+}
+
+__blocking int aebdb_cursor_get(
+    DBC *DBcursor,
+    DBT *key,
+    DBT *data,
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(DBcursor->txn);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(NULL);
+    ret = DBcursor->c_get(DBcursor, key, data, flags);
+
+    return(ret);
+}
+
+__blocking int aebdb_cursor_del(
+    DBC *DBcursor,
+    u_int32_t flags)
+{
+    struct open_txn *ot;
+    int ret;
+    struct aethread_group* th_group = NULL;
+
+    ot = lookup_txn(DBcursor->txn);
+    if(ot)
+        th_group = ot->th_group;
+
+    AETHREAD_RUN(NULL);
+    ret = DBcursor->c_del(DBcursor, flags);
+
+    return(ret);
+}
+
+
+static int open_txn_compare(const void *k, struct triton_hash_link *l)
+{
+    struct open_txn *ot = triton_hash_get_entry(l, struct open_txn, hash_link);
+    if(ot->tid == k)
+        return 1;
+    else
+        return 0;
+}
+
+static struct open_txn* lookup_txn(DB_TXN *txnid)
+{
+    triton_list_link_t *ot_link;
+    struct open_txn *ot;
+
+    if(!txnid)
+        return(NULL);
+
+    /* find this txn in our table of open txns */
+    triton_mutex_lock(&txn_table_mutex);
+    ot_link = triton_hash_search(txn_table, txnid);
+    assert(ot_link);
+    triton_mutex_unlock(&txn_table_mutex);
+
+    /* Note that we don't have to hold the txn_table_mutex while a specific
+     * open_txn structure is being modified.   The mutex only protects the
+     * hash table itself, not the elements stored within it.
+     */
+    ot = triton_hash_get_entry(ot_link, struct open_txn, hash_link);
+    assert(ot);
+
+    return(ot);
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

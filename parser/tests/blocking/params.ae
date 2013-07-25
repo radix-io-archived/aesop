@@ -26,7 +26,9 @@ static __blocking void run_params(int a, const char *b, const char *c)
 
 __blocking int aesop_main(int argc, char **argv)
 {
+    btest_init();
     run_params(10, "FOO", "BAR");
+    btest_finalize();
     return 0;
 }
 aesop_main_set(aesop_main);

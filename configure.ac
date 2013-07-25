@@ -24,7 +24,6 @@ AC_DEFINE_UNQUOTED(AESOP_VERSION_SUB,   $AESOP_SUB, sub version number)
 AC_CONFIG_HEADER(aesop-config.h)
 AC_CONFIG_AUX_DIR(maint/config)
 
-AC_CONFIG_SUBDIRS(src/c-utils)
 
 AC_PROG_INSTALL
 AC_PROG_CC
@@ -59,6 +58,17 @@ fi
 
 AX_GHC("")
 
+
+dnl ====================================================
+dnl = Find timeout program to safely run tests for now =
+dnl ====================================================
+TIMEOUT_PROG=
+AC_CHECK_PROGS(TIMEOUT_PROG,[timeout])
+if test -z "$TIMEOUT_PROG"; then
+   AC_MSG_ERROR("Could not find 'timeout' program!")
+fi
+AC_SUBST(TIMEOUT_PROG)
+
 dnl ======================================================================
 dnl  Try harder to be valgrind safe
 dnl ======================================================================
@@ -74,6 +84,60 @@ AS_IF([test "x$enable_valgrind_clean" = "xyes"], [
 ])
 AC_SUBST(VALGRIND_CLEAN)
 
+dnl =========================================================================
+dnl ==== Check for libev ====================================================
+dnl =========================================================================
+
+AC_ARG_WITH([libev],
+            [AS_HELP_STRING([[--with-libev=[DIR]]],
+                            [Use libev from specified directory])])
+
+libev_prefix=
+AC_SUBST([libev_prefix])
+
+CPPFLAGS="$CPPFLAGS -I${with_libev}/include"
+LDFLAGS="$LDFLAGS -L${with_libev}/lib"
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_libev}/lib -lev"
+
+AC_CHECK_HEADER([ev.h],[],
+         [AC_MSG_ERROR([Could not find libev header in
+          ${with_libev}/include!])])
+
+AC_CHECK_LIB([ev],[ev_once],[evok=1; LIBS="-lev $LIBS"],
+             [evok=0])
+if test "A$evok" == "A0"; then
+   AC_CHECK_LIB([m], [log], [], [])
+   dnl Needs to be a different function to avoid hitting cache
+   AC_CHECK_LIB([ev], [ev_break], [],
+             [AC_MSG_ERROR([Could not find useable
+           libev library at prefix ${with_libev}/lib!])])
+fi
+
+
+
+dnl =========================================================================
+dnl ==== Check for C-Utils ==================================================
+dnl =========================================================================
+
+
+AC_ARG_WITH([c-utils],
+            [AS_HELP_STRING([[--with-c-utils[=DIR]]],
+                             [Installation path of c-utils])],
+            [],
+            [ with_c_utils="/usr"])
+
+c_utils_prefix=""
+AC_SUBST([c_utils_prefix])
+
+CPPFLAGS="$CPPFLAGS -I${with_c_utils}/include"
+LDFLAGS="$LDFLAGS -L${with_c_utils}/lib"
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_c_utils}/lib -lc-utils"
+AC_CHECK_HEADER([c-utils-common.h],[],
+            [AC_MSG_ERROR([Could not find c-utils at prefix
+             ${with_c_utils}!])])
+AC_CHECK_LIB([c-utils],[bj_hashlittle2],[],
+                [AC_MSG_ERROR([Could not find useable
+              C-Utils library at prefix ${with_c_utils}!])])
 
 dnl =========================================================================
 dnl == OpenPA ===============================================================
@@ -82,9 +146,7 @@ dnl =========================================================================
 # OpenPA
 AC_ARG_WITH([openpa],
             [AS_HELP_STRING([[--with-openpa[=DIR]]],
-                             [rather than the one included in src/openpa.  Pass
-                             "embedded" to force usage of the OpenPA source
-                             distributed with triton.])],
+                             [Use OpenPA installed in DIR])],
             [],
             [
              OLDLIBS="$LIBS"
@@ -97,7 +159,7 @@ OPA_store_int(&i,10);
 OPA_fetch_and_incr_int(&i);
 ])dnl
                              ],
-                            [with_openpa=system],
+                            [with_openpa="/usr"],
                             [with_openpa="/usr"])
              LIBS="$OLDLIBS"
              ])
@@ -105,41 +167,17 @@ OPA_fetch_and_incr_int(&i);
 opadir=""
 AC_SUBST([opadir])
 
-if test "$with_openpa" = "embedded" ; then
-   AC_MSG_ERROR([Embedded mode disabled for OpenPA!])
-    if test -e "${srcdir}/extern/openpa" ; then
-        opadir="openpa"
-        EXTERNAL_SRC_DIRS="$EXTERNAL_SRC_DIRS extern/openpa"
-        CPPFLAGS="-I${srcdir}/extern/openpa/src $CPPFLAGS"
-        AC_CONFIG_SUBDIRS([extern/openpa])
-        LIBS="-lopa $LIBS"
-    else
-        AC_MSG_WARN([Attempted to use the embedded OpenPA source tree in dnl
-                     "${srcdir}/extern/openpa", but it is missing.
-                     Configuration or dnl
-                     compilation may fail later.]) dnl
-    fi
-elif test "$with_openpa" = "system" ; then
-   dummy="dummy";
-   dnl LIBS="-lopa $LIBS"
-elif test "$with_openpa" = "no" ; then
-   AC_MSG_ERROR([OpenPA is required!])
-else
-    # The user specified an already-installed OPA; just sanity check, don't
-    # subconfigure it
-    AS_IF([test -s "${with_openpa}/include/opa_primitives.h" -a -s "${with_openpa}/include/opa_config.h"],
+AS_IF([test -s "${with_openpa}/include/opa_primitives.h" -a \
+            -s "${with_openpa}/include/opa_config.h"],
           [:],[AC_MSG_ERROR([the OpenPA installation in "${with_openpa}" appears broken])])
-    CPPFLAGS="-I${with_openpa}/include $CPPFLAGS"
-dnl CPPFLAGS="-I${ac_top_build_prefix}/extern/openpa"
-dnl    LIBS="-lopa $LIBS"
-    LDFLAGS="-L${with_openpa}/lib $LDFLAGS"
-fi
+
+CPPFLAGS="-I${with_openpa}/include $CPPFLAGS"
+LDFLAGS="-L${with_openpa}/lib $LDFLAGS"
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_openpa}/lib -lopa"
 
 
-AC_CHECK_LIB([opa],[OPA_Queue_init],[],[AC_MSG_ERROR([Could not find useable
-              OpenPA library!])])
-
-dnl AC_SUBST([subdirs])
+AC_CHECK_LIB([opa],[OPA_Queue_init],[],
+       [AC_MSG_ERROR([Could not find useable OpenPA library!])])
 
 dnl =========================================================================
 dnl == Google's PerfTools ===================================================
@@ -299,6 +337,13 @@ fi],
     THREAD_LIB="-lpthread"
     AC_MSG_RESULT(yes) ])
 
+dnl check for optional berkeley db support
+dnl
+AC_ARG_WITH(db,
+       [  --with-db=<dir>         Location of installed DB package
+(default=/usr)],
+       [AX_BERKELEY_DB(${withval})],
+       [AX_BERKELEY_DB("")])
 
 AC_COMPILE_IFELSE(
 [#include <stdlib.h>
@@ -317,27 +362,38 @@ AC_SUBST(AECC_CFLAGS)
 
 AC_SUBST(LIBCFLAGS)
 AC_SUBST(THREAD_LIB)
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} ${THREAD_LIB}"
+AC_SUBST(AESOP_PKGCONFIG_LIBS)
 
 AC_CONFIG_FILES([bin/aecc-utils], [])
 AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
 
+AC_CONFIG_FILES([tests/testrunner.sh], [chmod +x tests/testrunner.sh])
+
 AC_OUTPUT([Makefile
-resources/timer/test/module.mk
-resources/timer/module.mk
-src/aefile/module.mk
-src/aefile/test/module.mk
+resources/worker/module.mk
+resources/worker/test/module.mk
+resources/sem/module.mk
+resources/sem/test/module.mk
 resources/thread/module.mk
 resources/thread/test/module.mk
-resources/resourcebuilder/module.mk
-resources/resourcebuilder/test/module.mk
-module.mk
-tests/module.mk
-parser/module.mk
-parser/tests/blocking/module.mk
+src/aefile/module.mk
+src/aebdb/module.mk
+src/aebdb/test/module.mk
+src/aefile/test/module.mk
+src/resourcebuilder/module.mk
+src/resourcebuilder/test/module.mk
 src/socket/module.mk
 src/socket/test/module.mk
 src/ssm/module.mk
 src/ssm/test/module.mk
+src/timer/test/module.mk
+src/timer/module.mk
+module.mk
+tests/module.mk
+parser/module.mk
+parser/tests/blocking/module.mk
 doc/module.mk
+maint/aesop.pc
 ])
 
