@@ -436,7 +436,7 @@ $(GENLIBOBJS) $(LIBOBJS) $(TESTOBJS): %.o: %.c
 # Auto-generated dependencies for .c files
 $(LIBDEPS) $(GENLIBDEPS) $(TESTDEPS) $(TESTLIBDEPS): %.d: %.c include/aesop/.done
 	$(Q) "  DEP           $@"
-	$(E)$(srcdir)/maint/depend.sh $(call dirname,$*) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
+	$(E)maint/depend.sh $(call dirname,$*) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
 $(TESTLIBOBJS): %.o: %.c
 
@@ -497,7 +497,7 @@ $(AEOBJS): %.o: $(HSBIN) %.ae
 # Auto-generated dependencies for .ae files
 $(AEDEPS): %.ae.d: %.ae include/aesop/.done
 	$(Q) "  DEP           $@"
-	$(E)$(srcdir)/maint/depend-ae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
+	$(E)maint/depend-ae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
 # Generate header files (%.h) from AE header files
 # NOTE: this is used by resource .c files that need to include the .h
@@ -511,7 +511,7 @@ $(AESOP_TRHDR): %.h: %.hae $(HSBIN)
 
 $(AESOP_TRHDR_DEPS): %.h.d: %.hae include/aesop/.done
 	$(Q) "  DEP           $@"
-	$(E)$(srcdir)/maint/depend-hae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
+	$(E)maint/depend-hae.sh $(call dirname,$*) $(srcdir) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_C,$*) $< > $@
 
 # TODO: we need a better solution here.  The problem is that the
 # auto-dependencies often include generated headers.  If we make the .d

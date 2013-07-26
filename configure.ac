@@ -369,6 +369,9 @@ AC_CONFIG_FILES([bin/aecc-utils], [])
 AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
 
 AC_CONFIG_FILES([tests/testrunner.sh], [chmod +x tests/testrunner.sh])
+AC_CONFIG_FILES([maint/depend.sh],[chmod +x maint/depend.sh])
+AC_CONFIG_FILES([maint/depend-ae.sh],[chmod +x maint/depend-ae.sh])
+AC_CONFIG_FILES([maint/depend-hae.sh],[chmod +x maint/depend-hae.sh])
 
 AC_OUTPUT([Makefile
 resources/worker/module.mk
