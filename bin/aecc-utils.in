@@ -626,56 +626,6 @@ parseAesopHeader()
     return $?
 }
 
-# parseRemoteSource <service name> <registry dir> <verbose> <compiler> <input file> <output file> <named input> <parser opts> <compiler opts>
-parseRemoteSource()
-{
-    sname="$1" ; shift
-    rdir="$1" ; shift
-    verbose="$1" ; shift
-    compiler="$1" ; shift
-    input="$1" ; shift
-    output="$1" ; shift
-    namedinput="$1" ; shift
-    popts="$1" ; shift
-    if test "${popts}" = "none"; then
-        popts=""
-    fi
-    compileropts="$@"
-    if test "${compileropts}" = "none"; then
-        compileropts=""
-    fi
-    serviceopts=
-    if test "${sname}" != "none"; then
-        serviceopts="-n ${sname}"
-    fi
-    regopts=
-    if test "${rdir}" != "none"; then
-        regopts="-d ${rdir}"
-    fi
-    outopt=
-    if test "${output}" != "none"; then
-        outopt="-o ${output}"
-    fi
-    namedopt=
-    if test "${namedinput}" != "none"; then
-        namedopt="-r ${namedinput}"
-    fi
-
-    inputopt=
-    for _ifile in ${input}; do
-        inputopt="${inputopt} -i ${_ifile}"
-    done
-
-    printVerbose "parseRemoteSource(): $input $AEPARSER"
-
-    printVerbose "serviceopts: $serviceopts"
-
-    # set -x
-    runCmd $verbose "Aesop remote parsing failed: " \
-           "${AERPARSER} ${serviceopts} ${regopts} -c ${compiler} ${popts} ${namedopt} ${outopt} ${inputopt} -- ${AECC_CFLAGS} ${compileropts}"
-    return $?
-}
-
 # doCompile <verbose> <compiler> <input file> <output file> <compiler opts>
 doCompile()
 {
