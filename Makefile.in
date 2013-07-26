@@ -430,7 +430,7 @@ $(AEPROGRAM): %: %.o $(LIBRARIES)
 $(GENLIBOBJS) $(LIBOBJS) $(TESTOBJS): %.o: %.c
 	$(Q) "  CC		$@"
 	$(E)$(call MCC_C,$*) -c -o $@ \
-			$(LIBCFLAGS) $(CFLAGS) $(CWARNS) \
+			$(CWARNS) $(LIBCFLAGS) $(CFLAGS) \
 			$(call MODCFLAGS_C,$*) $<
 
 # Auto-generated dependencies for .c files
@@ -442,7 +442,7 @@ $(TESTLIBOBJS): %.o: %.c
 
 	$(Q) "  CC		$@"
 	$(E)$(call MCC_C,$*) -c -o $@ \
-		$(LIBCFLAGS) $(CFLAGS) $(CWARNS) \
+		$(CWARNS) $(LIBCFLAGS) $(CFLAGS) \
 		$(call MODCFLAGS_C,$*) $<
 
 lib/libaesop.a: $(AELIBOBJS) $(LIBOBJS) $(GENLIBOBJS)
@@ -492,7 +492,7 @@ $(AEOBJS): %.o: $(HSBIN) %.ae
 	$(Q) "  AECC		$*.ae"
 	$(E)$(builddir)/bin/aecc -o $(builddir)/$*.o $(srcdir)/$*.ae \
                 $(VA) $(DA) $(AEPRETTY) \
-                -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
+                -- $(CWARNS) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$*)
 
 # Auto-generated dependencies for .ae files
 $(AEDEPS): %.ae.d: %.ae include/aesop/.done
@@ -507,7 +507,7 @@ $(AESOP_TRHDR): %.h: %.hae $(HSBIN)
 	$(Q) "  AECC [H]	$*.hae"
 	$(E)$(builddir)/bin/aecc -o $(builddir)/$*.h $(srcdir)/$*.hae \
                 -j $(VA) $(DA) $(AEPRETTY) \
-                -- $(LIBCFLAGS) $(CFLAGS) $(CWARNS) $(call MODCFLAGS_AE,$*)
+                -- $(CWARNS) $(LIBCFLAGS) $(CFLAGS) $(call MODCFLAGS_AE,$*)
 
 $(AESOP_TRHDR_DEPS): %.h.d: %.hae include/aesop/.done
 	$(Q) "  DEP           $@"
