@@ -533,7 +533,7 @@ static int btest_poll(void *user_data)
         assert(normal_completion);
 #endif
         ae_op_execute(&s->op, int, 0);
-        free(b);
+        free(s);
    }
    request = request | more;
 
@@ -546,7 +546,7 @@ static int btest_poll(void *user_data)
         assert(normal_completion);
 #endif
         ae_op_execute(&s->op, int, 0);
-        free(b);
+        free(s);
    }
    request = request | more;
 
