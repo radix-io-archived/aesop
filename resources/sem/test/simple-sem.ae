@@ -84,7 +84,7 @@ __blocking int test_immediate_completion ()
    return 0;
 }
 
-unsigned int getvalue (aesop_sem_t * sem)
+static unsigned int getvalue (aesop_sem_t * sem)
 {
    unsigned int val;
    always_assert (aesop_sem_get (sem, &val) == AE_SUCCESS, "getvalue");
