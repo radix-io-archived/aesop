@@ -77,7 +77,7 @@ static void *tctest1_threadfun(void *ptr)
 #endif
     ae_op_execute(op, int, 0);
     free(bop);
-    pthread_exit(ptr);
+    pthread_exit(NULL);
 
     return NULL;
 }
@@ -128,7 +128,7 @@ static void *tcrandom_threadfun(void *ptr)
 #endif
     ae_op_execute(op, int, 0);
     free(bop);
-    pthread_exit(ptr);
+    pthread_exit(NULL);
 
     return NULL;
 }
