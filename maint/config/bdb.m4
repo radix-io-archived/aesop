@@ -67,6 +67,7 @@ AC_DEFUN([AX_BERKELEY_DB],
     AC_SUBST(DB_CFLAGS)	
     AC_SUBST(DB_LIB)
     AC_SUBST(DB_ENABLED)	
+    AC_SUBST(DB_LDFLAGS)
        
     dnl Test to check for DB_ENV variable to error callback fn.  Then
     dnl test to see if third parameter must be const (related but not 
