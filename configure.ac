@@ -97,7 +97,7 @@ AC_SUBST([libev_prefix])
 
 CPPFLAGS="$CPPFLAGS -I${with_libev}/include"
 LDFLAGS="$LDFLAGS -L${with_libev}/lib"
-AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_libev}/lib -lev"
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_libev}/lib -lev -lm"
 
 AC_CHECK_HEADER([ev.h],[],
          [AC_MSG_ERROR([Could not find libev header in
