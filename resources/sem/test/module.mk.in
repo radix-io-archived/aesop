@@ -1,5 +1,6 @@
 DIR := resources/sem/test
 
 AETESTSRC += $(DIR)/simple-sem.ae \
-	     $(DIR)/cancel-sem.ae
+	     $(DIR)/cancel-sem.ae \
+	     $(DIR)/cancel-sem-forloop.ae
 
