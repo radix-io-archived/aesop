@@ -66,6 +66,9 @@ AETESTSRC +=  \
 	      $(DIR)/consecutive-resource-completions.ae \
 	      $(DIR)/minimal.ae
 
+# currently known not to compile (see trac #52)
+#	      $(DIR)/funptr-on-stack.ae 
+
 # This should not compile
 #	      $(DIR)/pbranch-with-return.ae
 
