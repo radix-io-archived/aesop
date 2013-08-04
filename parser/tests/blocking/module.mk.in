@@ -68,6 +68,8 @@ AETESTSRC +=  \
 
 # currently known not to compile (see trac #52)
 #	      $(DIR)/funptr-on-stack.ae 
+# currently known not to compile (see trac #53)
+#	      $(DIR)/funptrs2.ae 
 
 # This should not compile
 #	      $(DIR)/pbranch-with-return.ae
