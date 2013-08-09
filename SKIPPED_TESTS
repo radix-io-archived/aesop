@@ -9,4 +9,3 @@ TODO parser/tests/blocking/pbreak-immed-cancel
 TODO parser/tests/blocking/pbreak-before-blocking
 TODO parser/tests/blocking/pbranch-completion
 TODO parser/tests/blocking/consecutive-resource-completions
-TODO resources/sem/test/cancel-sem-forloop

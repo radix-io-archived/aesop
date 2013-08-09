@@ -205,6 +205,16 @@ static int sem_cancel (ae_op_id_t op_id)
    // Find the queue this sem_wait_t is in
    ae_ops_t * queue = ae_ops_get_queue (&wait->op);
 
+   /* TODO: is this all we need to do to prevent a race from two cancel
+    * calls on the same down operation?
+    */
+   if(queue == &sem_cancel_queue)
+   {
+       /* this operation has already been placed on the cancel queue */
+       triton_mutex_unlock (&sem->lock);
+       return(AE_SUCCESS);
+   }
+
    /*
     * There is a chance the somebody calling sem_up on this sem just removed
     * has already removed the op from the wait queue.
