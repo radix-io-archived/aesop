@@ -24,29 +24,9 @@ static __blocking void run_pbreak(void)
 
 	    pbranch
 	    {
-		ret2 = btest2(&b);
-		assert(ret2 == 0);
-		assert(b == 2);
-		ret2 = btest_forever();
-		assert(ret2 != 0);
-	    }
-	
-	    pbranch
-	    {
-		ret3 = btest3(&c);
-		assert(ret3 == 0);
-		assert(c == 3);
-		ret3 = btest1(&c);
-		assert(ret3 == 0);
-		assert(c == 4);
-	    }
-
-	    pbranch
-	    {
-		ret4 = btest_sleep(4);
-		assert(ret4 == 0);
-                aesop_cancel_branches();
-		pbreak;
+                printf("Hello.\n");
+                pbreak;
+                printf("World.\n");
 	    }
 	}
 

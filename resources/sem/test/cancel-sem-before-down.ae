@@ -1,0 +1,53 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <stdio.h>
+#include "aesop.h"
+#include <aesop/timer.hae>
+#include "resources/sem/sem.hae"
+
+static aesop_sem_t sem;
+
+__blocking int test_main (int argc, char ** args)
+{
+    aesop_sem_module_init ();
+    aesop_timer_init();
+
+    aesop_sem_init (&sem, 0);
+
+    pwait
+    {
+        pbranch
+        {
+            aesop_cancel_branches();
+        }
+        pbranch
+        {
+            int ret;
+
+            ret = aesop_timer(1000);
+            assert(ret == AE_ERR_CANCELLED);
+
+            ret = aesop_sem_down(&sem);
+            assert(ret == AE_ERR_CANCELLED);
+        }
+    }
+
+    aesop_timer_finalize();
+    aesop_sem_module_finalize ();
+    return 0;
+}
+
+aesop_main_set (test_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
