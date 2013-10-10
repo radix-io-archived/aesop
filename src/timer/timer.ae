@@ -184,21 +184,28 @@ static void* thread_fn(void* foo)
             head_link = triton_list_del_front(&timer_queue);
         }
 
-        if(triton_list_empty(&timer_queue))
+        /* NOTE: we check shutdown flag again after exiting the above loop;
+         * it could have been set while the mutex was dropped around the
+         * aesop_sem_up() call.
+         */
+        if(!shutting_down)
         {
-            /* if there is nothing on the queue, then sleep indefinitely */
-            triton_cond_wait(&timer_cond, &timer_mutex);
-        }
-        else
-        {
-            /* otherwise sleep until the next timer expires */
-            head_link = triton_list_peek_front(&timer_queue);
-            assert(head_link);
-            tm = triton_list_get_entry(head_link, struct timer_obj, link);
-            
-            abstime.tv_sec = tm->expire.tv_sec;
-            abstime.tv_nsec = (long)tm->expire.tv_usec * (long)1000;
-            triton_cond_timedwait(&timer_cond, &timer_mutex, &abstime);
+            if(triton_list_empty(&timer_queue))
+            {
+                /* if there is nothing on the queue, then sleep indefinitely */
+                triton_cond_wait(&timer_cond, &timer_mutex);
+            }
+            else
+            {
+                /* otherwise sleep until the next timer expires */
+                head_link = triton_list_peek_front(&timer_queue);
+                assert(head_link);
+                tm = triton_list_get_entry(head_link, struct timer_obj, link);
+                
+                abstime.tv_sec = tm->expire.tv_sec;
+                abstime.tv_nsec = (long)tm->expire.tv_usec * (long)1000;
+                triton_cond_timedwait(&timer_cond, &timer_mutex, &abstime);
+            }
         }
     }
 
