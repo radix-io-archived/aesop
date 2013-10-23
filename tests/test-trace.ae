@@ -1,0 +1,65 @@
+#include <stdio.h>
+#include <aesop/aesop.h>
+#include <aesop/resource.h>
+
+const char * expected_stack[] = 
+{
+    "func3",
+    "func2",
+    "func1",
+    "aesop_main"
+};
+
+__blocking void func3 (int *a)
+{
+    triton_string_t  stack[20];
+    int              count = 20;
+    int              i;
+
+    aesop_print_stack (stdout);
+
+    aesop_get_stack (stack, &count);
+    for (i=0; i<count; i++)
+    {
+        if (strcmp(stack[i].string, expected_stack[i]))
+        {
+            printf("stack=%s expected=%s\n", stack[i].string,expected_stack[i]);
+            exit(1);
+        }
+    }
+
+    printf("a=%d\n", *a);
+
+    
+    return;    
+}
+
+__blocking void func2 (int *a)
+{
+    func3(a);
+    return;
+}
+
+__blocking void func1 (int *a)
+{
+    func2(a);
+    return;
+}
+
+__blocking int aesop_main (int argc, char **argv)
+{
+    int b = 35;
+    func1(&b);
+
+    return 0;
+}
+aesop_main_set(aesop_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

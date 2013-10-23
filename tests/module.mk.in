@@ -2,6 +2,7 @@ DIR := tests
 
 AETESTSRC += $(DIR)/test-hints.ae
 AETESTSRC += $(DIR)/blocking-overhead.ae
+AETESTSRC += $(DIR)/test-trace.ae
 
 TESTSRC += $(DIR)/resource-register.c
 
