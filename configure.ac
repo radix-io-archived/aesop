@@ -235,17 +235,6 @@ else
 fi
 
 dnl ==========================================================================
-dnl ==== SSM =================================================================
-dnl ==========================================================================
-AC_ARG_WITH([ssm],
-            [AS_HELP_STRING([--with-ssm@<:@=DIR@:>@], [location of SSM])],
-            [BUILD_SSM=1
-             SSMPATH="$withval"],
-            [BUILD_SSM=0])
-AC_SUBST(SSMPATH)
-AC_SUBST(BUILD_SSM)
-
-dnl ==========================================================================
 dnl ==== Documentation =======================================================
 dnl ==========================================================================
 
@@ -388,8 +377,6 @@ src/resourcebuilder/module.mk
 src/resourcebuilder/test/module.mk
 src/socket/module.mk
 src/socket/test/module.mk
-src/ssm/module.mk
-src/ssm/test/module.mk
 src/timer/test/module.mk
 src/timer/module.mk
 module.mk

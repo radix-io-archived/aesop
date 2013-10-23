@@ -1,9 +1,0 @@
-DIR := src/ssm
-
-ifeq ($(BUILD_SSM),1)
-
-AELIBSRC += $(DIR)/aessm.ae
-AESOP_HDR += $(DIR)/aessm.hae
-INSTALL_HDR += $(DIR)/aessm.hae
-
-endif
