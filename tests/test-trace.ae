@@ -12,20 +12,21 @@ const char * expected_stack[] =
 
 __blocking void func3 (int *a)
 {
-    triton_string_t  stack[20];
+    char *  stack[20];
     int              count = 20;
     int              i;
 
     aesop_print_stack (stdout);
 
-    aesop_get_stack (stack, &count);
+    aesop_get_stack (&stack, &count);
     for (i=0; i<count; i++)
     {
-        if (strcmp(stack[i].string, expected_stack[i]))
+        if (strcmp(stack[i], expected_stack[i]))
         {
-            printf("stack=%s expected=%s\n", stack[i].string,expected_stack[i]);
+            printf("stack=%s expected=%s\n", stack[i],expected_stack[i]);
             exit(1);
         }
+        free (stack[i]);
     }
 
     printf("a=%d\n", *a);

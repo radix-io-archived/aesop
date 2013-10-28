@@ -14,7 +14,6 @@
 #include <triton-uint128.h>
 #include <triton-thread.h>
 #include <triton-list.h>
-#include <triton-string.h>
 
 #define AE_MAX_CONTEXTS 1024
 
@@ -158,13 +157,21 @@ int ae_op_complete (struct ae_op * op);
 
 void ae_backtrace(void);
 
-void ae_get_stack(struct ae_ctl *ctl, triton_string_t *stack, int *inout_count);
+/**
+ * Gets the aesop stack trace. When calling the funciton, inout_count should
+ * specify the size of the stack array. On return, inout_count contains the
+ * number of stack frames returned.
+ *
+ * The caller is responsible for freeing the function names, which are
+ * allocated using strdup.
+ */
+void ae_get_stack(struct ae_ctl *ctl, char * *stack, int *inout_count);
 void ae_print_stack(FILE *outstream, struct ae_ctl *ctl);
 
 #ifdef AESOP_PARSER
 #define aesop_get_stack(stack, io_count) ae_get_stack(&__ae_ctl->gen, stack, io_count)
 #else
-static inline void aesop_get_stack(triton_string_t *strings, int *inout_count)
+static inline void aesop_get_stack(char* *strings, int *inout_count)
 {
     *inout_count = 0;
 }

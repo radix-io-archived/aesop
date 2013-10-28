@@ -461,12 +461,12 @@ int ae_count_branches(struct ae_ctl *ctl)
     return r;
 }
 
-void ae_get_stack(struct ae_ctl *ctl, triton_string_t *stack, int *inout_count)
+void ae_get_stack(struct ae_ctl *ctl, char * *stack, int *inout_count)
 {
     int i = 0;
     while(ctl && i < *inout_count)
     {
-        triton_string_init(&(stack[i++]), ctl->name);
+        stack[i++] = strdup (ctl->name);
         ctl = ctl->parent;
     }
 
@@ -475,21 +475,18 @@ void ae_get_stack(struct ae_ctl *ctl, triton_string_t *stack, int *inout_count)
 
 void ae_print_stack(FILE *outstream, struct ae_ctl *ctl)
 {
-    int i = 0, top;
+    int i = 0;
     char *stack[512];
-    do
-    {
-        stack[i++] = strdup(ctl->name);
-        ctl = ctl->parent;
-    } while(ctl);
+    int count = sizeof (stack)/sizeof (stack[0]);
 
-    top = 0;
-    for(--i; i >= 0; --i)
+    ae_get_stack (ctl, &stack[0], &count);
+
+    for(i = count-1; i >= 0; --i)
     {
-        fprintf(outstream, "[%d]: %s\n", top++, stack[i]);
+        fprintf(outstream, "[%d]: %s\n", i, stack[i]);
     }
 
-    for(i = 0; i < top; ++i)
+    for(i = 0; i < count; ++i)
     {
         free(stack[i]);
     }
