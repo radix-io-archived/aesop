@@ -29,8 +29,8 @@ def main(document, ditaaPath, imageDir):
             worklist[filename] = ""
         elif line.strip() == "[DITAA END]":
             fd, asciiname = tempfile.mkstemp(
-		suffix = ".txt", prefix="asciiart-", dir="/tmp")
-	    a = os.fdopen(fd, "w+b")
+                  suffix = ".txt", prefix="asciiart-", dir="/tmp")
+            a = os.fdopen(fd, "w+b")
             a.write(worklist[filename])
             a.close()
             parsing = False
@@ -42,7 +42,7 @@ def main(document, ditaaPath, imageDir):
         else:
             parsed.append(line)
 
-    print "".join(parsed)
+    print ("".join(parsed))
 
 if __name__ == "__main__":
 
@@ -57,9 +57,9 @@ if __name__ == "__main__":
             ditaaPath = v
 
     if imageDir == None:
-        print "usage: [-d <image directory>] [-j <path to ditaa jar>]\n"
+        print ("usage: [-d <image directory>] [-j <path to ditaa jar>]\n")
         sys.exit(1)
-    
+
     if len(args) == 1:
         document = open(args[0], "r").readlines()
     else:
