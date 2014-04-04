@@ -52,7 +52,11 @@ cd ${BUILD_ROOT}
 ${SRC_ROOT}/configure ${CONFIGURE_OPTS}
 
 # make
-make
+make || exit 3
 
 # check
-make check
+make check || exit 4
+
+# Archive bin build for dependencies
+tar -cvjf bindist.tar.bz2 install || exit 5
+
