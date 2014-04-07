@@ -54,8 +54,10 @@ ${SRC_ROOT}/configure ${CONFIGURE_OPTS}
 # make
 make || exit 3
 
+make install || exit 4
+
 # Archive bin build for dependencies
-tar -cvjf bindist.tar.bz2 install || exit 5
+tar -C ${INSTALL_ROOT} -cvjf bindist.tar.bz2 . || exit 5
 
 # check
 #  DOn't bail out if checks fail; Still archive artefacts
