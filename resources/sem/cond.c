@@ -75,7 +75,7 @@ ae_define_post(int, aesop_cond_obj_wait, aesop_cond_t cond, triton_mutex_t *mute
     ae_op_fill(&result->op);
     result->mutex = mutex;
     result->op_id = ae_id_gen(aesop_cond_resource_id, (uint64_t)result);
-    result->state = AESOP_COND_STATE_CONDULED;
+    result->state = AESOP_COND_STATE_SCHEDULED;
 
     ae_ops_enqueue(&result->op, &cond->opqueue);
     triton_mutex_unlock(result->mutex);
@@ -158,7 +158,7 @@ static int aesop_cond_cancel(ae_op_id_t op_id)
     assert(resource_id == aesop_cond_resource_id);
 
     triton_mutex_lock(rid->mutex);
-    if(rid->state == AESOP_COND_STATE_CONDULED)
+    if(rid->state == AESOP_COND_STATE_SCHEDULED)
     {
         ae_ops_del(&rid->op);
         rid->state = AESOP_COND_STATE_CANCELED;
