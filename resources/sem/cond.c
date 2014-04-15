@@ -8,7 +8,7 @@
  *
  * TODO: this implementation duplicates much of the logic of the sem
  * resource.  The two need to be merged or one built atop the other.  See
- * trac #???
+ * trac #69
  */
 
 #include <errno.h>
