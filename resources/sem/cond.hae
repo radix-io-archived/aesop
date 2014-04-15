@@ -1,0 +1,71 @@
+/*
+ * (C) 2009 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#ifndef __COND_HAE__
+#define __COND_HAE__
+
+#include <pthread.h>
+#include <aesop/aesop.h>
+#include <aesop/op.h>
+
+enum aesop_cond_state
+{
+    AESOP_COND_STATE_CONDULED,
+    AESOP_COND_STATE_DONE,
+    AESOP_COND_STATE_CANCELED
+};
+
+/* TODO: this should probably be a forward definition */
+typedef struct aesop_cond_id_s
+{
+    pthread_mutex_t *mutex;
+    enum aesop_cond_state state;
+    ae_op_id_t op_id;
+    struct ae_op op;
+    int internal;
+} aesop_cond_id_t;
+
+typedef struct aesop_cond_s *aesop_cond_t;
+
+int aesop_cond_resource_init(void);
+void aesop_cond_resource_finalize(void);
+
+int aesop_cond_init(aesop_cond_t *cond);
+void aesop_cond_destroy(aesop_cond_t cond);
+
+void aesop_cond_notify_all(aesop_cond_t cond);
+void aesop_cond_notify_next(aesop_cond_t cond);
+void aesop_cond_notify_specific(aesop_cond_t cond, aesop_cond_id_t *id);
+
+/* gets the envelope structure pointer from the conduling id:
+ *
+ * aesop_cond_get_envelope(aesop_cond_id_t id, envelope_type, cond_id_member_name);
+ */
+#define aesop_cond_get_envelope(_id, _type, _member) \
+    ((_type *)((char *)(_id) - (unsigned long)((&((_type *)0)->_member))))
+
+/**
+ * aesop_cond_obj_wait waits on a conduling object to be notified.  The mutex passed in 
+ * must be locked.
+ */
+__blocking int aesop_cond_obj_wait(aesop_cond_t cond, pthread_mutex_t *mutex, aesop_cond_id_t *result);
+
+/**
+ * Just wait on a conduling variable without a conduling id.  No way to wake up individuals, only notify_all or
+ * notify_next can be used.
+ */
+#define aesop_cond_wait(_cond, _mutex) aesop_cond_obj_wait(_cond, _mutex, NULL)
+
+#endif
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ts=8 sts=4 sw=4 expandtab
+ */
