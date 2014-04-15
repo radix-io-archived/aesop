@@ -4,5 +4,6 @@ AETESTSRC += $(DIR)/simple-sem.ae \
 	     $(DIR)/cancel-sem.ae \
 	     $(DIR)/cancel-sem-forloop.ae \
 	     $(DIR)/cancel-sem-before-down.ae \
-	     $(DIR)/cond-pthread-compare.ae 
+	     $(DIR)/cond-pthread-compare.ae \
+	     $(DIR)/cond-cancel.ae 
 
