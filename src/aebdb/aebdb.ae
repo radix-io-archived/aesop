@@ -405,7 +405,7 @@ __blocking int aebdb_cursor_close(
     if(ot)
         th_group = ot->th_group;
 
-    AETHREAD_RUN(NULL);
+    AETHREAD_RUN(th_group);
     ret = DBCursor->c_close(DBCursor);
 
     return(ret);
@@ -425,7 +425,7 @@ __blocking int aebdb_cursor_get(
     if(ot)
         th_group = ot->th_group;
 
-    AETHREAD_RUN(NULL);
+    AETHREAD_RUN(th_group);
     ret = DBcursor->c_get(DBcursor, key, data, flags);
 
     return(ret);
@@ -443,7 +443,7 @@ __blocking int aebdb_cursor_del(
     if(ot)
         th_group = ot->th_group;
 
-    AETHREAD_RUN(NULL);
+    AETHREAD_RUN(th_group);
     ret = DBcursor->c_del(DBcursor, flags);
 
     return(ret);
