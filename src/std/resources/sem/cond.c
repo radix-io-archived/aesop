@@ -13,8 +13,8 @@
 
 #include <errno.h>
 #include <aesop/aesop.h>
-#include <aesop/resource.h>
-#include "resources/sem/cond.h"
+#include <aesop/rt/resource.h>
+#include "cond.h"
 
 struct aesop_cond_s
 {

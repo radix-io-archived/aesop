@@ -1,0 +1,61 @@
+#
+# Build haskell sources
+#
+
+
+compilersources = \
+	src/compiler/ae-blocking-parser.lhs \
+	src/compiler/CGen.lhs \
+	src/compiler/CParse.lhs \
+	src/compiler/CUtils.lhs \
+	src/compiler/BlockingContext.lhs \
+	src/compiler/Walker.lhs \
+	src/compiler/ContextGen.lhs \
+	src/compiler/Serialize.hs \
+	src/compiler/Header.lhs
+
+
+compilerclean = $(basename $(compilersources)) \
+   		 	    src/compiler/BlockingParser
+
+AM_GHCFLAGS += -XFlexibleInstances
+
+CLEANFILES += bin/ae-blocking-parser \
+	      $(patsubst %, %.hi, $(compilerclean)) \
+	      $(patsubst %, %.o, $(compilerclean))
+#
+# Rule specific for the above (no point in custom Haskell rules since there is
+# only one Haskell program being built)
+#
+bin/ae-blocking-parser$(EXEEXT): $(compilersources)
+	$(GHC) -odir src/compiler -i${top_srcdir}/src/compiler -O2 \
+	       -hidir src/compiler -main-is BlockingParser -o $@ \
+	       --make $(AM_GHCFLAGS) $<
+
+bin_PROGRAMS += bin/ae-blocking-parser
+bin_ae_blocking_parser_SOURCES :=  $(compilersources)
+
+compilerdeps += bin/ae-blocking-parser
+
+
+# This is just for dependency tracking for make
+# The headers below are installed by the libaesop-rt target
+injectheaders = \
+include/aesop/aesop.h \
+include/aesop/rt/ae-blocking-parser.h\
+include/aesop/rt/ae-ctl.h\
+include/aesop/rt/ae-debug.h\
+include/aesop/rt/ae-error.h\
+include/aesop/rt/ae-log.h\
+include/aesop/rt/ae-types.h\
+include/aesop/rt/hints.h\
+include/aesop/rt/op.h\
+include/aesop/rt/resource.h
+
+# Make sure make realizes that ae-blocking-parser depends on the header files
+# (though it is really a runtime dependency but we want to make sure that if
+# you want the compiler to be update to date the headers will be up to date as
+# well)
+bin_ae_blocking_parser: $(injectheaders)
+
+

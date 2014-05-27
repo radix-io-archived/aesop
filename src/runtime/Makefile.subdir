@@ -1,0 +1,42 @@
+
+lib_LTLIBRARIES += lib/libaesop-rt.la
+
+aesopincdir = $(includedir)/aesop
+rtincdir = $(aesopincdir)/rt
+
+# Note:
+#  - include/aesop/... headers:
+#         * needed at runtime because the injected code needs them
+#         * installed
+#  - src/runtime/... headers:
+#         * used by code compiled into libaesop-rt.la but not needed
+#           by injected code.
+#         * not installed
+
+aesop_headers = \
+include/aesop/aesop.h
+
+aesoprt_headers = \
+include/aesop/rt/ae-blocking-parser.h \
+include/aesop/rt/ae-ctl.h \
+include/aesop/rt/ae-debug.h \
+include/aesop/rt/ae-error.h \
+include/aesop/rt/ae-log.h \
+include/aesop/rt/ae-types.h \
+include/aesop/rt/hints.h \
+include/aesop/rt/op.h \
+include/aesop/rt/resource.h
+
+lib_libaesop_rt_la_SOURCES = \
+$(aesop_headers) \
+$(aesoprt_headers) \
+src/runtime/ae-private.h \
+src/runtime/aesop.c \
+src/runtime/hints.c \
+src/runtime/ae-ctl.c \
+src/runtime/resource.c
+
+rtinc_HEADERS = $(aesoprt_headers)
+aesopinc_HEADERS = $(aesop_headers)
+
+

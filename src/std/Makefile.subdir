@@ -1,0 +1,16 @@
+
+# Sources that need to be compiled in to stdlib
+stdlibsources =
+
+# headers that need to be installed for stdlib
+stdlibheaders =
+
+include src/std/resources/Makefile.subdir
+
+lib_LTLIBRARIES += lib/libaesop-std.la
+lib_libaesop_std_la_SOURCES = $(stdlibsources)
+
+stdlibdir = $(includedir)/aesop/std
+
+nobase_stdlib_HEADERS = $(stdlibheaders)
+

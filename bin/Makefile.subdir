@@ -1,0 +1,5 @@
+
+# Make sure make realizes aecc depends on ae-blocking-parser,
+# the injected headers and the libaesop-rt library
+bin/aecc: bin/aecc-utils bin/ae-blocking-parser lib/libaesop_rt_la
+

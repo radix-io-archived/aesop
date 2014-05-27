@@ -1,0 +1,9 @@
+
+
+stdlibsources += \
+src/std/resources/sem/sem.c \
+src/std/resources/sem/cond.c
+
+BUILT_SOURCES += src/std/resources/sem/sem.h
+
+

@@ -1,33 +1,52 @@
 dnl **************************************************************
 dnl AESOP AUTOCONF SCRIPT
-dnl
-dnl Process this file with autoconf to produce a configure script.
-dnl You may need to use autoheader as well if changing any DEFINEs
+dnl **************************************************************
 
+AC_PREREQ([2.67])
+AC_INIT([aesop], [0.2],[http://trac.mcs.anl.gov/projects/aesop/newticket],[],[http://trac.mcs.anl.gov/projects/aesop/wiki])
+
+AC_CANONICAL_TARGET
+AC_CANONICAL_SYSTEM
+AC_CANONICAL_HOST
+
+AM_INIT_AUTOMAKE([foreign subdir-objects -Wall])
+
+# we should remove this soon, only needed for automake 1.10 and older
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
+AC_CONFIG_SRCDIR([INSTALL])
+AC_CONFIG_HEADER(aesop-config.h)
+dnl AC_CONFIG_AUX_DIR(maint/config)
+AC_CONFIG_MACRO_DIR([m4])
+
+dnl
+dnl Aesop version
+dnl
 CONFIGURE_TIME=`date -u +"%Y-%m-%d-%H%M%S"`
 AESOP_MAJOR=0
-AESOP_MINOR=1
-AESOP_SUB=1
+AESOP_MINOR=2
+AESOP_SUB=0
 AESOP_PRE="pre-$CONFIGURE_TIME"
 
 AESOP_VERSION=$AESOP_MAJOR.$AESOP_MINOR.$AESOP_SUB$AESOP_PRE
-
-AC_PREREQ(2.50)
-AC_INIT(aesop, 0.1.1, aesop-dev@mcs.anl.gov)
-
 AC_SUBST(AESOP_VERSION)
 
 AC_DEFINE_UNQUOTED(AESOP_VERSION_MAJOR, $AESOP_MAJOR, major version number)
 AC_DEFINE_UNQUOTED(AESOP_VERSION_MINOR, $AESOP_MINOR, minor version number)
 AC_DEFINE_UNQUOTED(AESOP_VERSION_SUB,   $AESOP_SUB, sub version number)
 
-AC_CONFIG_HEADER(aesop-config.h)
-AC_CONFIG_AUX_DIR(maint/config)
+
 
 
 AC_PROG_INSTALL
 AC_PROG_CC
 AC_PROG_CPP
+dnl AC_PROG_RANLIB    dnl not needed since libtool figures this one out
+AC_PROG_MKDIR_P
+
+
+AM_DISABLE_SHARED
+AM_PROG_LIBTOOL
 
 AC_C_BIGENDIAN
 
@@ -245,6 +264,7 @@ AC_CHECK_PROGS([ASCIIDOC], [asciidoc asciidoc.py], [])
 
 dnl ==========================================================================
 dnl check for unix variants
+dnl  this can probably all go since Automake takes care of it
 dnl ==========================================================================
 AX_UNIX("")
 
@@ -362,28 +382,10 @@ AC_CONFIG_FILES([maint/depend.sh],[chmod +x maint/depend.sh])
 AC_CONFIG_FILES([maint/depend-ae.sh],[chmod +x maint/depend-ae.sh])
 AC_CONFIG_FILES([maint/depend-hae.sh],[chmod +x maint/depend-hae.sh])
 
-AC_OUTPUT([Makefile
-resources/worker/module.mk
-resources/worker/test/module.mk
-resources/sem/module.mk
-resources/sem/test/module.mk
-resources/thread/module.mk
-resources/thread/test/module.mk
-src/aefile/module.mk
-src/aebdb/module.mk
-src/aebdb/test/module.mk
-src/aefile/test/module.mk
-src/resourcebuilder/module.mk
-src/resourcebuilder/test/module.mk
-src/socket/module.mk
-src/socket/test/module.mk
-src/timer/test/module.mk
-src/timer/module.mk
-module.mk
-tests/module.mk
-parser/module.mk
-parser/tests/blocking/module.mk
-doc/module.mk
-maint/aesop.pc
-])
+AC_CONFIG_FILES([Makefile])
+
+dnl Create build directory for haskell compiler
+AC_CONFIG_COMMANDS([mkdir], [$MKDIR_P src/compiler])
+
+AC_OUTPUT
 
