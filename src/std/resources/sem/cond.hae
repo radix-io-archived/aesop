@@ -11,6 +11,7 @@
 #include <aesop/aesop.h>
 #include <aesop/op.h>
 #include <sys/time.h>
+#include <triton-thread.h>
 
 enum aesop_cond_state
 {
@@ -22,7 +23,7 @@ enum aesop_cond_state
 /* TODO: this should probably be a forward definition */
 typedef struct aesop_cond_id_s
 {
-    pthread_mutex_t *mutex;
+    triton_mutex_t * mutex;
     enum aesop_cond_state state;
     ae_op_id_t op_id;
     struct ae_op op;
@@ -52,7 +53,7 @@ void aesop_cond_notify_specific(aesop_cond_t cond, aesop_cond_id_t *id);
  * aesop_cond_obj_wait waits on a conduling object to be notified.  The mutex passed in 
  * must be locked.
  */
-__blocking int aesop_cond_obj_wait(aesop_cond_t cond, pthread_mutex_t *mutex, aesop_cond_id_t *result);
+__blocking int aesop_cond_obj_wait(aesop_cond_t cond, triton_mutex_t *mutex, aesop_cond_id_t *result);
 
 /**
  * Just wait on a conduling variable without a conduling id.  No way to wake up individuals, only notify_all or
