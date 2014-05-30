@@ -216,12 +216,14 @@ __blocking int aebdb_txn_begin(DB_ENV *env,
      * begin call in bdb to block on any significant I/O or lock operations
      */
     ret = env->txn_begin(env, parent, tid, flags);
-
-    /* store the tid */
-    ot->tid = *tid;
-    triton_mutex_lock(&txn_table_mutex);
-    triton_hash_add(txn_table, ot->tid, &ot->hash_link);
-    triton_mutex_unlock(&txn_table_mutex);
+    if(ret == 0)
+    {
+        /* store the tid */
+        ot->tid = *tid;
+        triton_mutex_lock(&txn_table_mutex);
+        triton_hash_add(txn_table, ot->tid, &ot->hash_link);
+        triton_mutex_unlock(&txn_table_mutex);
+    }
 
     return(ret);
 }
