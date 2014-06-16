@@ -5,6 +5,9 @@ stdlibsources =
 # headers that need to be installed for stdlib
 stdlibheaders =
 
+# Extra flags (mainly for built sources)
+stdlibcppflags =
+
 include src/std/resources/Makefile.subdir
 
 lib_LTLIBRARIES += lib/libaesop-std.la
@@ -12,5 +15,5 @@ lib_libaesop_std_la_SOURCES = $(stdlibsources)
 
 stdlibdir = $(includedir)/aesop/std
 
-nobase_stdlib_HEADERS = $(stdlibheaders)
+stdlib_HEADERS = $(stdlibheaders)
 

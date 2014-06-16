@@ -9,7 +9,7 @@
 
 #include <pthread.h>
 #include <aesop/aesop.h>
-#include <aesop/op.h>
+#include <aesop/rt/op.h>
 #include <sys/time.h>
 #include <triton-thread.h>
 

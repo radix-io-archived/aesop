@@ -3,6 +3,8 @@ exec_prefix = @exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 aesop_pkgconfig_libs=@AESOP_PKGCONFIG_LIBS@
+
+# Not sure if we need this
 db_lib=@DB_LIB@
 db_ldflags=@DB_LDFLAGS@
 db_cflags=@DB_CFLAGS@
@@ -12,5 +14,5 @@ Description: language for high concurrency system software development
 Version: @AESOP_VERSION@
 URL: http://trac.mcs.anl.gov/projects/aesop
 Requires:
-Libs: ${db_ldflags} -L${libdir} ${db_lib} -laesop ${aesop_pkgconfig_libs}
+Libs: ${db_ldflags} -L${libdir} ${db_lib} -laesop-rt ${aesop_pkgconfig_libs}
 Cflags: -I${includedir} ${db_cflags}

@@ -371,7 +371,7 @@ AC_SUBST(AECC_CFLAGS)
 
 AC_SUBST(LIBCFLAGS)
 AC_SUBST(THREAD_LIB)
-AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} ${THREAD_LIB}"
+AESOP_PKGCONFIG_LIBS="-laesop-rt ${AESOP_PKGCONFIG_LIBS} ${THREAD_LIB}"
 AC_SUBST(AESOP_PKGCONFIG_LIBS)
 
 AC_CONFIG_FILES([bin/aecc-utils], [])
@@ -384,8 +384,12 @@ AC_CONFIG_FILES([maint/depend-hae.sh],[chmod +x maint/depend-hae.sh])
 
 AC_CONFIG_FILES([Makefile])
 
+AC_CONFIG_FILES([aesop.pc])
+
 dnl Create build directory for haskell compiler
-AC_CONFIG_COMMANDS([mkdir], [$MKDIR_P src/compiler])
+AC_CONFIG_COMMANDS([compilerdir], [$MKDIR_P src/compiler])
+AC_CONFIG_COMMANDS([stdlib dir], [$MKDIR_P include/aesop/std])
+
 
 AC_OUTPUT
 

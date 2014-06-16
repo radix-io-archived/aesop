@@ -4,6 +4,46 @@ stdlibsources += \
 src/std/resources/sem/sem.c \
 src/std/resources/sem/cond.c
 
-BUILT_SOURCES += src/std/resources/sem/sem.h
+
+stdlibheaders += $(top_builddir)/include/aesop/std/sem.h \
+		 $(top_builddir)/include/aesop/std/cond.h \
+		 $(top_srcdir)/include/aesop/std/sem.hae \
+		 $(top_srcdir)/include/aesop/std/cond.hae
+
+# This is needed so the BUILT_SOURCES below (which end up in the BUILD
+# directory, not in the same directory as the .c sources) can be found
+AM_CPPFLAGS += -I$(top_builddir)/src/std/resources/sem
+
+
+# might be able to get away for these with explicit dependencies
+BUILT_SOURCES += include/aesop/std/sem.h \
+		 include/aesop/std/cond.h
+
+
+CLEANFILES += include/aesop/std/sem.h \
+		 include/aesop/std/cond.h
+
+
+local_tests = src/std/resources/sem/test/cancel-sem \
+	      src/std/resources/sem/test/cancel-sem-before-down \
+	      src/std/resources/sem/test/cancel-sem-forloop \
+	      src/std/resources/sem/test/cond-cancel \
+	      src/std/resources/sem/test/cond-pthread-compare \
+	      src/std/resources/sem/test/simple-sem
+
+TESTS += $(local_tests)
+
+check_PROGRAMS += $(local_tests)
+
+
+local_test_ldadd = lib/libaesop-std.la \
+		   $(AESOP_LOCAL_LIBS)
+
+src_std_resources_sem_test_cancel_sem_LDADD = $(local_test_ldadd)
+src_std_resources_sem_test_cancel_sem_before_down_LDADD = $(local_test_ldadd)
+src_std_resources_sem_test_cancel_sem_forloop_LDADD = $(local_test_ldadd)
+src_std_resources_sem_test_cond_cancel_LDADD = $(local_test_ldadd)
+src_std_resources_sem_test_cond_pthread_compare_LDADD = $(local_test_ldadd)
+src_std_resources_sem_test_simple_sem_LDADD = $(local_test_ladd)
 
 
