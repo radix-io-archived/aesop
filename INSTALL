@@ -29,10 +29,11 @@ Configuring Aesop
 =================
 
 ./configure \
- --with-libev=<LIBEV_INSTALL_PREFIX> \
- --with-openpa=<OPENPA_INSTALL_PREFIX> \
- --with-c-utils=<C-UTILS_INSTALL_PREFIX> \
- --prefix=<AESOP_INSTALL_PREFIX>
+   --with-libev=<LIBEV_INSTALL_PREFIX> \
+   --with-openpa=<OPENPA_INSTALL_PREFIX> \
+   --prefix=<AESOP_INSTALL_PREFIX> \
+   PKG_CONFIG_PATH=<C_UTILS_INSTALL_PREFIX>/lib/pkgconfig
+
 
 Building and installing Aesop
 =============================

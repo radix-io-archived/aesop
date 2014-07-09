@@ -40,6 +40,11 @@ if test "x$GCC" = "x"; then
 fi
 AC_MSG_RESULT(yes)
 
+dnl
+dnl Verify pkg-config
+dnl
+PKG_PROG_PKG_CONFIG
+
 dnl Check to see if CC can handle label pointers
 AC_MSG_CHECKING(if the C compiler supports label pointers)
 AC_TRY_COMPILE([], [void* foo; my_label: foo=&&my_label;],
@@ -57,6 +62,18 @@ if test "$HAVE_GCC_BIN" = "no"; then
 fi
 
 AX_GHC("")
+
+dnl ====================================================
+dnl Use pkgconfig to find c-utils
+dnl  - Sets C_UTILS_CFLAGS, C_UTILS_LIBS
+dnl ====================================================
+PKG_CHECK_MODULES([C_UTILS],[c-utils], [],
+   [AC_MSG_ERROR([Could not find working c-utils installation!])])
+LIBS="$C_UTILS_LIBS $LIBS"
+CFLAGS="$C_UTILS_CFLAGS $CFLAGS"
+dnl unfortunately pkg-config doesn't separate cppflags/cflags
+CPPFLAGS="$C_UTILS_CPPFLAGS $CPPFLAGS"
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} $C_UTILS_LIBS"
 
 
 dnl ====================================================
@@ -114,30 +131,6 @@ if test "A$evok" == "A0"; then
 fi
 
 
-
-dnl =========================================================================
-dnl ==== Check for C-Utils ==================================================
-dnl =========================================================================
-
-
-AC_ARG_WITH([c-utils],
-            [AS_HELP_STRING([[--with-c-utils[=DIR]]],
-                             [Installation path of c-utils])],
-            [],
-            [ with_c_utils="/usr"])
-
-c_utils_prefix=""
-AC_SUBST([c_utils_prefix])
-
-CPPFLAGS="$CPPFLAGS -I${with_c_utils}/include"
-LDFLAGS="$LDFLAGS -L${with_c_utils}/lib"
-AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_c_utils}/lib -lc-utils"
-AC_CHECK_HEADER([c-utils-common.h],[],
-            [AC_MSG_ERROR([Could not find c-utils at prefix
-             ${with_c_utils}!])])
-AC_CHECK_LIB([c-utils],[bj_hashlittle2],[],
-                [AC_MSG_ERROR([Could not find useable
-              C-Utils library at prefix ${with_c_utils}!])])
 
 dnl =========================================================================
 dnl == OpenPA ===============================================================
