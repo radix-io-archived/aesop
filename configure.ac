@@ -338,6 +338,20 @@ AC_COMPILE_IFELSE(
 
 AC_SUBST(BLOCKSOPT)
 
+AC_MSG_CHECKING(for fallocate)
+AC_TRY_LINK(
+    [#define _GNU_SOURCE
+     #include <fcntl.h>
+    ],
+    [
+     fallocate(0, 0, 0, 0);
+    ],
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_FALLOCATE, 1, Define if fallocate function is present)
+    ,
+    AC_MSG_RESULT(no)
+)
+
 # these are cflags that will be automatically applied by aecc
 AECC_CFLAGS=$LIBCFLAGS
 AC_SUBST(AECC_CFLAGS)

@@ -223,6 +223,23 @@ __blocking int aefile_unlink(const char *pathname)
     return(ret);
 }
 
+__blocking int aefile_fallocate(int fd, int mode, off_t offset, off_t len)
+{
+    int ret = 0;
+
+    /* noop if fallocate is not available */
+#ifdef HAVE_FALLOCATE
+    AETHREAD_RUN();
+
+    ret = fallocate(fd, mode, offset, len);
+    if(ret < 0)
+    {
+        ret = -errno;
+    }
+#endif
+
+    return(ret);
+}
 
 
 
