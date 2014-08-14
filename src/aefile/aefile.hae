@@ -26,6 +26,7 @@ __blocking int aefile_fdatasync(int fd);
 __blocking int aefile_ftruncate(int fd, off_t length);
 __blocking int aefile_unlink(const char *pathname);
 __blocking int aefile_fallocate(int fd, int mode, off_t offset, off_t len);
+__blocking int aefile_syncfs(int fd);
 
 #endif
 
