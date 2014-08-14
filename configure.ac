@@ -352,6 +352,19 @@ AC_TRY_LINK(
     AC_MSG_RESULT(no)
 )
 
+AC_MSG_CHECKING(for fdatasync)
+AC_TRY_LINK(
+    [
+     #include <unistd.h>
+    ],
+    [
+     fdatasync(0);
+    ],
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_FDATASYNC, 1, Define if fdatasync function is present)
+    ,
+    AC_MSG_RESULT(no)
+)
 
 AC_MSG_CHECKING(for fallocate)
 AC_TRY_LINK(

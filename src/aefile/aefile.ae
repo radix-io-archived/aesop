@@ -184,7 +184,12 @@ __blocking int aefile_fdatasync(int fd)
 
     AETHREAD_RUN();
 
+#ifdef HAVE_FDATASYNC
     ret = fdatasync(fd);
+#else
+    /* fall back to normal fsync if fdatasync not available */
+    ret = fsync(fd);
+#endif
     if(ret < 0)
     {
         ret = -errno;
