@@ -338,6 +338,21 @@ AC_COMPILE_IFELSE(
 
 AC_SUBST(BLOCKSOPT)
 
+AC_MSG_CHECKING(for syncfs)
+AC_TRY_LINK(
+    [#define _GNU_SOURCE
+     #include <unistd.h>
+    ],
+    [
+     syncfs(0);
+    ],
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_SYNCFS, 1, Define if syncfs function is present)
+    ,
+    AC_MSG_RESULT(no)
+)
+
+
 AC_MSG_CHECKING(for fallocate)
 AC_TRY_LINK(
     [#define _GNU_SOURCE
