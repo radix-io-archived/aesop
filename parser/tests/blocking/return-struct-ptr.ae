@@ -1,0 +1,37 @@
+/*
+ * (C) 2014 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <aesop/aesop.h>
+
+struct test_struct {
+    int i;
+};
+
+__blocking struct test_struct* ts_ret(int p);
+
+__blocking struct test_struct* ts_ret(int p)
+{
+    return NULL;
+}
+
+__blocking int aemain(int argc, char **argv)
+{
+    struct test_struct* ts;
+    
+    ts = ts_ret(0);
+
+    return 0;
+}
+aesop_main_set(aemain);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

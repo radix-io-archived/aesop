@@ -64,12 +64,15 @@ AETESTSRC +=  \
               $(DIR)/pwait-in-for.ae \
               $(DIR)/pbranch-completion.ae \
 	      $(DIR)/consecutive-resource-completions.ae \
-	      $(DIR)/minimal.ae
+	      $(DIR)/minimal.ae \
+	      $(DIR)/return-struct-ptr-typedef.ae
 
 # currently known not to compile (see trac #52)
 #	      $(DIR)/funptr-on-stack.ae 
 # currently known not to compile (see trac #53)
 #	      $(DIR)/funptrs2.ae 
+# currently known not to compile (see trac #73)
+#	      $(DIR)/return-struct-ptr.ae 
 
 # This should not compile
 #	      $(DIR)/pbranch-with-return.ae
