@@ -1,0 +1,120 @@
+#
+# Output dist version
+#
+.phony: distversion
+distversion:
+	@echo $(VERSION)
+
+#
+# Easy way to build unit tests without running them
+# 
+.phony: tests
+tests: $(check_PROGRAMS)
+
+
+#
+# The AECC rules in this build tree use the in-tree version
+# (not installed)
+#
+AECC=$(top_builddir)/bin/aecc
+AECC_CPPFLAGS=$(CPPFLAGS) -I$(top_srcdir)/include
+AECC_CFLAGS=$(CFLAGS)
+
+#
+# rule for compiling aesop .ae files
+# Note: these use the IN-TREE aecc compiler and headers
+#
+%.o: %.ae $(compilerdeps)
+	$(AECC) -o $@ $< -- $(AECC_CFLAGS) $(AECC_CPPFLAGS)
+
+%.h: %.hae $(compilerdeps)
+	$(AECC) -o $@ $< -j -- $(AECC_CFLAGS)  $(AECC_CPPFLAGS)
+
+#
+# rules for .ae dependencies
+#
+dirname = $(patsubst %/,%,$(dir $(1)))
+
+
+#============================================================================
+# Asciidoc rules
+#============================================================================
+
+# Silent rules
+doc_verbose = $(doc_verbose_@AM_V@)
+doc_verbose_ = $(doc_verbose_@AM_DEFAULT_V@)
+doc_verbose_0 = @echo "  DOC   	$@";
+
+ditaa_verbose = $(ditaa_verbose_@AM_V@)
+ditaa_verbose_ = $(ditaa_verbose_@AM_DEFAULT_V@)
+ditaa_verbose_0 = @echo "  DITAA  	$@";
+
+asciidoc_verbose = $(asciidoc_verbose_@AM_V@)
+asciidoc_verbose_ = $(asciidoc_verbose_@AM_DEFAULT_V@)
+asciidoc_verbose_0 = @echo "  ASCIIDOC	$@";
+
+dblatex_verbose = $(dblatex_verbose_@AM_V@)
+dblatex_verbose_ = $(dblatex_verbose_@AM_DEFAULT_V@)
+dblatex_verbose_0 = @echo "  DBLATEX	$@";
+
+
+# All _generated_ PDF doc files
+PDFDOCS =
+
+PDFDOCS += $(patsubst %.txt, %.pdf, $(ASCIIDOCSRC))
+
+PDFDEPS = $(patsubst %.txt, %.d, $(ASCIIDOCSRC))
+
+# If deps exist, include them
+-include $(PDFDEPS)
+
+# Ensure docs we built get cleaned by automake
+# Docs are included in the distribution, so only remove when doing maintainerclean
+MAINTAINERCLEANFILES += $(PDFDOCS)
+
+# Include docs in distribution so user doesn't have to have DITAA or ASCIIDOC
+EXTRA_DIST += $(PDFDOCS)
+
+# Also automatically include ASCIIDOC sources in dist
+EXTRA_DIST += $(ASCIIDOCSRC)
+
+.PHONY: doc
+doc: $(PDFDOCS)
+
+.PHONY: docclean
+docclean:
+	$(doc_verbose) rm -f $(PDFDOCS) $(PDFDEPS) \
+             $(patsubst %.txt,%.ditaa_txt,$(ASCIIDOCSRC)) \
+             $(patsubst %.txt,%.xml,$(ASCIIDOCSRC)) \
+	     $(patsubst %.txt,%_graphunnamed_*.png,$(ASCIIDOCSRC)) \
+	     $(patsubst %.txt,%_graphunnamed_*.ditaa,$(ASCIIDOCSRC))
+
+%.xml: %.ditaa_txt
+	$(asciidoc_verbose) $(ASCIIDOC) -b docbook -o $@ -a icons -a toc \
+	   -a max-width=55em $<
+
+%.pdf: %.xml
+	$(dblatex_verbose) $(DBLATEX) -P latex.output.revhistory=0 --pdf \
+	   -o $@ -q $<
+
+%.png: %.ditaa
+	$(ditaa_verbose) java -jar @srcdir@/maint/ditaa/ditaa.jar $< $@ 
+
+%.ditaa_txt: %.txt
+	$(ditaa_verbose) $(srcdir)/maint/handle-ditaa.py \
+	   --gendep=$(patsubst %.ditaa_txt,%.d,$@) --output=$@ --srcdir=@abs_srcdir@ \
+	   --graphbase=@abs_builddir@/$(patsubst %.ditaa_txt,%_graph,$@) --path=@srcdir@ $<
+
+%.d: %.txt
+	$(ditaa_verbose) $(srcdir)/maint/handle-ditaa.py \
+	   --gendep=$@ --output=$(patsubst %.d,%.ditaa_txt,$@) --srcdir=@abs_srcdir@ --path=@srcdir@ \
+	   --graphbase=@abs_builddir@/$(patsubst %.d,%_graph,$@) $<
+
+
+# easy creation of draft docs
+%.draft.pdf: %.pdf
+	pdftk $< background $(srcdir)/doc/draft.pdf output $@
+
+# keep xml/ditaa_txt files for quick rebuild
+#.PRECIOUS: $(patsubst %.txt,%.ditaa_txt,$(ASCIIDOCSRC)) \
+#           $(patsubst %.txt,%.xml,$(ASCIIDOCSRC))
