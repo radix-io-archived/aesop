@@ -1,4 +1,4 @@
 #!/bin/bash
-autoreconf -fi 
+autoreconf -fi -Imaint/config
 
 
