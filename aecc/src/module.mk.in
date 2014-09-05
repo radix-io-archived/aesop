@@ -1,4 +1,4 @@
-DIR := parser
+DIR := src
 
 HSSRC += $(DIR)/CGen.lhs \
 	 $(DIR)/CParse.lhs \

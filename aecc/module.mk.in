@@ -1,0 +1,8 @@
+INSTALL_HDR +=\
+ include/ae-ctl.h \
+ include/ae-log.h \
+ include/aesop.h \
+ include/ae-error.h \
+ include/ae-blocking-parser.h \
+ include/hints.h \
+ include/ae-debug.h

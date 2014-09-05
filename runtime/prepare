@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if aclocal --force -I ./maint/config && autoheader -f && autoconf -f; then
+	echo "configure script successfully regenerated"
+        exit 0
+else
+	echo "some part of configure regeneration failed"
+        exit 1
+fi

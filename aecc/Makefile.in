@@ -1,0 +1,381 @@
+###############################################################
+# General documentation
+#
+# This is a single makefile that runs the entire Aesop build
+# process.  There are no makefiles in subdirectories.  For a
+# general introduction to this approach, please read this document
+# by Peter Miller:
+#
+# http://www.tip.net.au/~millerp/rmch/recu-make-cons-harm.html
+#
+# Each subdirectory contains a module.mk file that gets included
+# when make is executed.  These module.mk files tell make about the
+# files in each subdirectory that must be built, including any
+# special case rules.  Make uses this information to generate a
+# sinle dependency graph and orchestrate the build process from this
+# top level directory.
+#
+# We categorize our source depending on what it will be used for.
+# For example, there are lists of source files for building the
+# server, building the library, building documentation, etc.
+#
+
+###############################################################
+# Generic makefile setup
+
+# define a few generic variables that we need to use; DESTDIR may
+# be overridden on the command line during make install
+DESTDIR =
+srcdir = @srcdir@
+abs_srcdir = @abs_srcdir@
+builddir = @BUILD_ABSOLUTE_TOP@
+prefix = @prefix@
+datarootdir = @datarootdir@
+exec_prefix = @exec_prefix@
+includedir = $(DESTDIR)@includedir@/aesop
+mandir = $(DESTDIR)@mandir@
+sbindir = $(DESTDIR)@sbindir@
+bindir = $(DESTDIR)@bindir@
+libdir = $(DESTDIR)@libdir@
+
+VPATH = $(srcdir)
+
+# for now assume ghc is installed and in path.
+GHC = @GHC@
+
+CC = @CC@
+LD = @LD@
+BUILD_CC = @BUILD_CC@
+BUILD_LD = @BUILD_LD@
+BUILD_CFLAGS = @BUILD_CFLAGS@
+BUILD_LDFLAGS = @BUILD_LDFLAGS@
+
+STRICT_CFLAGS = @STRICT_CFLAGS@
+CPPFLAGS = @CPPFLAGS@
+
+CFLAGS=-I$(srcdir)/include -I. -Iinclude \
+ -I$(srcdir) \
+ @CFLAGS@ @DB_CFLAGS@ $(CPPFLAGS)
+
+# enable relocatable
+#CFLAGS += -fPIC
+
+CWARNS=
+ifneq (0,$(STRICT_CFLAGS))
+	CWARNS += -Wall
+	CWARNS += -Wcast-align -Wbad-function-cast
+	CWARNS += -Wmissing-prototypes -Wmissing-declarations
+	CWARNS += -Wundef -Wpointer-arith
+	CWARNS += -Wnested-externs
+	CWARNS += -Wredundant-decls
+	# turn on extra warnings, minus a few things
+	CWARNS += -Wextra -Wno-unused-label -Wno-sign-compare -Wno-unused-parameter
+	CWARNS += -Wcast-qual
+	CWARNS += -Wshadow
+	CWARNS += -Wwrite-strings
+	CWARNS += -Wformat
+	CWARNS += -Wunused
+endif
+
+# don't want to warn when we call format functions without string literal parameters
+# e.g. triton_string_init(&str, myname);
+CWARNS += -Wno-format-security
+# also don't warn if we user zero-length formats in printf-style functions
+CWARNS += -Wno-format-zero-length
+# ... or when we have unused labels, which are common in generated aesop
+# code
+CWARNS += -Wno-unused-label
+
+LDSHARED = $(TCC) -shared
+
+LIBCFLAGS=@LIBCFLAGS@
+LDFLAGS += @LDFLAGS@ 
+
+# hack for now
+LDFLAGS += @LDFLAGS@ 
+
+LIBS += @LIBS@ @DB_LIB@ -lm -lpthread
+
+DEPLIBS += @THREAD_LIB@
+
+CPPDEFS=$(filter -D%,$(LIBCFLAGS) $(CFLAGS))
+CPPINCS=$(filter -I%,$(LIBCFLAGS) $(CFLAGS))
+
+CFLAGS += $(MPICFLAGS)
+LDFLAGS += $(MPILDFLAGS)
+LIBS += $(MPILIBS)
+
+USE_DYLIBS = @USE_DYLIBS@
+
+INSTALL = @INSTALL@
+
+INSTALL_HDR :=
+HSSRC :=
+HSBINSRC :=
+
+# Eliminate all default suffixes.  We want explicit control.
+.SUFFIXES:
+
+QUIET_COMPILE = @QUIET_COMPILE@
+WARNINGS_AS_ERRORS = @WARNINGS_AS_ERRORS@
+
+ifdef V
+    QUIET_COMPILE = 0
+endif
+
+ifdef W
+	ifeq ($(W),1)
+		WARNINGS_AS_ERRORS = 1
+	else
+		WARNINGS_AS_ERRORS = 0
+	endif
+endif
+
+ifdef D
+  DA="-l"
+else
+  DA=
+endif
+
+ifeq ($(QUIET_COMPILE),1)
+  # say a one-line description of the action, do not echo the command
+  Q=@echo
+  E=@
+  VA=
+else
+  # do not say the short Q lines, but do echo the entire command
+  Q=@echo >/dev/null
+  E=
+  VA="-v"
+endif
+
+# note: aesop produces a lot of redundant-decl warnings that have nothing to
+# do with the user-written code, so we turn those off when using -Werror
+ifeq ($(WARNINGS_AS_ERRORS),1)
+	CWARNS += -Werror -Wno-redundant-decls
+endif
+
+# PHONY targets are targets that do not result in the generation
+#    of a file that has the same name as the target.  Listing them
+#    here keeps make from accidentally doing too much work (see GNU
+#    make manual).
+.PHONY: all clean parserclean 
+
+################################################################
+# Find project subdirectories
+
+# MODULES is a list of subdirectories that we wish to operate on.
+#    They are identified by the presence of module.mk files (makefile
+#    includes).
+MODULES := $(shell find . -name "*.mk" |sed -e 's/^.\///;s/module.mk//')
+
+
+################################################################
+# Default target forward pointer, to avoid other targets in make stubs
+all::
+
+###############################################################
+
+
+################################################################
+# Auto regenerate makefile / rerun configure                   #
+################################################################
+
+$(abs_srcdir)/configure: $(abs_srcdir)/configure.ac $(abs_srcdir)/prepare
+	@echo Build files out of date. Rerunning prepare
+	@( cd $(abs_srcdir); ./prepare )
+
+$(builddir)/config.status: $(abs_srcdir)/configure
+	@echo Build files out of date. Rerunning configure
+	@$(builddir)/config.status --recheck
+
+$(builddir)/Makefile: $(abs_srcdir)/Makefile.in $(builddir)/config.status
+	@echo Build files out of date. Rerunning config.status
+	@$(builddir)/config.status
+
+define addmoddep =
+$(builddir)/$(1)/module.mk: $(abs_srcdir)/$(1)/module.mk.in
+	@$(builddir)/config.status
+endef
+
+$(foreach mod,$(MODULES),$(eval $(call addmoddep,$(mod))))
+
+.PHONY: buildsys
+buildsys: $(builddir)/Makefile $(patsubst %,$(builddir)/%/module.mk,$(MODULES)) \
+		$(abs_srcdir)/configure
+
+all:: buildsys
+
+################################################################
+# Makefile includes
+
+# this is how we pull build information from all of the project
+#    subdirectories, make sure to catch top level module.mk as well
+include $(patsubst %, %/module.mk, $(MODULES)) module.mk
+
+# Just like dir, but strip the slash off the end, to be pretty.
+dirname = $(patsubst %/,%,$(dir $(1)))
+
+# Generate the canonical in-tree location of a file, given a possible out
+# of tree reference.
+canonname = $(patsubst $(srcdir)/%,%,$(call dirname,$(1)))
+
+canonfname = $(patsubst $(srcdir)/%,%,$(1))
+
+# the "lastword" function is more concise, but not available on
+# older versions of GNU Make
+# bname = $(lastword $(subst /, ,$(1)))
+bname = $(word $(words $(subst /, ,$(1))),$(subst /, ,$(1)))
+
+canondirname = $(subst /,_,$(1))
+
+################################################################
+# Derived file lists
+
+# NOTES: At this point, the subdirectory makefile includes have informed
+#    us what the source files are.  Now we want to generate some
+#    other lists (such as objects, executables, and dependency files)
+#    by manipulating the lists of source files
+
+# Grab any CFLAGS defined by the make stub for a particular file, and
+# for the directory in which the source resides.
+# Similar for ldflags.
+modcflags = $(MODCFLAGS_$(call canonname,$(1))) \
+            $(MODCFLAGS_$(patsubst $(srcdir)/%,%,$(1)))
+
+MODCFLAGS_AER = $(call modcflags,$(1))
+MODCFLAGS_AE = $(call modcflags,$(1))
+MODCFLAGS_C = $(call modcflags,$(1))
+
+modldflags = $(MODLDFLAGS_$(call canonname,$(1))) \
+             $(MODLDFLAGS_$(patsubst $(srcdir)/%,%,$(1)))
+
+MODLDFLAGS_AER = $(call modldflags,$(1))
+MODLDFLAGS_AE = $(call modldflags,$(1))
+MODLDFLAGS_C = $(call modldflags,$(1))
+
+modlibs = $(MODLIBS_$(call canonname,$(1))) \
+	  $(MODLIBS_$(patsubst $(srcdir)/%,%,$(1)))
+
+MODLIBS_AER = $(call modlibs,$(1))
+MODLIBS_AE = $(call modlibs,$(1))
+MODLIBS_C = $(call modlibs,$(1))
+
+modname = $(MODNAME_$(call canonname,$(1))) \
+	  $(MODNAME_$(patsubst $(srcdir)/%,%,$(1)))
+
+# use TCC variable so that we can keep CC as the system compiler
+TCC = $(if $(MPICC),$(MPICC),$(CC))
+CPPCC = $(CC)
+
+modcc = $(if $(MODCC_$(1)),$(MODCC_$(1)),$(TCC))
+
+MCC_AER = $(call modcc,$(1))
+MCC_AE = $(call modcc,$(1))
+MCC_C = $(call modcc,$(1))
+
+HSBIN=$(patsubst %.lhs,%,$(HSBINSRC))
+HSOBJ=$(patsubst %.lhs,%.o,$(filter %.lhs,$(HSSRC))) \
+      $(patsubst %.hs,%.o,$(filter %.hs,$(HSSRC)))
+HSINT=$(patsubst %.lhs,%.hi,$(filter %.lhs,$(HSSRC))) \
+      $(patsubst %.hs,%.hi,$(filter %.hs,$(HSSRC)))
+
+DEPENDS=$(TESTDEPS) $(GENLIBDEPS) $(LIBDEPS) $(AEDEPS) $(AESOP_TRHDR_DEPS) $(TESTLIBDEPS)
+
+####################################################################
+# Rules and dependencies
+
+# Compile parsers from haskell source using GHC
+
+$(HSBIN): %: $(srcdir)/%.lhs $(HSSRC)
+	$(Q) "  GHC		$@"
+	$(E)$(GHC) -O2 -odir $(call canonname,$<) \
+		   -hidir $(call canonname,$<) \
+		   -o $@ \
+		   -main-is $(call modname,$<) \
+		   -i$(call dir,$<) --make -XFlexibleInstances $< >/dev/null
+
+# User targets
+
+all::  $(HSBIN)
+
+.PHONY: check
+check: $(TESTS)
+	@$(TEST_RUNNER) -d ${srcdir}/SKIPPED_TESTS -v -o ${builddir}/tests/test_results.tap $(TESTS)
+
+.PHONY: tests
+tests: test
+
+.PHONY: test
+test: $(TESTS)
+
+#$(runVALGRIND): valgrind%: %
+#	@if test -n "$(call testparams,$<)"; then \
+#		for p in $(call testparams,$<); do \
+#			echo -n "Running valgrind $< $$p..."; \
+#			valgrind --error-exitcode=1 ./$< $$p > /dev/null 2>./.vout; \
+#			grep "All heap blocks were freed" ./.vout >/dev/null 2>&1; \
+#			if test $$? != 0; then \
+#				echo "\nErrors found in $<. Rerun valgrind ./$<"; \
+#				exit 1; \
+#			fi; \
+#			echo "done."; \
+#		done; \
+#	else \
+#		echo -n "Running valgrind $<..."; \
+#		valgrind --error-exitcode=1 ./$< > /dev/null 2>./.vout; \
+#		grep "All heap blocks were freed" ./.vout >/dev/null 2>&1; \
+#		if test $$? != 0; then \
+#			echo "\nErrors found in $<.  Rerun valgrind ./$<"; \
+#			exit 1; \
+#		fi; \
+#		echo "done."; \
+#	fi
+#
+
+parserclean::
+	$(Q) "  PARSER CLEAN"
+	$(E)rm -f $(HSBIN) $(HSOBJ) $(HSINT)
+
+
+.PHONY: docclean
+docclean:
+	$(Q) "  DOCCLEAN"
+	$(E) rm -f $(CLEANDOC)
+
+# this is where we include all of our automatic dependencies.
+# NOTE: we wrap this in ifneq's in order to prevent the dependencies
+# from being generated for special targets that don't require them
+ifeq (,$(filter clean parserclean nodep,$(MAKECMDGOALS)))
+-include $(DEPENDS)
+endif
+# add this as a make goal to disable rebuilding deps
+.PHONY: nodep
+.nodep:; @:
+
+INSTALL_HDR_SRC=$(patsubst %,$(abs_srcdir)/%,$(INSTALL_HDR))
+
+ifeq ($(AESOP_DEBUG), 1)
+# If debugging Aesop, make shell tools verbose
+	LN_V = v
+	MKDIR_V = v
+endif
+
+include/aesop/.done:
+	$(Q) "  constructing include/aesop..."
+	@mkdir -p$(MKDIR_V) include/aesop
+	@for hdr in $(INSTALL_HDR_SRC); do \
+		ln -s$(LN_V) $$hdr include/aesop 2> /dev/null; \
+	done
+	$(E) touch include/aesop/.done
+
+install:: all
+	install -Cv -d $(bindir)
+	install -Cv -d $(libdir)
+	install -Cv -d $(libdir)/pkgconfig
+	install -Cv -d $(includedir)
+	install -Cv -m 755 src/ae-blocking-parser $(bindir)
+	install -Cv -m 755 bin/aecc $(bindir)
+	install -Cv -m 755 bin/aecc-utils $(bindir)
+	install -Cv -m 644 maint/aecc.pc $(libdir)/pkgconfig/
+	install -Cv -m 644 $(INSTALL_HDR_SRC) $(includedir)

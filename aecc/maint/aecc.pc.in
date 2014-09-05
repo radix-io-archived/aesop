@@ -1,0 +1,12 @@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: aecc
+Description: Aesop compiler (language for high concurrency system software development)
+Version: @AESOP_VERSION@
+URL: http://www.mcs.anl.gov/projects/aesop
+Requires:
+Libs:
+Cflags:
