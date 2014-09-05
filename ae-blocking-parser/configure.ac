@@ -63,46 +63,6 @@ fi
 AX_GHC("")
 
 
-dnl =========================================================================
-dnl == OpenPA ===============================================================
-dnl =========================================================================
-
-# OpenPA
-AC_ARG_WITH([openpa],
-            [AS_HELP_STRING([[--with-openpa[=DIR]]],
-                             [Use OpenPA installed in DIR])],
-            [],
-            [
-             OLDLIBS="$LIBS"
-             LIBS="-lopa $LIBS"
-             AC_LINK_IFELSE([AC_LANG_PROGRAM([dnl
-#include "opa_primitives.h"
-],[
-OPA_int_t i;
-OPA_store_int(&i,10);
-OPA_fetch_and_incr_int(&i);
-])dnl
-                             ],
-                            [with_openpa="/usr"],
-                            [with_openpa="/usr"])
-             LIBS="$OLDLIBS"
-             ])
-
-opadir=""
-AC_SUBST([opadir])
-
-AS_IF([test -s "${with_openpa}/include/opa_primitives.h" -a \
-            -s "${with_openpa}/include/opa_config.h"],
-          [:],[AC_MSG_ERROR([the OpenPA installation in "${with_openpa}" appears broken])])
-
-CPPFLAGS="-I${with_openpa}/include $CPPFLAGS"
-LDFLAGS="-L${with_openpa}/lib $LDFLAGS"
-AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_openpa}/lib -lopa"
-
-
-AC_CHECK_LIB([opa],[OPA_Queue_init],[],
-       [AC_MSG_ERROR([Could not find useable OpenPA library!])])
-
 dnl ==========================================================================
 dnl check for unix variants
 dnl ==========================================================================
@@ -186,12 +146,9 @@ AC_SUBST(THREAD_LIB)
 AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} ${THREAD_LIB}"
 AC_SUBST(AESOP_PKGCONFIG_LIBS)
 
-AC_CONFIG_FILES([bin/aecc-utils], [])
-AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
-
 AC_OUTPUT([Makefile
 module.mk
 src/module.mk
-maint/aecc.pc
+maint/ae-blocking-parser.pc
 ])
 

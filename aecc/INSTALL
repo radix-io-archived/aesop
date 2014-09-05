@@ -1,9 +1,0 @@
-Example:
-
-./prepare
-mkdir build
-cd build
-../configure --prefix=/home/pcarns/working/aesop/aecc/install \
- --with-openpa=/home/pcarns/working/openpa-1.0.4/install
-make
-make install

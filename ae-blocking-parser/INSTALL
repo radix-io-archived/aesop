@@ -1,0 +1,8 @@
+Example:
+
+./prepare
+mkdir build
+cd build
+../configure --prefix=/home/pcarns/working/aesop/install
+make
+make install

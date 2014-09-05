@@ -109,7 +109,6 @@ USE_DYLIBS = @USE_DYLIBS@
 
 INSTALL = @INSTALL@
 
-INSTALL_HDR :=
 HSSRC :=
 HSBINSRC :=
 
@@ -309,30 +308,6 @@ tests: test
 .PHONY: test
 test: $(TESTS)
 
-#$(runVALGRIND): valgrind%: %
-#	@if test -n "$(call testparams,$<)"; then \
-#		for p in $(call testparams,$<); do \
-#			echo -n "Running valgrind $< $$p..."; \
-#			valgrind --error-exitcode=1 ./$< $$p > /dev/null 2>./.vout; \
-#			grep "All heap blocks were freed" ./.vout >/dev/null 2>&1; \
-#			if test $$? != 0; then \
-#				echo "\nErrors found in $<. Rerun valgrind ./$<"; \
-#				exit 1; \
-#			fi; \
-#			echo "done."; \
-#		done; \
-#	else \
-#		echo -n "Running valgrind $<..."; \
-#		valgrind --error-exitcode=1 ./$< > /dev/null 2>./.vout; \
-#		grep "All heap blocks were freed" ./.vout >/dev/null 2>&1; \
-#		if test $$? != 0; then \
-#			echo "\nErrors found in $<.  Rerun valgrind ./$<"; \
-#			exit 1; \
-#		fi; \
-#		echo "done."; \
-#	fi
-#
-
 parserclean::
 	$(Q) "  PARSER CLEAN"
 	$(E)rm -f $(HSBIN) $(HSOBJ) $(HSINT)
@@ -353,29 +328,15 @@ endif
 .PHONY: nodep
 .nodep:; @:
 
-INSTALL_HDR_SRC=$(patsubst %,$(abs_srcdir)/%,$(INSTALL_HDR))
-
 ifeq ($(AESOP_DEBUG), 1)
 # If debugging Aesop, make shell tools verbose
 	LN_V = v
 	MKDIR_V = v
 endif
 
-include/aesop/.done:
-	$(Q) "  constructing include/aesop..."
-	@mkdir -p$(MKDIR_V) include/aesop
-	@for hdr in $(INSTALL_HDR_SRC); do \
-		ln -s$(LN_V) $$hdr include/aesop 2> /dev/null; \
-	done
-	$(E) touch include/aesop/.done
-
 install:: all
 	install -Cv -d $(bindir)
 	install -Cv -d $(libdir)
 	install -Cv -d $(libdir)/pkgconfig
-	install -Cv -d $(includedir)
 	install -Cv -m 755 src/ae-blocking-parser $(bindir)
-	install -Cv -m 755 bin/aecc $(bindir)
-	install -Cv -m 755 bin/aecc-utils $(bindir)
-	install -Cv -m 644 maint/aecc.pc $(libdir)/pkgconfig/
-	install -Cv -m 644 $(INSTALL_HDR_SRC) $(includedir)
+	install -Cv -m 644 maint/ae-blocking-parser.pc $(libdir)/pkgconfig/
