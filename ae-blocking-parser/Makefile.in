@@ -158,7 +158,7 @@ endif
 #    of a file that has the same name as the target.  Listing them
 #    here keeps make from accidentally doing too much work (see GNU
 #    make manual).
-.PHONY: all clean parserclean 
+.PHONY: all clean
 
 ################################################################
 # Find project subdirectories
@@ -309,20 +309,14 @@ tests: test
 .PHONY: test
 test: $(TESTS)
 
-parserclean::
-	$(Q) "  PARSER CLEAN"
+clean::
 	$(E)rm -f $(HSBIN) $(HSOBJ) $(HSINT)
 
-
-.PHONY: docclean
-docclean:
-	$(Q) "  DOCCLEAN"
-	$(E) rm -f $(CLEANDOC)
 
 # this is where we include all of our automatic dependencies.
 # NOTE: we wrap this in ifneq's in order to prevent the dependencies
 # from being generated for special targets that don't require them
-ifeq (,$(filter clean parserclean nodep,$(MAKECMDGOALS)))
+ifeq (,$(filter clean nodep,$(MAKECMDGOALS)))
 -include $(DEPENDS)
 endif
 # add this as a make goal to disable rebuilding deps
