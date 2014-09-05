@@ -210,7 +210,7 @@ all:: buildsys
 
 # this is how we pull build information from all of the project
 #    subdirectories, make sure to catch top level module.mk as well
-include $(patsubst %, %/module.mk, $(MODULES)) module.mk
+include $(patsubst %, %/module.mk, $(MODULES))
 
 # Just like dir, but strip the slash off the end, to be pretty.
 dirname = $(patsubst %/,%,$(dir $(1)))
