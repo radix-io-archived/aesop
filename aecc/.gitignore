@@ -1,0 +1,5 @@
+*.swp
+aclocal.m4
+autom4te.cache/
+configure
+aesop-config.h.in
