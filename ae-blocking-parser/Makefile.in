@@ -336,7 +336,4 @@ endif
 
 install:: all
 	install -Cv -d $(bindir)
-	install -Cv -d $(libdir)
-	install -Cv -d $(libdir)/pkgconfig
 	install -Cv -m 755 src/ae-blocking-parser $(bindir)
-	install -Cv -m 644 maint/ae-blocking-parser.pc $(libdir)/pkgconfig/

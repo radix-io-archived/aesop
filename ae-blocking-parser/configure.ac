@@ -149,6 +149,5 @@ AC_SUBST(AESOP_PKGCONFIG_LIBS)
 AC_OUTPUT([Makefile
 module.mk
 src/module.mk
-maint/ae-blocking-parser.pc
 ])
 
