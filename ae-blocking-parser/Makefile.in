@@ -286,9 +286,10 @@ DEPENDS=$(TESTDEPS) $(GENLIBDEPS) $(LIBDEPS) $(AEDEPS) $(AESOP_TRHDR_DEPS) $(TES
 
 # Compile parsers from haskell source using GHC
 
+GHC_STATIC_ARGS=-static -optc-static -optl-static -fvia-C -optl-pthread
 $(HSBIN): %: $(srcdir)/%.lhs $(HSSRC)
 	$(Q) "  GHC		$@"
-	$(E)$(GHC) -O2 -odir $(call canonname,$<) \
+	$(E)$(GHC) $(GHC_STATIC_ARGS) -O2 -odir $(call canonname,$<) \
 		   -hidir $(call canonname,$<) \
 		   -o $@ \
 		   -main-is $(call modname,$<) \
