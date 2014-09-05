@@ -1,0 +1,6 @@
+
+DIR := src/resources/worker
+
+INSTALL_HDR += $(DIR)/worker.h
+
+LIBSRC += $(DIR)/worker.c

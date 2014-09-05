@@ -1,0 +1,673 @@
+
+# AECC-UTILS
+
+# echo SOURCING AESOP aecc-utils
+
+# print MSG if verbose=yes
+printVerbose()
+{
+    local MSG=$1
+    if [[ "$AESOP_DEBUG" == 1 ]]; then
+        echo "aecc verbose: $MSG"
+    fi
+}
+
+# quick error check with message
+checkError()
+{
+    local CODE=$1
+    local MSG=$2
+    if (( $CODE )); then
+        echo "aecc: $MSG"
+        exit $CODE
+    fi
+}
+
+# fail with message
+fail()
+{
+    local MSG=$1
+    echo "aecc: $MSG"
+    exit 1
+}
+
+# find the location of this aecc script
+AESOP_HOME=$( cd $( dirname "$BASH_SOURCE" ) && cd .. && pwd )
+checkError $? "AESOP_HOME not found!"
+
+printVerbose "AESOP_HOME: $AESOP_HOME"
+
+AECC_CFLAGS="@AECC_CFLAGS@ -I$AESOP_HOME/include"
+
+
+# The parsers can be in one of two locations; the installed location or the
+# in-build-tree location
+# if [[ -x ${AESOP_HOME}/bin/ae-blocking-parser ]] ; then
+    # Running from installed location
+#    AEPARSER=${AESOP_HOME}/bin/ae-blocking-parser
+#elif [[ -x ${AESOP_HOME}/parser/ae-blocking-parser ]] ; then
+#    # Running from build tree
+#    AEPARSER=${AESOP_HOME}/parser/ae-blocking-parser
+#else
+#    fail "Unable to find ae-blocking-parser!"
+#fi
+#
+#TODO: temporariliy assume aeparser is in path for development purposes
+AEPARSER=ae-blocking-parser
+printVerbose "AEPARSER: $AEPARSER"
+
+SPACES="                                                      "
+optind=0
+
+HELPMESSAGE=
+
+# parameters passed to addOption:
+#   short: one character representing short option (e.g. h for help)
+#   long: string representing long option (e.g. "help")
+#   takesArg: whether this option takes an argument (yes|no)
+#   argVariable: the name of the variable to set the option argument to if given, otherwise 'none'
+#   argAccum: whether more than one of this option is allowed (yes|no).  Arguments will be accumulated into the variable
+#   argString: string representation of the argument for this option.  Used by showUsage.
+#   callback: function to call if the option is found
+#   message: string description of this option, used by showUsage.
+addOption()
+{
+    # <short> <long> <takesArg> <arg variable> <arg accum> <arg string> <callback> <message>
+    shortopt="$1" ; shift
+    longopt="$1" ; shift
+    takesArg="$1" ; shift
+    argVar="$1" ; shift
+    argAccum="$1" ; shift
+    argString="$1" ; shift
+    callback="$1" ; shift
+    message="$1" ; shift
+
+    eval optionInd${optind}="${shortopt}"
+    eval optionCB${optind}=${callback}
+    eval optionArg${optind}=${takesArg}
+    eval optionArgVar${optind}=${argVar}
+    eval optionArgAccum${optind}=${argAccum}
+    eval optionArgStr${optind}="\"${argString}\""
+    eval optionMessage${optind}="\"${message}\""
+    eval optionShort${optind}="-${shortopt}"
+    eval optionLong${optind}="--${longopt}"
+
+    if test "${argVar}" != "none"; then
+        eval ${argVar}=
+    fi
+
+    canon=$(echo ${longopt} | sed -e "s|-|_|")
+    eval hasOpt_${canon}=no
+    eval optionLongCanon${optind}=${canon}
+
+    optind=$(expr ${optind} + 1)
+
+    msg="    -${shortopt},--${longopt}"
+    if test "${takesArg}" = "yes"; then
+        msg="${msg} ${argString}"
+    fi
+    len=$(expr 40 - $(echo "${msg}" | wc -c))
+    sp=$(echo "${SPACES}" | cut -c 1-${len})
+
+    HELPMESSAGE="${HELPMESSAGE}${msg}${sp}${message}\n"
+}
+
+USAGEMESSAGE=
+setUsageMessage()
+{
+    while test -n "$1"; do
+        USAGEMESSAGE="$1\n"
+        shift
+    done
+}
+
+showUsage()
+{
+    res=$1
+    echo ""
+    printf "${USAGEMESSAGE}" ""
+    echo ""
+    exit $res
+}
+
+setHelpStart()
+{
+    HELPSTART="$@"
+}
+
+setHelpEnd()
+{
+    HELPEND="$@"
+}
+
+printHelpAndExit()
+{
+    echo ""
+    printf "${HELPSTART}" ""
+    echo ""
+    printf "${HELPMESSAGE}" ""
+    echo ""
+    printf "${HELPEND}" ""
+    echo ""
+    exit 1
+}
+
+hasArg()
+{
+    arg=$1
+    shift
+
+    if test -z "$1"; then
+        echo "Option ${arg} requires an argument."
+        showUsage 1
+    fi
+
+    case "$1" in
+      -*)
+            echo "Option ${arg} requires an argument."
+            showUsage 1
+            ;;
+      *)
+    esac
+}
+
+# Parses the options based on previous calls to addOption.
+# If an option is found, the variable hasOpt_<canon_long>
+# will be set to yes.  For example, if --my-opt is
+# added as an option, and the --my-opt option is specified,
+# this will set hasOpt_my_opt=yes, which can be checked
+# after completion of the parseOpts call.
+parseOpts()
+{
+
+    while test -n "$1"; do
+        case "$1" in
+          ${optionShort0}|${optionLong0})
+                eval hasOpt_${optionLongCanon0}=yes
+                shift
+                if test "${optionArg0}" = "yes"; then
+                    hasArg "${optionShort0}" $@
+                    if test "${optionArgAccum0}" = "yes"; then
+                        eval ${optionArgVar0}="\"\${$optionArgVar0} $1\""
+                    else
+                        eval ${optionArgVar0}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB0}" != "none"; then
+                    eval ${optionCB0}
+                fi
+                ;;
+          ${optionShort1}|${optionLong1})
+                eval hasOpt_${optionLongCanon1}=yes
+                shift
+                if test "${optionArg1}" = "yes"; then
+                    hasArg "${optionShort1}" $@
+                    if test "${optionArgAccum1}" = "yes"; then
+                        eval ${optionArgVar1}="\"\${$optionArgVar1} $1\""
+                    else
+                        eval ${optionArgVar1}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB1}" != "none"; then
+                    eval ${optionCB1}
+                fi
+                ;;
+          ${optionShort2}|${optionLong2})
+                eval hasOpt_${optionLongCanon2}=yes
+                shift
+                if test "${optionArg2}" = "yes"; then
+                    hasArg "${optionShort2}" $@
+                    if test "${optionArgAccum2}" = "yes"; then
+                        eval ${optionArgVar2}="\"\${$optionArgVar2} $1\""
+                    else
+                        eval ${optionArgVar2}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB2}" != "none"; then
+                    eval ${optionCB2}
+                fi
+                ;;
+          ${optionShort3}|${optionLong3})
+                eval hasOpt_${optionLongCanon3}=yes
+                shift
+                if test "${optionArg3}" = "yes"; then
+                    hasArg "${optionShort3}" $@
+                    if test "${optionArgAccum3}" = "yes"; then
+                        eval ${optionArgVar3}="\"\${$optionArgVar3} $1\""
+                    else
+                        eval ${optionArgVar3}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB3}" != "none"; then
+                    eval ${optionCB3}
+                fi
+                ;;
+          ${optionShort4}|${optionLong4})
+                eval hasOpt_${optionLongCanon4}=yes
+                shift
+                if test "${optionArg4}" = "yes"; then
+                    hasArg "${optionShort4}" $@
+                    if test "${optionArgAccum4}" = "yes"; then
+                        eval ${optionArgVar4}="\"\${$optionArgVar4} $1\""
+                    else
+                        eval ${optionArgVar4}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB4}" != "none"; then
+                    eval ${optionCB4}
+                fi
+                ;;
+          ${optionShort5}|${optionLong5})
+                eval hasOpt_${optionLongCanon5}=yes
+                shift
+                if test "${optionArg5}" = "yes"; then
+                    hasArg "${optionShort5}" $@
+                    if test "${optionArgAccum5}" = "yes"; then
+                        eval ${optionArgVar5}="\"\${$optionArgVar5} $1\""
+                    else
+                        eval ${optionArgVar5}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB5}" != "none"; then
+                    eval ${optionCB5}
+                fi
+                ;;
+          ${optionShort6}|${optionLong6})
+                eval hasOpt_${optionLongCanon6}=yes
+                shift
+                if test "${optionArg6}" = "yes"; then
+                    hasArg "${optionShort6}" $@
+                    if test "${optionArgAccum6}" = "yes"; then
+                        eval ${optionArgVar6}="\"\${$optionArgVar6} $1\""
+                    else
+                        eval ${optionArgVar6}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB6}" != "none"; then
+                    eval ${optionCB6}
+                fi
+                ;;
+          ${optionShort7}|${optionLong7})
+                eval hasOpt_${optionLongCanon7}=yes
+                shift
+                if test "${optionArg7}" = "yes"; then
+                    hasArg "${optionShort7}" $@
+                    if test "${optionArgAccum7}" = "yes"; then
+                        eval ${optionArgVar7}="\"\${$optionArgVar7} $1\""
+                    else
+                        eval ${optionArgVar7}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB7}" != "none"; then
+                    eval ${optionCB7}
+                fi
+                ;;
+          ${optionShort8}|${optionLong8})
+                eval hasOpt_${optionLongCanon8}=yes
+                shift
+                if test "${optionArg8}" = "yes"; then
+                    hasArg "${optionShort8}" $@
+                    if test "${optionArgAccum8}" = "yes"; then
+                        eval ${optionArgVar8}="\"\${$optionArgVar8} $1\""
+                    else
+                        eval ${optionArgVar8}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB8}" != "none"; then
+                    eval ${optionCB8}
+                fi
+                ;;
+          ${optionShort9}|${optionLong9})
+                eval hasOpt_${optionLongCanon9}=yes
+                shift
+                if test "${optionArg9}" = "yes"; then
+                    hasArg "${optionShort9}" $@
+                    if test "${optionArgAccum9}" = "yes"; then
+                        eval ${optionArgVar9}="\"\${$optionArgVar9} $1\""
+                    else
+                        eval ${optionArgVar9}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB9}" != "none"; then
+                    eval ${optionCB9}
+                fi
+                ;;
+          ${optionShort10}|${optionLong10})
+                eval hasOpt_${optionLongCanon10}=yes
+                shift
+                if test "${optionArg10}" = "yes"; then
+                    hasArg "${optionShort10}" $@
+                    if test "${optionArgAccum10}" = "yes"; then
+                        eval ${optionArgVar10}="\"\${$optionArgVar10} $1\""
+                    else
+                        eval ${optionArgVar10}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB10}" != "none"; then
+                    eval ${optionCB10}
+                fi
+                ;;
+          ${optionShort11}|${optionLong11})
+                eval hasOpt_${optionLongCanon11}=yes
+                shift
+                if test "${optionArg11}" = "yes"; then
+                    hasArg "${optionShort11}" $@
+                    if test "${optionArgAccum11}" = "yes"; then
+                        eval ${optionArgVar11}="\"\${$optionArgVar11} $1\""
+                    else
+                        eval ${optionArgVar11}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB11}" != "none"; then
+                    eval ${optionCB11}
+                fi
+                ;;
+          ${optionShort12}|${optionLong12})
+                eval hasOpt_${optionLongCanon12}=yes
+                shift
+                if test "${optionArg12}" = "yes"; then
+                    hasArg "${optionShort12}" $@
+                    if test "${optionArgAccum12}" = "yes"; then
+                        eval ${optionArgVar12}="\"\${$optionArgVar12} $1\""
+                    else
+                        eval ${optionArgVar12}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB12}" != "none"; then
+                    eval ${optionCB12}
+                fi
+                ;;
+          ${optionShort13}|${optionLong13})
+                eval hasOpt_${optionLongCanon13}=yes
+                shift
+                if test "${optionArg13}" = "yes"; then
+                    hasArg "${optionShort13}" $@
+                    if test "${optionArgAccum13}" = "yes"; then
+                        eval ${optionArgVar13}="\"\${$optionArgVar13} $1\""
+                    else
+                        eval ${optionArgVar13}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB13}" != "none"; then
+                    eval ${optionCB13}
+                fi
+                ;;
+          ${optionShort14}|${optionLong14})
+                eval hasOpt_${optionLongCanon14}=yes
+                shift
+                if test "${optionArg14}" = "yes"; then
+                    hasArg "${optionShort14}" $@
+                    if test "${optionArgAccum14}" = "yes"; then
+                        eval ${optionArgVar14}="\"\${$optionArgVar14} $1\""
+                    else
+                        eval ${optionArgVar14}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB14}" != "none"; then
+                    eval ${optionCB14}
+                fi
+                ;;
+          ${optionShort15}|${optionLong15})
+                eval hasOpt_${optionLongCanon15}=yes
+                shift
+                if test "${optionArg15}" = "yes"; then
+                    hasArg "${optionShort15}" $@
+                    if test "${optionArgAccum15}" = "yes"; then
+                        eval ${optionArgVar15}="\"\${$optionArgVar15} $1\""
+                    else
+                        eval ${optionArgVar15}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB15}" != "none"; then
+                    eval ${optionCB15}
+                fi
+                ;;
+          ${optionShort16}|${optionLong16})
+                eval hasOpt_${optionLongCanon16}=yes
+                shift
+                if test "${optionArg16}" = "yes"; then
+                    hasArg "${optionShort16}" $@
+                    if test "${optionArgAccum16}" = "yes"; then
+                        eval ${optionArgVar16}="\"\${$optionArgVar16} $1\""
+                    else
+                        eval ${optionArgVar16}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB16}" != "none"; then
+                    eval ${optionCB16}
+                fi
+                ;;
+          ${optionShort17}|${optionLong17})
+                eval hasOpt_${optionLongCanon17}=yes
+                shift
+                if test "${optionArg17}" = "yes"; then
+                    hasArg "${optionShort17}" $@
+                    if test "${optionArgAccum17}" = "yes"; then
+                        eval ${optionArgVar17}="\"\${$optionArgVar17} $1\""
+                    else
+                        eval ${optionArgVar17}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB17}" != "none"; then
+                    eval ${optionCB17}
+                fi
+                ;;
+          ${optionShort18}|${optionLong18})
+                eval hasOpt_${optionLongCanon18}=yes
+                shift
+                if test "${optionArg18}" = "yes"; then
+                    hasArg "${optionShort18}" $@
+                    if test "${optionArgAccum18}" = "yes"; then
+                        eval ${optionArgVar18}="\"\${$optionArgVar18} $1\""
+                    else
+                        ${optionArgVar18}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB18}" != "none"; then
+                    eval ${optionCB18}
+                fi
+                ;;
+          ${optionShort19}|${optionLong19})
+                eval hasOpt_${optionLongCanon19}=yes
+                shift
+                if test "${optionArg19}" = "yes"; then
+                    hasArg "${optionShort19}" $@
+                    if test "${optionArgAccum19}" = "yes"; then
+                        eval ${optionArgVar19}="\"\${$optionArgVar19} $1\""
+                    else
+                        eval ${optionArgVar19}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB19}" != "none"; then
+                    eval ${optionCB19}
+                fi
+                ;;
+          ${optionShort20}|${optionLong20})
+                eval hasOpt_${optionLongCanon20}=yes
+                shift
+                if test "${optionArg20}" = "yes"; then
+                    hasArg "${optionShort20}" $@
+                    if test "${optionArgAccum20}" = "yes"; then
+                        eval ${optionArgVar20}="\"\${$optionArgVar20} $1\""
+                    else
+                        eval ${optionArgVar20}="$1"
+                    fi
+                    shift
+                fi
+                if test "${optionCB20}" != "none"; then
+                    eval ${optionCB20}
+                fi
+                ;;
+          --)
+                shift
+                break
+                ;;
+          -?)
+                echo "Invalid argument: $1"
+                showUsage 1
+                ;;
+          *)
+                INPUTFILES="${INPUTFILES} $1"
+                shift
+                ;;
+        esac
+    done
+
+    while test -n "$1"; do
+        COMPILEROPTS="${COMPILEROPTS} $1"
+        shift
+    done
+}
+
+runCmd()
+{
+    verbose="$1" ; shift
+    error="$1" ; shift
+    cmd=$@
+    compilerout=$(mktemp tmp.XXXXXXXX)
+    printVerbose "runCmd(): $cmd"
+    $cmd > ${compilerout} 2>&1
+    res=$?
+    if test $res -ne 0; then
+        echo "$error"
+        cat ${compilerout}
+        rm ${compilerout}
+        return $res
+    fi
+    if test "$verbose" = "yes"; then
+        cat ${compilerout}
+    else
+        cat ${compilerout} | grep -v "warning: redundant redeclaration" | grep -v " note: previous declaration" | grep -v "warning: no previous prototype for ‘ptsname_r’"
+    fi
+    rm ${compilerout}
+}
+
+# doCPP <verbose> <compiler> <input> <output> <named outfile> <just cpp> [<compiler opts>]
+doCPP()
+{
+    verbose="$1" ; shift
+    ccpath="$1" ; shift
+    cppinput="$1" ; shift
+    cppout="$1" ; shift
+    namedoutfile="$1" ; shift
+    precompile="$1" ; shift
+    ccopts=$@
+
+    printVerbose "doCPP(): $cppinput"
+
+    jcppopt="-E"
+    if test "${precompile}" = "yes"; then
+        jcppopt="-D__blocking='' -Dpbranch='' -Dpwait='' -Dpbreak=''"
+    fi
+    runCmd $verbose "Preprocessing step failed:" \
+           "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${AECC_CFLAGS} ${ccopts} ${cppinput}"
+    return $?
+}
+
+# parseAesopSource <verbose> <compiler> <input file> <output file> <named input> <parser opts> <compiler opts>
+parseAesopSource()
+{
+    verbose="$1" ; shift
+    compiler="$1" ; shift
+    input="$1" ; shift
+    output="$1" ; shift
+    namedinput="$1" ; shift
+    popts="$1" ; shift
+    if test "${popts}" = "none"; then
+        popts=""
+    fi
+    compileropts="$@"
+    if test "${compileropts}" = "none"; then
+        compileropts=""
+    fi
+
+    printVerbose "parseAesopSource(): $input"
+
+    runCmd $verbose "Aesop parsing step failed: " \
+           "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${AECC_CFLAGS} ${compileropts}"
+    return $?
+}
+
+# parseAesopHeader <verbose> <compiler> <input file> <output file> <named input> <parser opts> <compiler opts>
+parseAesopHeader()
+{
+    verbose="$1" ; shift
+    compiler="$1" ; shift
+    input="$1" ; shift
+    output="$1" ; shift
+    namedinput="$1" ; shift
+    popts="$1" ; shift
+    if test "${popts}" = "none"; then
+        popts=""
+    fi
+    compileropts="$@"
+    if test "${compileropts}" = "none"; then
+        compileropts=""
+    fi
+
+    runCmd $verbose "Aesop header parsing failed: " \
+           "${AEPARSER} -c ${compiler} -j ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${AECC_CFLAGS} ${compileropts}"
+    return $?
+}
+
+# doCompile <verbose> <compiler> <input file> <output file> <compiler opts>
+doCompile()
+{
+    verbose="$1" ; shift
+    compiler="$1" ; shift
+    infile="$1" ; shift
+    outfile="$1" ; shift
+    compileropts="$@"
+    if test "${compileropts}" = "none"; then
+        compileropts=""
+    fi
+
+    printVerbose "doCompile()"
+
+    runCmd $verbose "Compilation step failed: " \
+           "${compiler} -x c -c -o ${outfile} ${AECC_CFLAGS} ${compileropts} ${infile}"
+    return $?
+}
+
+doClean()
+# doClean <files>
+# Removes files as 'rm -f' w/o overriding permissions
+# Respects AESOP_CLEAN=0
+{
+    printVerbose "doClean()..."
+    printVerbose "AESOP_CLEAN=$AESOP_CLEAN"
+    for F in ${*}; do
+        if test "${AESOP_CLEAN}" != 0 ; then
+            if test -w ${F} ; then
+                rm ${F}
+            fi
+        else
+            printVerbose "doClean: leaving ${F}"
+        fi
+    done
+}
+
+# Local Variables:
+# mode: sh
+# sh-basic-offset: 4
+# End:
