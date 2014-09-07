@@ -33,3 +33,7 @@ src/ae-blocking-parser$(EXEEXT): $(compilersources)
 bin_PROGRAMS += src/ae-blocking-parser
 src_ae_blocking_parser_SOURCES :=  $(compilersources)
 
+if BINDIST
+dist-hook:
+	cp -p src/ae-blocking-parser $(distdir)/src/
+endif

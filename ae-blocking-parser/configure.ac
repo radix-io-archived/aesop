@@ -34,15 +34,24 @@ AX_GHC("")
 
 GHCFLAGS="-XFlexibleInstances"
 
+dnl enable static builds of parser binary
 AC_ARG_ENABLE(static-parser,
     [AS_HELP_STRING(
         [--enable-static-parser],
         [build static ae-blocking-parser with no GHC runtime dependencies])
     ])
-
 AS_IF([test "x$enable_static_parser" = "xyes"], [
     GHCFLAGS="$GHCFLAGS -static -optc-static -optl-static -fvia-C -optl-pthread"
 ])
+
+AC_ARG_ENABLE([bindist],
+[  --enable-bindist    Include ae-blocking-parser binary in make dist],
+[case "${enableval}" in
+  yes) bindist=true ;;
+  no)  bindist=false ;;
+  *) AC_MSG_ERROR([bad value ${enableval} for --enable-bindist]) ;;
+esac],[bindist=false])
+AM_CONDITIONAL([BINDIST], [test x$bindist = xtrue])
 
 AC_SUBST(GHCFLAGS)
 
