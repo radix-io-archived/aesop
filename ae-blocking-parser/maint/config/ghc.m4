@@ -11,16 +11,20 @@ AC_DEFUN([AX_CHECK_GHCPKG],
 ])
 
 AC_DEFUN([AX_GHC],
-[
-    AC_ARG_WITH(ghc,
-       [  --with-ghc=<dir>       Location of installed ghc],
-       [AC_PATH_PROG(GHC, ${withval}/bin/ghc)
-        AC_PATH_PROG(GHCPKG, ghc-pkg, ${withval}/bin/ghc-pkg)],
-       [AC_PATH_PROG(GHC, ghc)
-        AC_PATH_PROG(GHCPKG, ghc-pkg)])
-    AC_SUBST(GHC)
-    AC_SUBST(GHCPKG)
+[    
+    if test -f .bindist; then
+        AC_MSG_RESULT(skipping; binary distribution doesn't need ghc)
+    else
+        AC_ARG_WITH(ghc,
+           [  --with-ghc=<dir>       Location of installed ghc],
+           [AC_PATH_PROG(GHC, ${withval}/bin/ghc)
+            AC_PATH_PROG(GHCPKG, ghc-pkg, ${withval}/bin/ghc-pkg)],
+           [AC_PATH_PROG(GHC, ghc)
+            AC_PATH_PROG(GHCPKG, ghc-pkg)])
+        AC_SUBST(GHC)
+        AC_SUBST(GHCPKG)
 
-    AX_CHECK_GHCPKG($GHCPKG, Language.C)
-    AX_CHECK_GHCPKG($GHCPKG, Text.Regex.PCRE)
+        AX_CHECK_GHCPKG($GHCPKG, Language.C)
+        AX_CHECK_GHCPKG($GHCPKG, Text.Regex.PCRE)
+    fi
 ])

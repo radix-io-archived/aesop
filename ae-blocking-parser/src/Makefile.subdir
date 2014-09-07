@@ -37,4 +37,5 @@ if BINDIST
 dist: src/ae-blocking-parser
 dist-hook:
 	cp -p src/ae-blocking-parser $(distdir)/src/
+	touch $(distdir)/.bindist
 endif
