@@ -1,0 +1,29 @@
+AUTOMAKE_OPTIONS = foreign
+ACLOCAL_AMFLAGS = -I maint/config
+
+bin_PROGRAMS =
+bin_SCRIPTS =
+noinst_LIBRARIES =
+noinst_PROGRAMS =
+lib_LIBRARIES =
+noinst_HEADERS =
+TESTS =
+XFAIL_TESTS = 
+check_PROGRAMS =
+EXTRA_PROGRAMS =
+CLEANFILES = $(bin_SCRIPTS)
+MAINTAINERCLEANFILES =
+EXTRA_DIST =
+BUILT_SOURCES =
+
+EXTRA_DIST += prepare
+
+AM_CPPFLAGS =
+AM_CFLAGS =
+AM_LIBS =
+AM_CXXFLAGS = $(AM_CFLAGS)
+AM_GHCFLAGS =
+
+# include Make.rules
+include $(top_srcdir)/src/Makefile.subdir
+

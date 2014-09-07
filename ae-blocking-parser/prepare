@@ -1,9 +1,5 @@
 #!/bin/bash
 
-if aclocal --force -I ./maint/config && autoheader -f && autoconf -f; then
-	echo "configure script successfully regenerated"
-        exit 0
-else
-	echo "some part of configure regeneration failed"
-        exit 1
-fi
+echo "Regenerating build files..."
+echo "NOTE: please ignore the \"overrides AutoMake target\" warning for now."
+autoreconf -fi -I maint/config 

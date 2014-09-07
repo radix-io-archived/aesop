@@ -1,0 +1,35 @@
+#
+# Build haskell sources
+#
+
+compilersources = \
+	src/ae-blocking-parser.lhs \
+	src/CGen.lhs \
+	src/CParse.lhs \
+	src/CUtils.lhs \
+	src/BlockingContext.lhs \
+	src/Walker.lhs \
+	src/ContextGen.lhs \
+	src/Serialize.hs \
+	src/Header.lhs
+
+compilerclean = $(basename $(compilersources)) \
+   		 	    src/BlockingParser
+
+CLEANFILES += src/ae-blocking-parser \
+	      $(patsubst %, %.hi, $(compilerclean)) \
+	      $(patsubst %, %.o, $(compilerclean))
+
+#
+# Rule specific for the above (no point in custom Haskell rules since there is
+# only one Haskell program being built)
+#
+src/ae-blocking-parser$(EXEEXT): $(compilersources)
+	mkdir -p src
+	$(GHC) -odir src -i${top_srcdir}/src -O2 \
+	       -hidir src -main-is BlockingParser -o $@ \
+	       --make $(GHCFLAGS) $<
+
+bin_PROGRAMS += src/ae-blocking-parser
+src_ae_blocking_parser_SOURCES :=  $(compilersources)
+
