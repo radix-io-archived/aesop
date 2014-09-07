@@ -4,3 +4,9 @@ autom4te.cache/
 configure
 ae-blocking-parser-config.h.in
 ae-blocking-parser-config.h.in~
+maint/config/compile
+maint/config/depcomp
+maint/config/install-sh
+maint/config/missing
+maint/config/test-driver
+Makefile.in
