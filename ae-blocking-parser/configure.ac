@@ -13,7 +13,7 @@ AESOP_PRE="pre-$CONFIGURE_TIME"
 AESOP_VERSION=$AESOP_MAJOR.$AESOP_MINOR.$AESOP_SUB$AESOP_PRE
 
 AC_PREREQ(2.50)
-AC_INIT(aesop, 0.1.2, aesop-dev@mcs.anl.gov)
+AC_INIT([ae-blocking-parser], [0.1.2], [http://trac.mcs.anl.gov/projects/aesop],[],[http://www.mcs.anl.gov/projects/aesop])
 
 AC_CONFIG_AUX_DIR(maint/config)
 
