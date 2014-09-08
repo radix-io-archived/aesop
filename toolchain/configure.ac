@@ -300,24 +300,14 @@ AC_CONFIG_FILES([maint/depend-hae.sh],[chmod +x maint/depend-hae.sh])
 AC_OUTPUT([Makefile
 src/module.mk
 src/resources/worker/module.mk
-src/resources/worker/test/module.mk
 src/resources/sem/module.mk
-src/resources/sem/test/module.mk
 src/resources/thread/module.mk
-src/resources/thread/test/module.mk
 src/aefile/module.mk
 src/aebdb/module.mk
-src/aebdb/test/module.mk
-src/aefile/test/module.mk
 src/resourcebuilder/module.mk
-src/resourcebuilder/test/module.mk
 src/socket/module.mk
-src/socket/test/module.mk
-src/timer/test/module.mk
 src/timer/module.mk
 module.mk
 maint/aesop.pc
 ])
 
-# tests/module.mk
-# tests/blocking/module.mk

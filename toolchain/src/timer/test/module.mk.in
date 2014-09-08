@@ -1,8 +1,0 @@
-DIR := src/timer/test
-
-AETESTSRC += $(DIR)/timer1.ae \
-	     $(DIR)/pthread-compare.ae \
-	     $(DIR)/timer2.ae \
-	     $(DIR)/timer-cancel.ae 
-
-MODLIBS_$(DIR)/pthread-compare = -lpthread
