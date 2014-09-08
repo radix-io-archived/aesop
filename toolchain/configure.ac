@@ -13,7 +13,7 @@ AESOP_PRE="pre-$CONFIGURE_TIME"
 AESOP_VERSION=$AESOP_MAJOR.$AESOP_MINOR.$AESOP_SUB$AESOP_PRE
 
 AC_PREREQ(2.50)
-AC_INIT(aesop, 0.1.1, aesop-dev@mcs.anl.gov)
+AC_INIT([aesop-toolchain], [0.1.2], [http://trac.mcs.anl.gov/projects/aesop],[],[http://www.mcs.anl.gov/projects/aesop])
 
 AC_SUBST(AESOP_VERSION)
 
@@ -24,15 +24,9 @@ AC_DEFINE_UNQUOTED(AESOP_VERSION_SUB,   $AESOP_SUB, sub version number)
 AC_CONFIG_HEADER(aesop-config.h)
 AC_CONFIG_AUX_DIR(maint/config)
 
-
 AC_PROG_INSTALL
 AC_PROG_CC
 AC_PROG_CPP
-
-AC_C_BIGENDIAN
-
-AC_CHECK_SIZEOF([long int])
-AC_CHECK_SIZEOF(void *)
 
 AC_MSG_CHECKING([for required gcc])
 if test "x$GCC" = "x"; then
@@ -52,7 +46,6 @@ AC_TRY_COMPILE([], [void* foo; my_label: foo=&&my_label;],
     AC_MSG_RESULT(no)
     AC_MSG_ERROR(CC does not support label pointer extension, please try gcc or clang)
 )
-
 
 dnl regardless of what compiler the user is using, we still check for gcc in 
 dnl the path to use for generating dependencies
@@ -84,21 +77,6 @@ if test -z "$TIMEOUT_PROG"; then
 fi
 AC_SUBST(TIMEOUT_PROG)
 
-dnl ======================================================================
-dnl  Try harder to be valgrind safe
-dnl ======================================================================
-AC_ARG_ENABLE(valgrind-clean,
-        [AS_HELP_STRING(
-                [--enable-valgrind-clean],
-                [Try harder to avoid valgrind warnings])
-        ])
-
-VALGRIND_CLEAN=0
-AS_IF([test "x$enable_valgrind_clean" = "xyes"], [
-       VALGRIND_CLEAN=1
-])
-AC_SUBST(VALGRIND_CLEAN)
-
 dnl =========================================================================
 dnl ==== Check for libev ====================================================
 dnl =========================================================================
@@ -127,7 +105,6 @@ if test "A$evok" == "A0"; then
              [AC_MSG_ERROR([Could not find useable
            libev library at prefix ${with_libev}/lib!])])
 fi
-
 
 
 dnl =========================================================================
@@ -170,62 +147,6 @@ AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_openpa}/lib -lopa"
 AC_CHECK_LIB([opa],[OPA_Queue_init],[],
        [AC_MSG_ERROR([Could not find useable OpenPA library!])])
 
-dnl =========================================================================
-dnl == Google's PerfTools ===================================================
-dnl =========================================================================
-
-AC_ARG_WITH(perftools,
-    AS_HELP_STRING([--with-perftools=dir],
-                   [Location of google perftools installation]),
-    PERFTOOL_DIR="$withval",PERFTOOL_DIR="")
-
-if test "A$PERFTOOL_DIR" == "Ano"
-then
-   use_perftools=0
-   PERFTOOL_DIR=""
-elif test "A$PERFTOOL_DIR" == "Ayes"
-then
-   use_perftools=1
-   PERFTOOL_DIR=""
-elif test  "A$PERFTOOL_DIR" != "A"
-then
-   use_perftools=1
-else
-dnl 2 means autodetect
-   use_perftools=2
-fi
-
-if test -n "$PERFTOOL_DIR"
-then
-   CPPFLAGS="$CPPFLAGS -I${PERFTOOL_DIR}/include"
-   LDFLAGS="$LDFLAGS -L${PERFTOOL_DIR}/lib"
-fi
-
-if test "A$use_perftools" != "A0"
-then
-   perftools_found=1
-   AC_CHECK_HEADERS([google/tcmalloc.h],[],
-                    [perftools_found=])
-
-   AC_CHECK_LIB([tcmalloc],[tc_new],[],[perftools_found=])
-   AC_CHECK_LIB([profiler],[ProfilerStart], [], [perftools_found=])
-else
-   perftools_found=0
-fi
-
-AC_MSG_CHECKING([if Google Perftools are used])
-if test "x${perftools_found}" == "x1"
-then
-   AC_DEFINE([HAVE_PERFTOOLS], [1], [If google perftools are available])
-   AC_MSG_RESULT([yes])
-else
-   AC_MSG_RESULT([no])
-   if test "A$use_perftools" == "A1"; then
-         AC_MSG_ERROR([Perftools requested but could not be found... Aborting])
-   fi
-fi
-
-
 dnl ==========================================================================
 dnl check for unix variants
 dnl ==========================================================================
@@ -243,18 +164,6 @@ AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(LIBS)
 AC_SUBST(CPPFLAGS)
-
-AC_ARG_ENABLE(verbose,
-[  --enable-verbose     Enables verbose output during build process],
-QUIET_COMPILE=0,
-QUIET_COMPILE=1)
-AC_SUBST(QUIET_COMPILE)
-
-AC_ARG_ENABLE(error-on-warning,
-[  --enable-error-on-warning     Generate compiler error on warnings],
-WARNINGS_AS_ERRORS=1,
-WARNINGS_AS_ERRORS=0)
-AC_SUBST(WARNINGS_AS_ERRORS)
 
 STRICT_CFLAGS=1
 AC_ARG_ENABLE(strict,
@@ -308,6 +217,7 @@ fi],
 [   LIBCFLAGS="$LIBCFLAGS -D__TRITON_POSIX_LOCKING__"
     THREAD_LIB="-lpthread"
     AC_MSG_RESULT(yes) ])
+
 
 dnl check for optional berkeley db support
 dnl
