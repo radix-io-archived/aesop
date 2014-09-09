@@ -209,19 +209,6 @@ AC_ARG_ENABLE(coverage,
 )
 AC_SUBST(ENABLE_COVERAGE)
 
-dnl a mechanism to turn off threads in the client library
-AC_MSG_CHECKING([for client library thread safety support])
-AC_ARG_ENABLE(thread-safety,
-[  --disable-thread-safety Disables thread safety in the client library],
-[if test "x$enableval" = "xno" ; then
-    LIBCFLAGS="$LIBCFLAGS -D__TRITON_NULL_LOCKING__"
-    THREAD_LIB=""
-    AC_MSG_RESULT(no)
-fi],
-[   LIBCFLAGS="$LIBCFLAGS -D__TRITON_POSIX_LOCKING__"
-    THREAD_LIB="-lpthread"
-    AC_MSG_RESULT(yes) ])
-
 
 dnl check for optional berkeley db support
 dnl
@@ -284,12 +271,11 @@ AC_TRY_LINK(
     AC_MSG_RESULT(no)
 )
 
+# TODO: clean up how CFLAGS are handled by AECC; this is confusing
 # these are cflags that will be automatically applied by aecc
-AECC_CFLAGS=$LIBCFLAGS
+AECC_CFLAGS=""
 AC_SUBST(AECC_CFLAGS)
 
-AC_SUBST(LIBCFLAGS)
-AC_SUBST(THREAD_LIB)
 AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} ${THREAD_LIB}"
 AC_SUBST(AESOP_PKGCONFIG_LIBS)
 
@@ -297,9 +283,6 @@ AC_CONFIG_FILES([bin/aecc-utils], [])
 AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
 
 AC_CONFIG_FILES([tests/testrunner.sh], [chmod +x tests/testrunner.sh])
-AC_CONFIG_FILES([maint/depend.sh],[chmod +x maint/depend.sh])
-AC_CONFIG_FILES([maint/depend-ae.sh],[chmod +x maint/depend-ae.sh])
-AC_CONFIG_FILES([maint/depend-hae.sh],[chmod +x maint/depend-hae.sh])
 AC_CONFIG_FILES([Makefile
 maint/aesop.pc])
 

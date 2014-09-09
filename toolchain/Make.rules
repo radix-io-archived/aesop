@@ -15,14 +15,15 @@ tests: $(check_PROGRAMS)
 # rule for compiling aesop .ae files
 #
 .ae.o: 
-	$(AM_V_GEN)$(AECC) -o $@ $< -- $(CFLAGS)
+	$(AM_V_GEN)$(AECC) -o $@ $< -- $(CFLAGS) $(AM_CPPFLAGS)
 
 .hae.h:
-	$(AM_V_GEN)$(AECC) -o $@ $< -j -- $(CFLAGS)
+	$(AM_V_GEN)$(AECC) -o $@ $< -j -- $(CFLAGS) $(AM_CPPFLAGS)
 
 #
 # rules for .ae dependencies
 #
+dirname = $(patsubst %/,%,$(dir $(1)))
 
 %.ae.d: %.ae
 	mkdir -p $(call dirname,$@)
