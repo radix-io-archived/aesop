@@ -2,11 +2,13 @@ testlib = src/libaesop.a
 
 check_PROGRAMS += \
  tests/test-hints
+AM_DEFAULT_SOURCE_EXT = .ae
 
 TESTS += \
  tests/test-hints
 
+AE_SRC += \
+ tests/test-hints.ae
+
 # TODO: figure out a more automated way to specify this
 tests_test_hints_LDADD = $(testlib) -lpthread
-tests_test_hints_SOURCES = tests/test-hints.ae
-AE_SRC += tests/test-hints.ae
