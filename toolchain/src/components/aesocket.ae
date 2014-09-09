@@ -31,7 +31,7 @@ static int immediate_completion = 1;
 
 
 static triton_mutex_t mutex = TRITON_MUTEX_INITIALIZER;
-static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static triton_cond_t cond = TRITON_COND_INITIALIZER;
 static unsigned int refcount = 0;
 
 static pthread_t socket_thread;
@@ -84,7 +84,7 @@ static void aesocket_check_queue (void)
    assert (!socket_thread_remove);
    assert (!socket_thread_add);
 
-   pthread_cond_broadcast (&cond);
+   triton_cond_broadcast (&cond);
 
    triton_mutex_unlock (&mutex);
 }
@@ -222,7 +222,7 @@ __blocking int aesocket_ready (int fd, int flags, int * err)
 
          while (entry.mode != MODE_REMOVED)
          {
-            pthread_cond_wait (&cond, &mutex);
+            triton_cond_wait (&cond, &mutex);
          }
       }
 
