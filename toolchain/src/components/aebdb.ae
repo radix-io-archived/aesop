@@ -32,7 +32,7 @@
 
 #include <assert.h>
 
-#include "src/aebdb/aebdb.hae"
+#include <aesop/aebdb.hae>
 #include "src/resources/thread/aethread.hae"
 #include "src/resources/sem/sem.hae"
 #include <triton-hash.h>

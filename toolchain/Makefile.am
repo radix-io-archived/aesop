@@ -46,7 +46,7 @@ src_libaesop_a_SOURCES =
 
 include Make.rules
 include $(top_srcdir)/src/Makefile.subdir
-include $(top_srcdir)/src/aebdb/Makefile.subdir
+include $(top_srcdir)/src/components/Makefile.subdir
 
 -include $(AE_SRC:.ae=.ae.d)
 -include $(AE_HDR:.hae=.hae.d)

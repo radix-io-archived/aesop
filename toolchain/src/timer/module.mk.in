@@ -1,7 +1,0 @@
-DIR := src/timer
-
-AESOP_HDR += $(DIR)/timer.hae
-
-INSTALL_HDR += $(DIR)/timer.hae
-
-AELIBSRC += $(DIR)/timer.ae

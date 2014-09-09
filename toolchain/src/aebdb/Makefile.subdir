@@ -1,5 +1,0 @@
-src_libaesop_a_SOURCES += \
- src/aebdb/aebdb.ae
-
-AE_SRC += \
- src/aebdb/aebdb.ae

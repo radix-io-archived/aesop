@@ -25,11 +25,13 @@ tests: $(check_PROGRAMS)
 #
 dirname = $(patsubst %/,%,$(dir $(1)))
 
+# TODO: not sure why the mkdir commands are needed below; fix this
+
 %.ae.d: %.ae
-	mkdir -p $(call dirname,$@)
+	@mkdir -p $(call dirname,$@)
 	$(AM_V_GEN)CC="$(CC)" CFLAGS="$(CFLAGS)" $(srcdir)/maint/depend-ae.sh $(call dirname,$@) $< > $@
 
 %.hae.d: %.hae
-	mkdir -p $(call dirname,$@)
+	@mkdir -p $(call dirname,$@)
 	$(AM_V_GEN)CC="$(CC)" CFLAGS="$(CFLAGS)" $(srcdir)/maint/depend-ae.sh $(call dirname,$@) $< > $@
 

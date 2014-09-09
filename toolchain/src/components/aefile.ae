@@ -16,9 +16,9 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#include "src/aefile/aefile.hae"
+#include <aesop/aefile.hae>
+#include <aesop/resource.h>
 #include "src/resources/thread/aethread.hae"
-#include "resource.h"
 
 /* TODO:
  * - make thread pool size configurable

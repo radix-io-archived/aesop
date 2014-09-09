@@ -4,7 +4,6 @@
  * See COPYRIGHT in top-level directory.
  */
 
-#include "aesocket.hae"
 
 #include <unistd.h>
 #include <assert.h>
@@ -14,6 +13,7 @@
 
 #include <ev.h>
 #include <aesop/resourcebuilder.hae>
+#include <aesop/aesocket.hae>
 
 /**
  * If true, before testing if the socket is ready, try to read/write under the
