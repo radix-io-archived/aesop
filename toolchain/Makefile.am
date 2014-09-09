@@ -48,6 +48,7 @@ include Make.rules
 include $(top_srcdir)/src/Makefile.subdir
 include $(top_srcdir)/src/components/Makefile.subdir
 include $(top_srcdir)/src/resources/Makefile.subdir
+include $(top_srcdir)/tests/Makefile.subdir
 
 -include $(AE_SRC:.ae=.ae.d)
 -include $(AE_HDR:.hae=.hae.d)
