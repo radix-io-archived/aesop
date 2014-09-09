@@ -19,14 +19,12 @@ compilerclean = $(basename $(compilersources)) \
 CLEANFILES += src/ae-blocking-parser \
 	      $(patsubst %, %.hi, $(compilerclean)) \
 	      $(patsubst %, %.o, $(compilerclean))
-
 #
 # Rule specific for the above (no point in custom Haskell rules since there is
 # only one Haskell program being built)
 #
 src/ae-blocking-parser$(EXEEXT): $(compilersources)
-	mkdir -p src
-	$(GHC) -odir src -i${top_srcdir}/src -O2 \
+	$(AM_V_GEN)$(GHC) -odir src -i${top_srcdir}/src -O2 \
 	       -hidir src -main-is BlockingParser -o $@ \
 	       --make $(GHCFLAGS) $<
 

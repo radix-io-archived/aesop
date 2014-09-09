@@ -19,6 +19,8 @@ AC_CONFIG_AUX_DIR(maint/config)
 
 AM_INIT_AUTOMAKE([foreign subdir-objects -Wall])
 
+AM_SILENT_RULES([yes])
+
 AC_SUBST(AESOP_VERSION)
 
 AC_DEFINE_UNQUOTED(AESOP_VERSION_MAJOR, $AESOP_MAJOR, major version number)
@@ -56,6 +58,7 @@ AM_CONDITIONAL([BINDIST], [test x$bindist = xtrue])
 AC_SUBST(GHCFLAGS)
 
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_COMMANDS([mkdir], [$MKDIR_P src])
 
 AC_OUTPUT
 
