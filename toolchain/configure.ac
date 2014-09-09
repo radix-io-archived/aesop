@@ -61,6 +61,7 @@ fi
 dnl force use of POSIX locking in triton-thread header; the aesop library
 dnl code is not safe otherwise
 CFLAGS="$CFLAGS -D__TRITON_POSIX_LOCKING__"
+LIBS="$LIBS -lpthread"
 
 dnl ====================================================
 dnl Use pkgconfig to find c-utils

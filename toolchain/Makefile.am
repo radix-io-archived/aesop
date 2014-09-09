@@ -32,6 +32,7 @@ AM_CXXFLAGS = $(AM_CFLAGS)
 AM_GHCFLAGS =
 AE_SRC = 
 AE_HDR =
+AM_DEFAULT_SOURCE_EXT = .ae
 
 AECC = bin/aecc
 
@@ -43,6 +44,7 @@ pkgconfig_DATA = maint/aesop.pc
 
 lib_LIBRARIES += src/libaesop.a
 src_libaesop_a_SOURCES = 
+LDADD = src/libaesop.a
 
 include Make.rules
 include $(top_srcdir)/src/Makefile.subdir
