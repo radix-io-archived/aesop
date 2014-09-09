@@ -25,6 +25,7 @@ AC_CONFIG_HEADER(aesop-config.h)
 AC_CONFIG_AUX_DIR(maint/config)
 
 AM_INIT_AUTOMAKE([foreign subdir-objects -Wall])
+AM_SILENT_RULES([yes])
 
 AC_PROG_INSTALL
 AC_PROG_CC
