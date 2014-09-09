@@ -25,7 +25,7 @@ EXTRA_DIST += prepare
 # Extra flags for linking aesop programs against the in-tree libs
 AESOP_LOCAL_LIBS = -L$(top_builddir)/lib $(AESOP_PKGCONFIG_LIBS)
 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir) -Iinclude
 AM_CFLAGS =
 AM_LIBS =
 AM_CXXFLAGS = $(AM_CFLAGS)
@@ -47,6 +47,7 @@ src_libaesop_a_SOURCES =
 include Make.rules
 include $(top_srcdir)/src/Makefile.subdir
 include $(top_srcdir)/src/components/Makefile.subdir
+include $(top_srcdir)/src/resources/Makefile.subdir
 
 -include $(AE_SRC:.ae=.ae.d)
 -include $(AE_HDR:.hae=.hae.d)

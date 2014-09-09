@@ -1,7 +1,0 @@
-DIR := src/resources/thread
-
-AESOP_HDR += $(DIR)/aethread.hae
-
-INSTALL_HDR += $(DIR)/aethread.hae
-
-LIBSRC += $(DIR)/aethread.c

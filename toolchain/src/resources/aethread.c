@@ -9,10 +9,10 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <unistd.h>
-#include "aesop.h"
-#include "op.h"
-#include "src/resources/thread/aethread.h"
-#include "resource.h"
+#include <aesop/aesop.h>
+#include <aesop/op.h>
+#include <aesop/resource.h>
+#include "aesop/aethread.h"
 
 /* represents each independent operation submitted to the thread pool */
 struct aethread_op

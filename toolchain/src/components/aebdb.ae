@@ -33,8 +33,8 @@
 #include <assert.h>
 
 #include <aesop/aebdb.hae>
-#include "src/resources/thread/aethread.hae"
-#include "src/resources/sem/sem.hae"
+#include <aesop/aethread.hae>
+#include <aesop/sem.hae>
 #include <triton-hash.h>
 
 static struct aethread_group* general_thread_group = NULL;

@@ -1,7 +1,7 @@
-#include "worker.h"
 #include <triton-list.h>
 #include <triton-thread.h>
-#include "resource.h"
+#include <aesop/resource.h>
+#include "aesop/worker.h"
 
 struct aesop_worker_t
 {

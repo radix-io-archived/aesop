@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <aesop/aesop.h>
 #include <aesop/resource.h>
-#include "src/resources/sem/cond.h"
+#include "aesop/cond.h"
 
 struct aesop_cond_s
 {

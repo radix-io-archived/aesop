@@ -7,8 +7,8 @@
 /* This needs to be the full path for make -- if relative,
  * make will try to build ./resourcebuilder.h and fail.
  */
-#include "src/resources/sem/sem.h"
-#include "resource.h"
+#include <aesop/resource.h>
+#include "aesop/sem.h"
 
 static int sem_resource_id;
 static triton_mutex_t sem_module_lock = TRITON_MUTEX_INITIALIZER;

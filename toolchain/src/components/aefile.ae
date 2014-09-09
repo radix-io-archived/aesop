@@ -18,7 +18,7 @@
 
 #include <aesop/aefile.hae>
 #include <aesop/resource.h>
-#include "src/resources/thread/aethread.hae"
+#include <aesop/aethread.hae>
 
 /* TODO:
  * - make thread pool size configurable

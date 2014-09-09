@@ -9,7 +9,7 @@
 
 #include <aesop/timer.hae>
 #include <triton-list.h>
-#include "src/resources/sem/sem.hae"
+#include <aesop/sem.hae>
 
 static pthread_t tid;
 static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;

@@ -7,7 +7,7 @@
 #ifndef __RESOURCEBUILDER_RESOURCEBUILDER_HAE
 #define __RESOURCEBUILDER_RESOURCEBUILDER_HAE
 
-#include "src/resources/sem/sem.hae"
+#include <aesop/sem.hae>
 
 // #define RB_NO_OPA
 
