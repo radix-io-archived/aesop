@@ -58,6 +58,10 @@ if test "$HAVE_GCC_BIN" = "no"; then
         AC_MSG_ERROR([gcc must be in path in order to generate build dependencies])
 fi
 
+dnl force use of POSIX locking in triton-thread header; the aesop library
+dnl code is not safe otherwise
+CFLAGS="$CFLAGS -D__TRITON_POSIX_LOCKING__"
+
 dnl ====================================================
 dnl Use pkgconfig to find c-utils
 dnl  - Sets C_UTILS_CFLAGS, C_UTILS_LIBS
