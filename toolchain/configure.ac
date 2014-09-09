@@ -24,9 +24,12 @@ AC_DEFINE_UNQUOTED(AESOP_VERSION_SUB,   $AESOP_SUB, sub version number)
 AC_CONFIG_HEADER(aesop-config.h)
 AC_CONFIG_AUX_DIR(maint/config)
 
+AM_INIT_AUTOMAKE([foreign subdir-objects -Wall])
+
 AC_PROG_INSTALL
 AC_PROG_CC
 AC_PROG_CPP
+AC_PROG_RANLIB
 
 AC_MSG_CHECKING([for required gcc])
 if test "x$GCC" = "x"; then
@@ -296,18 +299,7 @@ AC_CONFIG_FILES([tests/testrunner.sh], [chmod +x tests/testrunner.sh])
 AC_CONFIG_FILES([maint/depend.sh],[chmod +x maint/depend.sh])
 AC_CONFIG_FILES([maint/depend-ae.sh],[chmod +x maint/depend-ae.sh])
 AC_CONFIG_FILES([maint/depend-hae.sh],[chmod +x maint/depend-hae.sh])
+AC_CONFIG_FILES([Makefile
+maint/aesop.pc])
 
-AC_OUTPUT([Makefile
-src/module.mk
-src/resources/worker/module.mk
-src/resources/sem/module.mk
-src/resources/thread/module.mk
-src/aefile/module.mk
-src/aebdb/module.mk
-src/resourcebuilder/module.mk
-src/socket/module.mk
-src/timer/module.mk
-module.mk
-maint/aesop.pc
-])
-
+AC_OUTPUT

@@ -1,4 +1,0 @@
-LIBSRC += src/aesop.c \
-	  src/resource.c \
-	  src/hints.c \
-          src/ae-ctl.c

@@ -5,8 +5,8 @@
  */
 
 
-#include "ae-error.h"
-#include "hints.h"
+#include <aesop/ae-error.h>
+#include <aesop/hints.h>
 #include "triton-hash.h"
 #include "jenkins-hash.h"
 #include "triton-list.h"

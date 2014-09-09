@@ -6,9 +6,9 @@
 
 #include <string.h>
 
-#include "aesop.h"
-#include "resource.h"
-#include "hints.h"
+#include <aesop/aesop.h>
+#include <aesop/resource.h>
+#include <aesop/hints.h>
 
 static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
 static int module_refcount = 0;

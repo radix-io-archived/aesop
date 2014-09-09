@@ -9,10 +9,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "resource.h"
-#include "aesop.h"
-#include "ae-debug.h"
-#include "op.h"
+#include <aesop/resource.h>
+#include <aesop/aesop.h>
+#include <aesop/ae-debug.h>
+#include <aesop/op.h>
 
 struct ae_poll_data
 {

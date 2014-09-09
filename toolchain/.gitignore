@@ -4,3 +4,9 @@ autom4te.cache/
 configure
 aesop-config.h.in
 aesop-config.h.in~
+maint/config/compile
+maint/config/depcomp
+maint/config/install-sh
+maint/config/missing
+maint/config/test-driver
+Makefile.in
