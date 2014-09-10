@@ -1,0 +1,14 @@
+check_PROGRAMS += \
+ tests/parser/basic
+
+TESTS += \
+ tests/parser/basic
+
+AE_SRC += \
+ tests/parser/basic.ae
+
+AE_HDR += \
+ tests/parser/btest.hae
+
+LDADD += tests/parser/btest-impl.o
+tests/parser/btest-impl.o: tests/parser/btest.h

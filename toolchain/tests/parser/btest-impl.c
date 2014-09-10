@@ -10,10 +10,11 @@
 #include <unistd.h>
 #include <assert.h>
 #include <pthread.h>
-#include "aesop.h"
+
 #include <triton-list.h>
-#include "parser/tests/blocking/btest.h"
-#include "resource.h"
+#include <aesop/aesop.h>
+#include <aesop/resource.h>
+#include "tests/parser/btest.h"
 
 #define RESOURCE_NAME "btest"
 

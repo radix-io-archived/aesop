@@ -11,8 +11,8 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "aesop.h"
-#include "op.h"
+#include <aesop/aesop.h>
+#include <aesop/op.h>
 
 /* These interfaces are used to test the gsl code for correctness.  They
  * emulate a basic resource with blocking functions, using different completion
