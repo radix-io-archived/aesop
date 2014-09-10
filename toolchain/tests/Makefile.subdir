@@ -1,9 +1,17 @@
 check_PROGRAMS += \
- tests/test-hints
+ tests/test-hints \
+ tests/test-trace \
+ tests/blocking-overhead \
+ tests/resource-register
 
 TESTS += \
- tests/test-hints
+ tests/test-hints \
+ tests/test-trace \
+ tests/blocking-overhead \
+ tests/resource-register
 
 AE_SRC += \
- tests/test-hints.ae
+ tests/test-hints.ae \
+ tests/test-trace.ae \
+ tests/blocking-overhead.ae
 

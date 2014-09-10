@@ -5,8 +5,7 @@
  */
 #include <assert.h>
 #include <aesop/aesop.h>
-
-#include "resource.h"
+#include <aesop/resource.h>
 
 struct ae_resource rsc1 = 
 {
