@@ -15,3 +15,5 @@ AE_SRC += \
  tests/test-trace.ae \
  tests/blocking-overhead.ae
 
+# override default sources for resource-register; it is built from a .c file
+tests_resource_register_SOURCES = tests/resource-register.c
