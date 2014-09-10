@@ -5,7 +5,7 @@
  */
 
 #include <stdio.h>
-#include "aesop.h"
+#include <aesop/aesop.h>
 #include <aesop/resourcebuilder.hae>
 
 static int errors = 0;

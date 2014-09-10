@@ -1,13 +1,17 @@
 src_libaesop_a_SOURCES += \
- src/components/aebdb.ae \
  src/components/aefile.ae \
  src/components/resourcebuilder.ae \
  src/components/aesocket.ae \
  src/components/timer.ae 
 
 AE_SRC += \
- src/components/aebdb.ae \
  src/components/aefile.ae \
  src/components/resourcebuilder.ae \
  src/components/aesocket.ae \
  src/components/timer.ae 
+
+# only build bdb support if enabled at configure time
+if DB_ENABLED
+src_libaesop_a_SOURCES += src/components/aebdb.ae 
+AE_SRC += src/components/aebdb.ae 
+endif

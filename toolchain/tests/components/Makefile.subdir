@@ -1,0 +1,41 @@
+XFAIL_TESTS += \
+ tests/components/aesocket-simple
+
+check_PROGRAMS += \
+ tests/components/aefile-example \
+ tests/components/aesocket-simple \
+ tests/components/rb-cancel \
+ tests/components/rb-simple \
+ tests/components/timer1 \
+ tests/components/timer2 \
+ tests/components/timer-cancel \
+ tests/components/timer-pthread-compare
+
+TESTS += \
+ tests/components/aefile-example \
+ tests/components/aesocket-simple \
+ tests/components/rb-cancel \
+ tests/components/rb-simple \
+ tests/components/timer1 \
+ tests/components/timer2 \
+ tests/components/timer-cancel \
+ tests/components/timer-pthread-compare
+
+AE_SRC += \
+ tests/components/aefile-example.ae \
+ tests/components/aesocket-simple.ae \
+ tests/components/rb-cancel.ae \
+ tests/components/rb-simple.ae \
+ tests/components/timer1.ae \
+ tests/components/timer2.ae \
+ tests/components/timer-cancel.ae \
+ tests/components/timer-pthread-compare.ae
+
+# only build aebdb test program if bdb enabled
+if DB_ENABLED
+check_PROGRAMS += tests/components/aebdb-example
+TESTS += tests/components/aebdb-example
+AE_SRC += tests/components/aebdb-example.ae
+tests_components_aebdb_example_LDFLAGS = $(DB_LDFLAGS)
+tests_components_aebdb_example_LDADD = src/libaesop.a $(DB_LIB)
+endif

@@ -53,6 +53,7 @@ include $(top_srcdir)/src/components/Makefile.subdir
 include $(top_srcdir)/src/resources/Makefile.subdir
 include $(top_srcdir)/tests/Makefile.subdir
 include $(top_srcdir)/tests/resources/Makefile.subdir
+include $(top_srcdir)/tests/components/Makefile.subdir
 
 -include $(AE_SRC:.ae=.ae.d)
 -include $(AE_HDR:.hae=.hae.d)
