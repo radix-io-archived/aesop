@@ -1,7 +1,7 @@
 
 #include <pthread.h>
 #include <aesop/aesop.h>
-#include "src/resources/sem/cond.hae"
+#include <aesop/cond.hae>
 
 static pthread_cond_t cond;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;

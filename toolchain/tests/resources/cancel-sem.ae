@@ -5,8 +5,8 @@
  */
 
 #include <stdio.h>
-#include "aesop.h"
-#include "src/resources/sem/sem.hae"
+#include <aesop/aesop.h>
+#include <aesop/sem.hae>
 
 static int errors = 0;
 

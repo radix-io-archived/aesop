@@ -5,9 +5,9 @@
  */
 
 #include <stdio.h>
-#include "aesop.h"
+#include <aesop/aesop.h>
 #include <aesop/timer.hae>
-#include "src/resources/sem/sem.hae"
+#include <aesop/sem.hae>
 
 static aesop_sem_t sem;
 

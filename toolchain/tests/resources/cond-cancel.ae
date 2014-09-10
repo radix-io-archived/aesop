@@ -1,5 +1,5 @@
 
-#include "src/resources/sem/cond.hae"
+#include <aesop/cond.hae>
 #include <aesop/timer.hae>
 
 struct limit_obj

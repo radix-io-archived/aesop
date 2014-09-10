@@ -11,6 +11,7 @@ lib_LIBRARIES =
 lib_LTLIBRARIES =
 noinst_HEADERS =
 TESTS =
+XFAIL_TESTS =
 check_PROGRAMS =
 EXTRA_PROGRAMS =
 CLEANFILES = $(bin_SCRIPTS)
@@ -51,6 +52,7 @@ include $(top_srcdir)/src/Makefile.subdir
 include $(top_srcdir)/src/components/Makefile.subdir
 include $(top_srcdir)/src/resources/Makefile.subdir
 include $(top_srcdir)/tests/Makefile.subdir
+include $(top_srcdir)/tests/resources/Makefile.subdir
 
 -include $(AE_SRC:.ae=.ae.d)
 -include $(AE_HDR:.hae=.hae.d)

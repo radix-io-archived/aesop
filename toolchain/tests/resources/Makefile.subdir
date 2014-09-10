@@ -1,0 +1,35 @@
+XFAIL_TESTS += \
+ tests/resources/cancel-sem-before-down
+
+check_PROGRAMS += \
+ tests/resources/aethread-cancel \
+ tests/resources/aethread-example \
+ tests/resources/cancel-sem \
+ tests/resources/cancel-sem-before-down \
+ tests/resources/cancel-sem-forloop \
+ tests/resources/cond-cancel \
+ tests/resources/cond-pthread-compare \
+ tests/resources/simple-sem \
+ tests/resources/worker
+
+TESTS += \
+ tests/resources/aethread-cancel \
+ tests/resources/aethread-example \
+ tests/resources/cancel-sem \
+ tests/resources/cancel-sem-before-down \
+ tests/resources/cancel-sem-forloop \
+ tests/resources/cond-cancel \
+ tests/resources/cond-pthread-compare \
+ tests/resources/simple-sem \
+ tests/resources/worker
+
+AE_SRC += \
+ tests/resources/aethread-cancel.ae \
+ tests/resources/aethread-example.ae \
+ tests/resources/cancel-sem.ae \
+ tests/resources/cancel-sem-before-down.ae \
+ tests/resources/cancel-sem-forloop.ae \
+ tests/resources/cond-cancel.ae \
+ tests/resources/cond-pthread-compare.ae \
+ tests/resources/simple-sem.ae \
+ tests/resources/worker.ae
