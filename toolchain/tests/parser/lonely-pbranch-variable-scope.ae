@@ -8,7 +8,7 @@
 
 #include <aesop/aesop.h>
 #include <aesop/timer.hae>
-#include "parser/tests/blocking/btest.hae"
+#include "tests/parser/btest.hae"
 
 static __blocking void lonely_pbranch(void)
 {

@@ -1,14 +1,222 @@
+XFAIL_TESTS += \
+ tests/parser/consecutive-resource-completions \
+ tests/parser/parallelfor2 \
+ tests/parser/pbranch-completion \
+ tests/parser/pbreak-immed-cancel \
+ tests/parser/lonely-pbranch3.sh \
+ tests/parser/pbreak-before-blocking.sh
+
 check_PROGRAMS += \
- tests/parser/basic
+ tests/parser/basic \
+ tests/parser/whilebreak \
+ tests/parser/empty-blocking \
+ tests/parser/nested-forloop \
+ tests/parser/consecutive-resource-completions \
+ tests/parser/ifnoelse \
+ tests/parser/nested \
+ tests/parser/lonely-pbranch2 \
+ tests/parser/compound \
+ tests/parser/forloop \
+ tests/parser/pbreak4 \
+ tests/parser/icpfor \
+ tests/parser/pbreak8 \
+ tests/parser/parallelfor2 \
+ tests/parser/dowhileloop \
+ tests/parser/lonely-pbranch \
+ tests/parser/pprivate \
+ tests/parser/basic \
+ tests/parser/if \
+ tests/parser/pbreak \
+ tests/parser/pwait-in-while \
+ tests/parser/whilebreak2 \
+ tests/parser/pbreak5 \
+ tests/parser/pbreak3 \
+ tests/parser/forloop3 \
+ tests/parser/parallel4 \
+ tests/parser/nbfun \
+ tests/parser/funptrs \
+ tests/parser/pbreak2 \
+ tests/parser/twofors \
+ tests/parser/cancel-pbranch1 \
+ tests/parser/pbranch-completion \
+ tests/parser/params \
+ tests/parser/mixed \
+ tests/parser/cancel-pbranch4 \
+ tests/parser/parallelfor \
+ tests/parser/pbreak7 \
+ tests/parser/lonely-pbranch4 \
+ tests/parser/pwait-in-for \
+ tests/parser/pbreak-immed-cancel \
+ tests/parser/pbreak-before-blocking \
+ tests/parser/parallel2 \
+ tests/parser/return-struct-ptr-typedef \
+ tests/parser/ifnoelse2 \
+ tests/parser/cancel-pbranch3 \
+ tests/parser/ifnbelse \
+ tests/parser/parallel1 \
+ tests/parser/whileloop \
+ tests/parser/pshared \
+ tests/parser/forloop2 \
+ tests/parser/parallelfor3 \
+ tests/parser/lonely-pbranch-variable-scope \
+ tests/parser/basic-struct-return \
+ tests/parser/lonely-pbranch3 \
+ tests/parser/whilebreak3 \
+ tests/parser/tcpfor \
+ tests/parser/threefors \
+ tests/parser/minimal \
+ tests/parser/multif \
+ tests/parser/cancel-pbranch2 \
+ tests/parser/pbreak6 \
+ tests/parser/parallel3 \
+ tests/parser/afterwhile \
+ tests/parser/pbranch-empty \
+ tests/parser/cancel-pbranch-loop
 
 TESTS += \
- tests/parser/basic
+ tests/parser/basic \
+ tests/parser/whilebreak \
+ tests/parser/empty-blocking \
+ tests/parser/nested-forloop \
+ tests/parser/consecutive-resource-completions \
+ tests/parser/ifnoelse \
+ tests/parser/nested \
+ tests/parser/lonely-pbranch2 \
+ tests/parser/compound \
+ tests/parser/forloop \
+ tests/parser/pbreak4 \
+ tests/parser/icpfor \
+ tests/parser/pbreak8 \
+ tests/parser/parallelfor2 \
+ tests/parser/dowhileloop \
+ tests/parser/lonely-pbranch \
+ tests/parser/pprivate \
+ tests/parser/basic \
+ tests/parser/if \
+ tests/parser/pbreak \
+ tests/parser/pwait-in-while \
+ tests/parser/whilebreak2 \
+ tests/parser/pbreak5 \
+ tests/parser/pbreak3 \
+ tests/parser/forloop3 \
+ tests/parser/parallel4 \
+ tests/parser/nbfun \
+ tests/parser/funptrs \
+ tests/parser/pbreak2 \
+ tests/parser/twofors \
+ tests/parser/cancel-pbranch1 \
+ tests/parser/pbranch-completion \
+ tests/parser/params \
+ tests/parser/mixed \
+ tests/parser/cancel-pbranch4 \
+ tests/parser/parallelfor \
+ tests/parser/pbreak7 \
+ tests/parser/lonely-pbranch4 \
+ tests/parser/pwait-in-for \
+ tests/parser/pbreak-immed-cancel \
+ tests/parser/pbreak-before-blocking.sh \
+ tests/parser/parallel2 \
+ tests/parser/return-struct-ptr-typedef \
+ tests/parser/ifnoelse2 \
+ tests/parser/cancel-pbranch3 \
+ tests/parser/ifnbelse \
+ tests/parser/parallel1 \
+ tests/parser/whileloop \
+ tests/parser/pshared \
+ tests/parser/forloop2 \
+ tests/parser/parallelfor3 \
+ tests/parser/lonely-pbranch-variable-scope \
+ tests/parser/basic-struct-return \
+ tests/parser/lonely-pbranch3.sh \
+ tests/parser/whilebreak3 \
+ tests/parser/tcpfor \
+ tests/parser/threefors \
+ tests/parser/minimal \
+ tests/parser/multif \
+ tests/parser/cancel-pbranch2 \
+ tests/parser/pbreak6 \
+ tests/parser/parallel3 \
+ tests/parser/afterwhile \
+ tests/parser/pbranch-empty \
+ tests/parser/cancel-pbranch-loop
 
 AE_SRC += \
- tests/parser/basic.ae
+ tests/parser/basic.ae \
+ tests/parser/whilebreak.ae \
+ tests/parser/empty-blocking.ae \
+ tests/parser/nested-forloop.ae \
+ tests/parser/consecutive-resource-completions.ae \
+ tests/parser/ifnoelse.ae \
+ tests/parser/nested.ae \
+ tests/parser/lonely-pbranch2.ae \
+ tests/parser/compound.ae \
+ tests/parser/forloop.ae \
+ tests/parser/pbreak4.ae \
+ tests/parser/icpfor.ae \
+ tests/parser/pbreak8.ae \
+ tests/parser/parallelfor2.ae \
+ tests/parser/dowhileloop.ae \
+ tests/parser/lonely-pbranch.ae \
+ tests/parser/pprivate.ae \
+ tests/parser/basic.ae \
+ tests/parser/if.ae \
+ tests/parser/pbreak.ae \
+ tests/parser/pwait-in-while.ae \
+ tests/parser/whilebreak2.ae \
+ tests/parser/pbreak5.ae \
+ tests/parser/pbreak3.ae \
+ tests/parser/forloop3.ae \
+ tests/parser/parallel4.ae \
+ tests/parser/nbfun.ae \
+ tests/parser/funptrs.ae \
+ tests/parser/pbreak2.ae \
+ tests/parser/twofors.ae \
+ tests/parser/cancel-pbranch1.ae \
+ tests/parser/pbranch-completion.ae \
+ tests/parser/params.ae \
+ tests/parser/mixed.ae \
+ tests/parser/cancel-pbranch4.ae \
+ tests/parser/parallelfor.ae \
+ tests/parser/pbreak7.ae \
+ tests/parser/lonely-pbranch4.ae \
+ tests/parser/pwait-in-for.ae \
+ tests/parser/pbreak-immed-cancel.ae \
+ tests/parser/pbreak-before-blocking.ae \
+ tests/parser/parallel2.ae \
+ tests/parser/return-struct-ptr-typedef.ae \
+ tests/parser/ifnoelse2.ae \
+ tests/parser/cancel-pbranch3.ae \
+ tests/parser/ifnbelse.ae \
+ tests/parser/parallel1.ae \
+ tests/parser/whileloop.ae \
+ tests/parser/pshared.ae \
+ tests/parser/forloop2.ae \
+ tests/parser/parallelfor3.ae \
+ tests/parser/lonely-pbranch-variable-scope.ae \
+ tests/parser/basic-struct-return.ae \
+ tests/parser/lonely-pbranch3.ae \
+ tests/parser/whilebreak3.ae \
+ tests/parser/tcpfor.ae \
+ tests/parser/threefors.ae \
+ tests/parser/minimal.ae \
+ tests/parser/multif.ae \
+ tests/parser/cancel-pbranch2.ae \
+ tests/parser/pbreak6.ae \
+ tests/parser/parallel3.ae \
+ tests/parser/afterwhile.ae \
+ tests/parser/pbranch-empty.ae \
+ tests/parser/cancel-pbranch-loop.ae
 
 AE_HDR += \
  tests/parser/btest.hae
 
 LDADD += tests/parser/btest-impl.o
 tests/parser/btest-impl.o: tests/parser/btest.h
+
+# test programs that will not compile
+# ######################
+# tests/parser/funptr-on-stack 
+# tests/parser/funptrs2 
+# tests/parser/return-struct-ptr 
+# tests/parser/pbranch-with-return 
+# tests/parser/basic-struct-init 

@@ -6,7 +6,7 @@
 
 
 #include <aesop/aesop.h>
-#include "parser/tests/blocking/btest.hae"
+#include "tests/parser/btest.hae"
 
 static __blocking int blocking1(int a)
 {

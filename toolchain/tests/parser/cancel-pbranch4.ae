@@ -6,7 +6,7 @@
 
 #include <unistd.h>
 #include <aesop/aesop.h>
-#include "parser/tests/blocking/btest.hae"
+#include "tests/parser/btest.hae"
 #include <assert.h>
 
 static __blocking void run_test(void)

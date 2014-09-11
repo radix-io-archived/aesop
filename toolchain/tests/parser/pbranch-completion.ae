@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 #include <aesop/aesop.h>
-#include "parser/tests/blocking/btest.hae"
+#include "tests/parser/btest.hae"
 
 __blocking void do_random_test(void)
 {

@@ -7,7 +7,7 @@
 #include <assert.h>
 
 #include <aesop/aesop.h>
-#include "parser/tests/blocking/btest.hae"
+#include "tests/parser/btest.hae"
 #include <aesop/timer.hae>
 
 static int lonely_done_flag = 0;

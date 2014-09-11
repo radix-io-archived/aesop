@@ -5,7 +5,7 @@
  */
 
 #include <aesop/aesop.h>
-#include "parser/tests/blocking/btest.hae"
+#include "tests/parser/btest.hae"
 
 static __blocking void run_parfor(
     void)

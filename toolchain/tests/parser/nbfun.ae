@@ -6,7 +6,7 @@
 
 #include <assert.h>
 #include <aesop/aesop.h>
-#include "parser/tests/blocking/btest.hae"
+#include "tests/parser/btest.hae"
 
 static __blocking int run_inner_nbfun1(void)
 {

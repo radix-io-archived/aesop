@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <aesop/aesop.h>
-#include "parser/tests/blocking/btest.hae"
+#include "tests/parser/btest.hae"
 
 __blocking int blah(void)
 {
