@@ -4,7 +4,7 @@ ACLOCAL_AMFLAGS = -I maint/config
 SUFFIXES =
 
 bin_PROGRAMS =
-bin_SCRIPTS =
+bin_SCRIPTS = bin/aecc bin/aecc-utils
 noinst_LIBRARIES =
 noinst_PROGRAMS =
 lib_LIBRARIES =
@@ -22,7 +22,6 @@ BUILT_SOURCES =
 AM_CTAGSFLAGS=--excmd=pattern -B --extra=+f --langmap=c:+.ae.hae -I pwait,pbranch
 
 EXTRA_DIST += prepare
-
 
 # Extra flags for linking aesop programs against the in-tree libs
 AESOP_LOCAL_LIBS = -L$(top_builddir)/lib $(AESOP_PKGCONFIG_LIBS)
