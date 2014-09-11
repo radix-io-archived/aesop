@@ -15,10 +15,10 @@ tests: $(check_PROGRAMS)
 # rule for compiling aesop .ae files
 #
 .ae.o: 
-	$(AM_V_GEN)$(AECC) -o $@ $< -- $(CFLAGS) $(AM_CPPFLAGS)
+	$(AM_V_GEN)AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" $(AECC) -o $@ $< -- $(CFLAGS) $(AM_CPPFLAGS)
 
 .hae.h:
-	$(AM_V_GEN)$(AECC) -o $@ $< -j -- $(CFLAGS) $(AM_CPPFLAGS)
+	$(AM_V_GEN)AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" $(AECC) -o $@ $< -j -- $(CFLAGS) $(AM_CPPFLAGS)
 
 #
 # rules for .ae dependencies

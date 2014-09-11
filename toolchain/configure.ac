@@ -43,6 +43,8 @@ dnl Verify pkg-config
 dnl
 PKG_PROG_PKG_CONFIG
 
+AC_ARG_VAR(AE_BLOCKING_PARSER, ae-blocking-parser command)
+
 dnl Check to see if CC can handle label pointers
 AC_MSG_CHECKING(if the C compiler supports label pointers)
 AC_TRY_COMPILE([], [void* foo; my_label: foo=&&my_label;],
