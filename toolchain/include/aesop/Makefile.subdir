@@ -1,0 +1,20 @@
+pkginclude_HEADERS += \
+ include/aesop/aebdb.hae \
+ include/aesop/ae-blocking-parser.h \
+ include/aesop/ae-ctl.h \
+ include/aesop/ae-debug.h \
+ include/aesop/ae-error.h \
+ include/aesop/aefile.hae \
+ include/aesop/ae-log.h \
+ include/aesop/aesocket.hae \
+ include/aesop/aesop.h \
+ include/aesop/aethread.hae \
+ include/aesop/ae-types.h \
+ include/aesop/cond.hae \
+ include/aesop/hints.h \
+ include/aesop/op.h \
+ include/aesop/resourcebuilder.hae \
+ include/aesop/resource.h \
+ include/aesop/sem.hae \
+ include/aesop/timer.hae \
+ include/aesop/worker.h

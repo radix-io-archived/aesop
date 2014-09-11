@@ -13,7 +13,7 @@ AESOP_PRE="pre-$CONFIGURE_TIME"
 AESOP_VERSION=$AESOP_MAJOR.$AESOP_MINOR.$AESOP_SUB$AESOP_PRE
 
 AC_PREREQ(2.50)
-AC_INIT([aesop-toolchain], [0.1.2], [http://trac.mcs.anl.gov/projects/aesop],[],[http://www.mcs.anl.gov/projects/aesop])
+AC_INIT([aesop], [0.1.2], [http://trac.mcs.anl.gov/projects/aesop],[],[http://www.mcs.anl.gov/projects/aesop])
 
 AC_SUBST(AESOP_VERSION)
 

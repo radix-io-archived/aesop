@@ -10,6 +10,7 @@ noinst_PROGRAMS =
 lib_LIBRARIES =
 lib_LTLIBRARIES =
 noinst_HEADERS =
+pkginclude_HEADERS = 
 TESTS =
 XFAIL_TESTS =
 check_PROGRAMS =
@@ -55,6 +56,7 @@ include $(top_srcdir)/tests/Makefile.subdir
 include $(top_srcdir)/tests/resources/Makefile.subdir
 include $(top_srcdir)/tests/components/Makefile.subdir
 include $(top_srcdir)/tests/parser/Makefile.subdir
+include $(top_srcdir)/include/aesop/Makefile.subdir
 
 -include $(AE_SRC:.ae=.ae.d)
 -include $(AE_HDR:.hae=.hae.d)
