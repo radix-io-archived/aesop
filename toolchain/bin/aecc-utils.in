@@ -37,7 +37,10 @@ checkError $? "AESOP_HOME not found!"
 
 printVerbose "AESOP_HOME: $AESOP_HOME"
 
-AECC_CFLAGS="@AECC_CFLAGS@ -I$AESOP_HOME/include"
+# always add to cflags for compilation:
+#  - include path relative to location of aecc script
+#  - enable normal posix locking in aesop
+AECC_CFLAGS="-D__TRITON_POSIX_LOCKING__ -I$AESOP_HOME/include"
 
 
 # The parsers can be in one of two locations; the installed location or the
