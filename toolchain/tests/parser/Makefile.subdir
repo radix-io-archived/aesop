@@ -213,6 +213,13 @@ AE_HDR += \
 LDADD += tests/parser/btest-impl.o
 tests/parser/btest-impl.o: tests/parser/btest.h
 
+# include extra files needed for make check in dist package
+EXTRA_DIST += \
+ tests/parser/btest.hae \
+ tests/parser/btest-impl.c \
+ tests/parser/lonely-pbranch3.sh \
+ tests/parser/pbreak-before-blocking.sh
+
 # test programs that will not compile
 # ######################
 # tests/parser/funptr-on-stack 

@@ -21,7 +21,7 @@ EXTRA_DIST =
 BUILT_SOURCES =
 AM_CTAGSFLAGS=--excmd=pattern -B --extra=+f --langmap=c:+.ae.hae -I pwait,pbranch
 
-EXTRA_DIST += prepare
+EXTRA_DIST += prepare maint/depend-ae.sh
 
 # Extra flags for linking aesop programs against the in-tree libs
 AESOP_LOCAL_LIBS = -L$(top_builddir)/lib $(AESOP_PKGCONFIG_LIBS)
