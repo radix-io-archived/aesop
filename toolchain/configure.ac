@@ -93,15 +93,15 @@ dnl ==== Check for libev ====================================================
 dnl =========================================================================
 
 AC_ARG_WITH([libev],
-            [AS_HELP_STRING([[--with-libev=[DIR]]],
-                            [Use libev from specified directory])])
-
-libev_prefix=
-AC_SUBST([libev_prefix])
-
-CPPFLAGS="$CPPFLAGS -I${with_libev}/include"
-LDFLAGS="$LDFLAGS -L${with_libev}/lib"
-AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_libev}/lib -lev -lm"
+            [AS_HELP_STRING([[--with-libev=[DIR]]], [Use libev from specified directory])],
+            [
+                CPPFLAGS="$CPPFLAGS -I${with_libev}/include"
+                # note: add rpath too because stock libev install uses
+                # shared libs
+                LDFLAGS="$LDFLAGS -Wl,-rpath=${with_libev}/lib -L${with_libev}/lib"
+                AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_libev}/lib -lev -lm"
+            ]
+            )
 
 AC_CHECK_HEADER([ev.h],[],
          [AC_MSG_ERROR([Could not find libev header in
