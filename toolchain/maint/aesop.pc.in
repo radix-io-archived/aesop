@@ -10,7 +10,7 @@ db_cflags=@DB_CFLAGS@
 Name: aesop
 Description: language for high concurrency system software development
 Version: @AESOP_VERSION@
-URL: http://trac.mcs.anl.gov/projects/aesop
+URL: http://www.mcs.anl.gov/projects/aesop
 Requires:
 Libs: ${db_ldflags} -L${libdir} ${db_lib} -laesop ${aesop_pkgconfig_libs}
 Cflags: -I${includedir} ${db_cflags}
