@@ -42,21 +42,25 @@ printVerbose "AESOP_HOME: $AESOP_HOME"
 #  - enable normal posix locking in aesop
 AECC_CFLAGS="-D__TRITON_POSIX_LOCKING__ -I$AESOP_HOME/include"
 
+# find ae-blocking-parser executable. Priority:
+# 1) AE_BLOCKING_PARSER env var if set
+# 2) local directory (same path as this script)
+# 3) system path
+AEPARSER="ae-blocking-parser-not-found"
 
-# The parsers can be in one of two locations; the installed location or the
-# in-build-tree location
-# if [[ -x ${AESOP_HOME}/bin/ae-blocking-parser ]] ; then
-    # Running from installed location
-#    AEPARSER=${AESOP_HOME}/bin/ae-blocking-parser
-#elif [[ -x ${AESOP_HOME}/parser/ae-blocking-parser ]] ; then
-#    # Running from build tree
-#    AEPARSER=${AESOP_HOME}/parser/ae-blocking-parser
-#else
-#    fail "Unable to find ae-blocking-parser!"
-#fi
-#
-#TODO: temporariliy assume aeparser is in path for development purposes
-AEPARSER=ae-blocking-parser
+if [ -n "$AE_BLOCKING_PARSER" ]; then
+    # using env var
+    AEPARSER="$AE_BLOCKING_PARSER"
+elif [[ -x ${AESOP_HOME}/bin/ae-blocking-parser ]] ; then
+    # Running from local dir
+    AEPARSER=${AESOP_HOME}/bin/ae-blocking-parser
+elif hash ae-blocking-parser 2>/dev/null; then 
+    # running from system path
+    AEPARSER=ae-blocking-parser
+else
+    fail "Unable to find ae-blocking-parser! Either set AE_BLOCKING_PARSER env variable, put ae-blocking-parser in the same directory as aecc, or put ae-blocking-parser in path."
+fi
+
 printVerbose "AEPARSER: $AEPARSER"
 
 SPACES="                                                      "
