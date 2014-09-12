@@ -45,6 +45,17 @@ PKG_PROG_PKG_CONFIG
 
 AC_ARG_VAR(AE_BLOCKING_PARSER, ae-blocking-parser command)
 
+dnl Check for the aesop parser
+AC_MSG_CHECKING(for aesop parser)
+if test -n "$AE_BLOCKING_PARSER" -a ! -x "$AE_BLOCKING_PARSER" ; then
+    AC_MSG_ERROR([AE_BLOCKING_PARSER doesnt point to a valid executable])
+else
+    AC_CHECK_PROG(HAVE_PARSER_ON_PATH, ae-blocking-parser, yes, no,)
+    if test "$HAVE_PARSER_ON_PATH" = "no"; then
+        AC_MSG_ERROR([could not find a valid ae-blocking-parser program])
+    fi
+fi
+
 dnl Check to see if CC can handle label pointers
 AC_MSG_CHECKING(if the C compiler supports label pointers)
 AC_TRY_COMPILE([], [void* foo; my_label: foo=&&my_label;],
