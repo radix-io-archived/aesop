@@ -1,11 +1,2 @@
-Example:
-
-./prepare
-mkdir build
-cd build
-../configure --prefix=/home/pcarns/working/aesop/install \
- CFLAGS="-fno-diagnostics-show-caret -g -fno-omit-frame-pointer" CC=gcc \
- --with-openpa=/home/pcarns/working/openpa-1.0.4/install \
- PKG_CONFIG_PATH=/home/pcarns/working/c-utils/install/lib/pkgconfig
-make 
-make install
+Please see http://www.mcs.anl.gov/projects/aesop online or toolchain/doc
+directory in the source tree.
