@@ -1,0 +1,188 @@
+Aesop installation
+==================
+
+== Introduction
+
+This document describes how to install Aesop, a programming language and
+runtime environment for highly-concurrent
+system software.  More information about Aesop can be found at
+http://www.mcs.anl.gov/projects/aesop/, and   
+all packages can be downloaded from
+http://www.mcs.anl.gov/projects/aesop/download/.
+
+This document assumes that all Aesop tools and dependencies will be
+installed in the same local directory.  This directory is referred to
+using the AESOP_PREFIX environment variable.  We suggest that you set
+the AESOP_PREFIX variable as follows in order to match the command line
+convention used in the remainder of this document.  Please adjust the
+path to refer to a location to a writable path in your environment.
+
+.Setting the Aesop installation directory variable
+----
+export AESOP_PREFIX=/home/pcarns/bin/aesop
+----
+
+== Dependency installation
+
+=== libev
+
+Libev is an event loop library that is used within Aesop to help manage
+concurrent operations.  
+
+==== System packages
+
+On most Linux boxes you can satisfy the libev dependency by installing the
+`libev-dev` package.  This is the preferred method.
+
+==== Installation from source
+
+If you are unable to install a system package for libev, then you can
+install your own copy for use by Aesop as follows:
+
+.Installing libev from source
+----
+tar -xvzf libev-4.18.tar.gz
+cd libev-4.18
+./configure --prefix=$AESOP_PREFIX
+make
+make install
+----
+
+=== OpenPA
+
+OpenPA is a library of portable atomic primitives used withih Aesop.  It can
+be installed as follows:
+
+.Installing OpenPA from source
+----
+tar -xvzf openpa-1.0.4.tar.gz
+cd openpa-1.0.4
+./configure --prefix=$AESOP_PREFIX
+make
+make install
+----
+
+=== c-utils
+
+c-utils is a collection of utility functions and data structures used by
+Aesop.  It can be installed as follows:
+
+.Installing c-utils from source
+----
+tar -xvzf c-utils-0.1.tar.gz
+cd c-utils-0.1
+./configure --prefix=$AESOP_PREFIX
+make
+make install
+----
+
+== Parser installation
+
+`ae-blocking-parser` is the most central component of an Aesop installation.
+It is a source-to-source translator that converts Aesop code (.ae files)
+into standard C code for compilation.  `ae-blocking-parser` is implemented
+in Haskell and best installed from a binary package if possible.
+
+=== Binary installation
+
+Find an appropriate ae-blocking-parser binary package (if available) on the 
+Aesop download page.  In these instructions we assume installation of the
+linux-x86_64 package for use on 64bit Linux platforms.
+
+.Installing ae-blocking-parser from a binary package
+----
+tar -xvzf ae-blocking-parser-linux-x86_64-0.2.tar.gz
+cd ae-blocking-parser-linux-x86_64-0.2
+./configure --prefix=$AESOP_PREFIX
+make
+make install
+----
+
+=== Installation from source
+
+If there is not a binary ae-blocking-parser package available for your
+platform, then you can build and install it from source.  The first step is
+to install the following prerequisites.  The scripts referred to in these
+instructions are available in the source package for ae-blocking-parser
+(ae-blocking-parser-0.2.tar.gz).
+
+.ae-blocking-parser build prerequisites
+* Install GHC
+** preferred method: use packages provided with OS distribution
+** alternate: see http://www.haskell.org/ghc/
+* Install cabal
+** preferred method: use packages provided with OS distribution
+** alternate: install locally with maint/hs/setup-cabal-local
+* Install required Haskell libraries via cabal
+** maint/hs/setup-hs-local
+* Install language-c package with Aesop modifications
+** maint/hs/setup-aesop
+*** note: this step must be repeated for new aesop source
+directories
+
+.Installing ae-blocking-parser from source
+----
+tar -xvzf ae-blocking-parser-0.2.tar.gz
+cd ae-blocking-parser-0.2
+./configure --prefix=$AESOP_PREFIX
+make
+make install
+----
+
+== Toolchain installation
+
+The toolchain portion of the Aesop installation provides all of the compiler
+scripts, header files, and libraries necessary for compilation of Aesop
+source (.ae) files.
+
+.Optional features
+[NOTE]
+===============================
+*NOTE*
+
+If you installed libev from source in a previous section, then you should
+add --with-libev=$AESOP_PREFIX to the configure command provided below.
+
+Also, if you are using `gcc` version 4.8 or higher as your C compiler, then
+it is advisable to add CFLAGS="-fno-diagnostics-show-caret" to the configure
+command line in order to avoid superfluous partial warning messages from the
+aesop compiler.
+===============================
+
+.Installing the aesop toolchain from source
+----
+tar -xvzf aesop-0.2.tar.gz 
+cd aesop-0.2
+./configure --prefix=$AESOP_PREFIX \
+ CC=gcc \
+ PKG_CONFIG_PATH=$AESOP_PREFIX/lib/pkgconfig \
+ AE_BLOCKING_PARSER=$AESOP_PREFIX/bin/ae-blocking-parser
+make -j 4 
+make install
+----
+
+== Appendix: Installing Aesop from git
+
+See http://www.mcs.anl.gov/projects/aesop/developer for the locatoin of
+source code repositories for both c-utils and aesop.  The aesop repository
+contains subdirectories for both the ae-blocking-parser and toolchain
+portions of the package.
+
+The git repositories do not include pre-generated configure scripts.  You
+can produce these scripts (and any other required autotools files) by
+running `./prepare` at the top level of each source tree.
+
+== Appendix: Creating distribution packages from git
+
+A distribution package can be created from each source tree by running `make
+dist`.  Please bump the version number in configure.ac and re-run ./prepare
+if the intention is to make a new point release.
+
+The ae-blocking-parser package also includes the ability to generate static
+binary distribution packages.  You can enable this feature by running
+configure with the --enable-static-parser and --enable-bindist options 
+prior to running make dist.  The resulting package will be named
+ae-blocking-parser-<version>.tar.gz as usual; you should manually untar it,
+rename the directory, and tar it up again to include the platform name in
+order to avoid confusion.  Example:
+ae-blocking-parser-linux-x86_64-0.2.tar.gz.
