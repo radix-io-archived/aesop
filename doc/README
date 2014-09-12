@@ -13,3 +13,18 @@ order to generate the graphviz figures.
 
 See http://www.methods.co.nz/asciidoc/ for documenation on the asciidoc
 syntax.  The "Cheatsheet" link is especially helpful.
+For the latest version and for bug reports, please go to
+http://trac.mcs.anl.gov/projects/aesop
+
+ENVIRONMENT VARIABLES 
+===================== 
+
+AESOP_DEBUG:
+  if 1:
+    Increase verbosity
+    Enables printVerbose() output
+    Sets verbose=yes
+
+AESOP_CLEAN
+  if 1:
+    Do not remove Aesop intermediate files
