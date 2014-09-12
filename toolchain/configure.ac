@@ -47,8 +47,10 @@ AC_ARG_VAR(AE_BLOCKING_PARSER, ae-blocking-parser command)
 
 dnl Check for the aesop parser
 AC_MSG_CHECKING(for aesop parser)
-if test -n "$AE_BLOCKING_PARSER" -a ! -x "$AE_BLOCKING_PARSER" ; then
-    AC_MSG_ERROR([AE_BLOCKING_PARSER doesnt point to a valid executable])
+if test -n "$AE_BLOCKING_PARSER" ; then
+    if test ! -x "$AE_BLOCKING_PARSER" ; then
+        AC_MSG_ERROR([AE_BLOCKING_PARSER doesnt point to a valid executable])
+    fi
 else
     AC_CHECK_PROG(HAVE_PARSER_ON_PATH, ae-blocking-parser, yes, no,)
     if test "$HAVE_PARSER_ON_PATH" = "no"; then
