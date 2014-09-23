@@ -1,0 +1,61 @@
+/*
+ * (C) 2014 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <stdio.h>
+#include <aesop/aesop.h>
+#include <aesop/aethread.hae>
+#include <errno.h>
+
+#define AETHREAD_RUN() \
+do { \
+    int __ret; \
+    __ret = aethread_hint(threads); \
+    if(__ret == AE_ERR_SYSTEM) \
+        return(-EIO); \
+    if(__ret == AE_ERR_CANCELLED) \
+        return(-EINTR); \
+}while(0) 
+
+static struct aethread_group* threads = NULL;
+
+static __blocking int do_something(){
+
+    /* force a thread to run here */
+    AETHREAD_RUN();
+    return 0;
+}
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    int i, ret;
+
+    assert(aethread_init() == 0);
+    assert((threads = aethread_create_group_pool(2)));
+
+    for (i = 0; i < 1; i++){
+        int var = 666; 
+        do_something();
+        if (var != 666){
+            fprintf(stderr,
+                    "ERROR: local var has changed (likely uninitialized)\n");
+            return -1;
+        }
+    }
+
+    aethread_destroy_group(threads);
+    aethread_finalize();
+    return 0;
+}
+aesop_main_set(aesop_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
