@@ -113,6 +113,9 @@ AC_ARG_WITH([libev],
                 # shared libs
                 LDFLAGS="$LDFLAGS -Wl,-rpath=${with_libev}/lib -L${with_libev}/lib"
                 AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -L${with_libev}/lib -lev -lm"
+            ],
+            [
+                AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -lev -lm"
             ]
             )
 
