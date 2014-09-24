@@ -30,7 +30,8 @@ AC_DEFUN([AX_BERKELEY_DB],
 				Invalid libdb path specified. No db.h found.)])
 	fi
 
-        DB_LDFLAGS="-L${dbpath}/lib"
+        dnl add rpath to ldflags to make it easier to pick up shared libdb
+        DB_LDFLAGS="-L${dbpath}/lib -Wl,-rpath=${dbpath}/lib"
 	LDFLAGS="$DB_LDFLAGS ${LDFLAGS}"
 
 	LIBS="${oldlibs} -ldb -lpthread"
