@@ -3,7 +3,6 @@ exec_prefix = @exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 aesop_pkgconfig_libs=@AESOP_PKGCONFIG_LIBS@
-aesop_pkgconfig_cflags=@AESOP_PKGCONFIG_CFLAGS@
 db_lib=@DB_LIB@
 db_ldflags=@DB_LDFLAGS@
 db_cflags=@DB_CFLAGS@
@@ -12,6 +11,7 @@ Name: aesop
 Description: language for high concurrency system software development
 Version: @AESOP_VERSION@
 URL: http://www.mcs.anl.gov/projects/aesop
-Requires:
-Libs: ${db_ldflags} -L${libdir} ${db_lib} -laesop ${aesop_pkgconfig_libs}
-Cflags: -I${includedir} ${db_cflags} ${aesop_pkgconfig_cflags}
+Requires: c-utils openpa
+Libs: -L${libdir} -laesop 
+Libs.private: ${db_ldflags} ${db_lib} ${aesop_pkgconfig_libs}
+Cflags: -I${includedir} ${db_cflags} 

@@ -88,7 +88,6 @@ LIBS="$C_UTILS_LIBS $LIBS"
 CFLAGS="$C_UTILS_CFLAGS $CFLAGS"
 dnl unfortunately pkg-config doesn't separate cppflags/cflags
 CPPFLAGS="$C_UTILS_CPPFLAGS $CPPFLAGS"
-AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} $C_UTILS_LIBS"
 
 
 dnl ====================================================
@@ -149,10 +148,6 @@ LIBS="$OPENPA_LIBS $LIBS"
 CFLAGS="$OPENPA_CFLAGS $CFLAGS"
 dnl unfortunately pkg-config doesn't separate cppflags/cflags
 CPPFLAGS="$OPENPA_CPPFLAGS $CPPFLAGS"
-dnl installad aesop lib will depend on opa lib, and installed aesop headers
-dnl will depend on opa includes
-AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} $OPENPA_LIBS"
-AESOP_PKGCONFIG_CFLAGS="${AESOP_PKGCONFIG_CFLAGS} $OPENPA_CFLAGS"
 
 dnl ==========================================================================
 dnl check for unix variants
@@ -279,9 +274,8 @@ AC_TRY_LINK(
 AECC_CFLAGS=""
 AC_SUBST(AECC_CFLAGS)
 
-AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} ${THREAD_LIB}"
+AESOP_PKGCONFIG_LIBS="${AESOP_PKGCONFIG_LIBS} -lpthread"
 AC_SUBST(AESOP_PKGCONFIG_LIBS)
-AC_SUBST(AESOP_PKGCONFIG_CFLAGS)
 
 AC_CONFIG_FILES([bin/aecc-utils], [])
 AC_CONFIG_FILES([bin/aecc], [chmod +x bin/aecc])
