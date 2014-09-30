@@ -7,6 +7,7 @@ XFAIL_TESTS += \
  tests/parser/pbreak-before-blocking.sh
 
 check_PROGRAMS += \
+ tests/parser/local-var-def
  tests/parser/local-var-forloop \
  tests/parser/basic \
  tests/parser/whilebreak \
@@ -75,6 +76,7 @@ check_PROGRAMS += \
  tests/parser/cancel-pbranch-loop
 
 TESTS += \
+ tests/parser/local-var-def
  tests/parser/local-var-forloop \
  tests/parser/basic \
  tests/parser/whilebreak \
@@ -141,6 +143,9 @@ TESTS += \
  tests/parser/afterwhile \
  tests/parser/pbranch-empty \
  tests/parser/cancel-pbranch-loop
+
+AE_SRC += \
+ tests/parser/local-var-def.ae
 
 AE_SRC += \
  tests/parser/local-var-forloop.ae \

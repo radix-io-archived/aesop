@@ -1,0 +1,35 @@
+/*
+ * (C) 2014 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#include <stdio.h>
+#include <aesop/aesop.h>
+#include <errno.h>
+
+__blocking int aesop_main(int argc, char **argv)
+{
+    int a, b, c;
+
+    a = 100; b = 200; c = 300;
+
+    int d = a + b + c;
+
+    if (d != 600){
+        fprintf(stderr,
+                "ERROR: unexpected result for local var decl/def via other locals\n");
+        return -1;
+    }
+    return 0;
+}
+aesop_main_set(aesop_main);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */
