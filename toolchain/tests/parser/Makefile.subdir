@@ -6,7 +6,7 @@ XFAIL_TESTS += \
  tests/parser/lonely-pbranch3.sh \
  tests/parser/pbreak-before-blocking.sh \
  tests/parser/local-var-def \
- tests/parser/local-var-forloop \
+ tests/parser/local-var-forloop
 
 check_PROGRAMS += \
  tests/parser/local-var-def \
