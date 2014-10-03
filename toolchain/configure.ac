@@ -215,6 +215,8 @@ AC_ARG_WITH(db,
 (default=/usr)],
        [AX_BERKELEY_DB(${withval})],
        [AX_BERKELEY_DB("")])
+CFLAGS="$DB_CFLAGS $CFLAGS"
+CPPFLAGS="$DB_CFLAGS $CPPFLAGS"
 
 AC_COMPILE_IFELSE(
 [#include <stdlib.h>
