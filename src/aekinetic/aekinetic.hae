@@ -1,0 +1,48 @@
+/*
+ * (C) 2014 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#ifndef __AEKINETIC_HAE__
+#define __AEKINETIC_HAE__
+
+#include <aesop/aesop.h>
+
+int aekinetic_init (void      **instance,
+                    int         nthread,
+                    const char *hmac_key,
+                    const char *host,
+                    int         port,
+                    int         version,
+                    int         uid);
+
+void aekinetic_finalize(void **instance);
+
+__blocking int aekinetic_put (void       *instance,
+                              const void *key,
+                              size_t      key_len,
+                              const void *buffer,
+                              size_t      buf_len,
+                              uint64_t    version);
+
+__blocking int aekinetic_get (void       *instance,
+                              void       *key,
+                              size_t     *key_len,
+                              void       *buffer,
+                              size_t     *buf_len,
+                              uint64_t   *version);
+
+__blocking int aekinetic_flush (void *instance);
+
+#endif
+
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

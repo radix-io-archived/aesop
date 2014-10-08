@@ -1,0 +1,7 @@
+DIR := src/aekinetic
+
+AESOP_HDR += $(DIR)/aekinetic.hae
+
+INSTALL_HDR += $(DIR)/aekinetic.hae
+
+AELIBSRC += $(DIR)/aekinetic.ae
