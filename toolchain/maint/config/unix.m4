@@ -15,9 +15,11 @@ AC_DEFUN([AX_UNIX],
     dnl Need to check for O_DIRECT, doesn't exist on Darwin/OSX
     AC_MSG_CHECKING(for O_DIRECT)
     AC_COMPILE_IFELSE([
+#define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdlib.h>
 
 void testodirect(void)
 {
