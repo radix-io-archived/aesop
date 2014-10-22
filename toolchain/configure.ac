@@ -149,11 +149,6 @@ CFLAGS="$OPENPA_CFLAGS $CFLAGS"
 dnl unfortunately pkg-config doesn't separate cppflags/cflags
 CPPFLAGS="$OPENPA_CPPFLAGS $CPPFLAGS"
 
-dnl ==========================================================================
-dnl check for unix variants
-dnl ==========================================================================
-AX_UNIX("")
-
 BUILD_ABSOLUTE_TOP=${PWD}
 SRC_RELATIVE_TOP=$srcdir
 SRC_ABSOLUTE_TOP=`cd $srcdir; pwd`
