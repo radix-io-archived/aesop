@@ -149,6 +149,22 @@ CFLAGS="$OPENPA_CFLAGS $CFLAGS"
 dnl unfortunately pkg-config doesn't separate cppflags/cflags
 CPPFLAGS="$OPENPA_CPPFLAGS $CPPFLAGS"
 
+dnl ====================================================
+dnl Use pkgconfig to find Seagate Kinetic Libraries
+dnl  - optional for Aesop build
+dnl  - Sets KINETIC_CFLAGS, KINETC_LIBS
+dnl ====================================================
+PKG_CHECK_MODULES([KINETIC],[kinetic],
+                  [[KINETIC_ENABLED=1]
+                   [KINETIC_PKG=kinetic]],
+                  [AC_DEFINE([KINETIC_ENABLED], [0], [Disables aekinetic code])])
+LIBS="$KINETIC_LIBS $LIBS"
+CFLAGS="$KINETIC_CFLAGS $CFLAGS"
+CPPFLAGS="$KINETIC_CPPFLAGS $CPPFLAGS"
+AM_CONDITIONAL([KINETIC_ENABLED], [test x$KINETIC_ENABLED = x1])
+AC_SUBST(KINETIC_ENABLED)
+AC_SUBST(KINETIC_PKG)
+
 BUILD_ABSOLUTE_TOP=${PWD}
 SRC_RELATIVE_TOP=$srcdir
 SRC_ABSOLUTE_TOP=`cd $srcdir; pwd`

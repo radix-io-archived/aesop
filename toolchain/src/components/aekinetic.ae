@@ -1,0 +1,351 @@
+/*
+ * (C) 2014 The University of Chicago
+ *
+ * See COPYRIGHT in top-level directory.
+ */
+
+#define _GNU_SOURCE
+#define _XOPEN_SOURCE 600
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <limits.h>
+#include <stdlib.h>
+
+#include <aesop/aethread.hae>
+#include <aesop/resource.h>
+#include <aesop/aekinetic.hae>
+#include "triton-list.h"
+
+#include "kinetic_client.h"
+
+static triton_mutex_t module_lock = TRITON_MUTEX_INITIALIZER;
+static int            module_refcount = 0;
+TRITON_LIST_DEFINE(module_instance_list);
+
+/*
+ * Internal Instance Data
+ */
+typedef struct aekinetic_data_s
+{
+    triton_list_link_t link;
+    char           list_key[256];
+    int            refcount;
+    struct aethread_group* pool;
+    KineticSession config;
+    KineticSessionHandle handle;
+} aekinetic_data_t;
+
+#define AETHREAD_RUN(pool) \
+do { \
+    int __ret; \
+    __ret = aethread_hint(pool); \
+    if(__ret == AE_ERR_SYSTEM) \
+        return(-EIO); \
+    if(__ret == AE_ERR_CANCELLED) \
+        return(-EINTR); \
+}while(0) 
+
+static __blocking int aekinetic_put_wmode (void       *instance,
+                                           const void *key,
+                                           size_t      key_len,
+                                           const void *buffer,
+                                           size_t      buf_len,
+                                           uint64_t    version,
+                                           int         mode);
+
+static inline int key_compare (struct triton_list_link *link, void *key)
+{
+   aekinetic_data_t *data = (aekinetic_data_t *) link;
+   char *str = (char*) key;
+
+   return !strcmp(data->list_key, str);
+}
+
+/*
+ * aekinetic_init
+ *
+ * Initalize the aesop kinetic module.
+ *
+ *   instance - returns internal data
+ *   nthread  - number of threads in thread pool to drive I/O
+ *   hmac_key - kinetic HMAC
+ *   host     - hostname of kinetic drive
+ *   port     - port number of kinetic drive
+ *   version  - kinetic cluster version
+ *   uid      - user id for kinetic cluster
+ */
+int aekinetic_init (void      **instance,
+                    int         nthread,
+                    const char *hmac_key,
+                    const char *host,
+                    int         port,
+                    int         version,
+                    int         uid)
+{
+    struct triton_list_link *found;
+    aekinetic_data_t *data;
+    ByteArray hmac;
+    KineticStatus status;
+    int ret;
+    char list_key[256];
+
+    triton_mutex_lock(&module_lock);
+
+    if (module_refcount == 0)
+    {
+        /* initialize required thread resource */
+        ret = aethread_init();
+        if(ret != 0)
+        {
+            triton_mutex_unlock(&module_lock);
+            return(ret);
+        }
+
+        KineticClient_Init(NULL, -1);
+    }
+
+    snprintf(list_key, sizeof(list_key), "%s:%d", host, port);
+
+    found = triton_list_find(&module_instance_list, key_compare, list_key);
+    if(!found)
+    {
+        data = malloc(sizeof(aekinetic_data_t));
+        assert(data);
+
+        data->pool = aethread_create_group_pool(nthread);
+        if(!data->pool)
+        {
+            triton_mutex_unlock(&module_lock);
+            return(AE_ERR_SYSTEM);
+        }
+
+        data->refcount = 1;
+        strcpy(data->list_key, list_key);
+
+        hmac = ByteArray_CreateWithCString(strdup(hmac_key));
+
+        KINETIC_SESSION_INIT(&data->config,
+                             host, 
+                             version,
+                             uid,
+                             hmac);
+
+        status = KineticClient_Connect (&data->config, &data->handle);
+        assert(status == KINETIC_STATUS_SUCCESS);
+
+        triton_list_add_back(&data->link, &module_instance_list);
+    }
+    else
+    {
+        data = triton_list_get_entry(found, struct aekinetic_data_s, link);
+        data->refcount++;
+    }
+
+    *instance = data;
+
+    module_refcount++;
+    triton_mutex_unlock(&module_lock);
+
+    return 0;
+}
+
+/*
+ * aekinetic_finalize
+ *
+ * shutdown the aesop kinetic library, release all resources.
+ * this only takes effect if the all users of the connection/library
+ * are done.
+ *
+ *   instance - reference to instance generated from init.
+ */
+void aekinetic_finalize(void **instance)
+{
+    struct triton_list_link *found;
+    aekinetic_data_t *data;
+
+    triton_mutex_lock(&module_lock);
+    module_refcount--;
+
+    data = *instance;
+    found = triton_list_find(&module_instance_list,key_compare,data->list_key);
+    if (found)
+    {
+        data = triton_list_get_entry(found, struct aekinetic_data_s, link);
+        data->refcount--;
+        if (data->refcount == 0)
+        {
+            KineticClient_Disconnect(&data->handle);
+            aethread_destroy_group(data->pool);
+        }
+        triton_list_del(&data->link);
+        free(data);
+        *instance = NULL;
+    }
+    else
+    {
+        /* should never happen */
+        assert(found);
+    }
+
+    if(module_refcount == 0)
+    {
+        triton_list_destroy(&module_instance_list);
+        aethread_finalize();
+    }
+
+    triton_mutex_unlock(&module_lock);
+
+    return;
+}
+
+/*
+ * aekinetic_put_wmode
+ *
+ *   Puts an object to kinetic instance.
+ *
+ *   instance - from aekinetic_init
+ *   key      - key to use
+ *   key_len  - length of the key
+ *   buffer   - buffer to use
+ *   buf_len  - length of buffer
+ *   version  - version to use for put
+ *   mode     - commit mode
+ */
+__blocking int aekinetic_put (void       *instance,
+                              const void *key,
+                              size_t      key_len,
+                              const void *buffer,
+                              size_t      buf_len,
+                              uint64_t    version)
+{
+    return aekinetic_put_wmode(instance,
+                               key, key_len, 
+                               buffer, buf_len,
+                               version,
+                               KINETIC_SYNCHRONIZATION_WRITEBACK);
+}
+
+static __blocking int aekinetic_put_wmode (void       *instance,
+                                           const void *key,
+                                           size_t      key_len,
+                                           const void *buffer,
+                                           size_t      buf_len,
+                                           uint64_t    version,
+                                           int         mode)
+{
+    KineticStatus    status;
+    KineticEntry     ke;
+    int              result;
+    aekinetic_data_t *data;
+
+    data = (aekinetic_data_t*) instance;
+
+    AETHREAD_RUN(data->pool);
+
+    ke.key             = ByteBuffer_Create(key, key_len);
+    ke.key.bytesUsed   = key_len;
+    ke.algorithm       = KINETIC_ALGORITHM_SHA1;
+    ke.newVersion      = ByteBuffer_Create(&version, sizeof(version));
+    ke.newVersion.bytesUsed = sizeof(version);
+    ke.dbVersion       = BYTE_BUFFER_NONE;
+    ke.tag             = BYTE_BUFFER_NONE;
+    ke.value           = ByteBuffer_Create(buffer, buf_len);
+    ke.value.bytesUsed = buf_len;
+    ke.force           = true;
+    ke.synchronization = mode;
+
+    status = KineticClient_Put(data->handle, &ke);
+    if (status == KINETIC_STATUS_SUCCESS)
+    {
+        result = 0;
+    }
+    else
+    {
+        printf("status: %d\n", status);
+        result = status;
+    }
+
+    return result;
+}
+
+/*
+ * aekinetic_get
+ *
+ *   Gets an object from the instance
+ *
+ *  instance - from aekinetic_init
+ *  key      - key to use
+ *  key_len  - length of key
+ *  buffer   - buffer to recv object data
+ *  buf_len  - (in) maximum length that buffer can hold
+ *             (out) length of data in buffer
+ *  version  - version of data
+ */
+__blocking int aekinetic_get (void       *instance,
+                              void       *key,
+                              size_t     *key_len,
+                              void       *buffer,
+                              size_t     *buf_len,
+                              uint64_t   *version)
+{
+    KineticStatus    status;
+    KineticEntry     ke;
+    int              result;
+    aekinetic_data_t *data;
+
+    data = (aekinetic_data_t*) instance;
+
+    AETHREAD_RUN(data->pool);
+
+    ke.key             = ByteBuffer_Create(key, *key_len);
+    ke.key.bytesUsed   = *key_len;
+    ke.algorithm       = KINETIC_ALGORITHM_SHA1;
+    ke.dbVersion       = ByteBuffer_Create(version, sizeof(*version));
+    ke.dbVersion.bytesUsed = sizeof(*version);
+    ke.newVersion      = BYTE_BUFFER_NONE;
+    //ke.tag             = BYTE_BUFFER_NONE;
+    ke.tag             = ByteBuffer_Create(malloc(64), 64);
+    ke.value           = ByteBuffer_Create(buffer, *buf_len);
+    ke.synchronization = 0;
+
+    status = KineticClient_Get(data->handle, &ke);
+    if (status == KINETIC_STATUS_SUCCESS)
+    {
+        *key_len = ke.key.bytesUsed;
+        *buf_len = ke.value.bytesUsed;
+printf("buf_len: bU=%ld len=%ld\n", ke.value.bytesUsed, ke.value.array.len);
+        result = 0;
+    }
+
+    free (ke.tag.array.data);
+
+    return result;
+}
+
+__blocking int aekinetic_flush (void *instance)
+{
+    char key = 0;
+    char val = 0;
+
+    /* place holder until a flush api available */
+
+    return aekinetic_put_wmode(instance,
+                               &key, sizeof(key),
+                               &val, sizeof(val),
+                               1,
+                               KINETIC_SYNCHRONIZATION_FLUSH);
+}
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

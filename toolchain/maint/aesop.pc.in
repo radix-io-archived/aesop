@@ -11,7 +11,7 @@ Name: aesop
 Description: language for high concurrency system software development
 Version: @AESOP_VERSION@
 URL: http://www.mcs.anl.gov/projects/aesop
-Requires: c-utils openpa
+Requires: c-utils openpa @KINETIC_PKG@
 Libs: -L${libdir} -laesop 
 Libs.private: ${db_ldflags} ${db_lib} ${aesop_pkgconfig_libs}
 Cflags: -I${includedir} ${db_cflags} 

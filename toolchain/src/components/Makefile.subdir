@@ -15,3 +15,8 @@ if DB_ENABLED
 src_libaesop_a_SOURCES += src/components/aebdb.ae 
 AE_SRC += src/components/aebdb.ae 
 endif
+
+if KINETIC_ENABLED
+src_libaesop_a_SOURCES += src/components/aekinetic.ae 
+AE_SRC += src/components/aekinetic.ae 
+endif
