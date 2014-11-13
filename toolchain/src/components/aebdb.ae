@@ -271,9 +271,15 @@ __blocking int aebdb_get(
     ot = lookup_txn(txnid);
     if(ot)
         th_group = ot->th_group;
+    else
+        /* implicit transaction - use the semaphore */
+        aesop_sem_down(&txn_sem);
 
     AETHREAD_RUN(th_group);
     ret = db->get(db, txnid, key, data, flags);
+
+    if (!ot)
+        aesop_sem_up(&txn_sem);
 
     return(ret);
 }
@@ -293,9 +299,15 @@ __blocking int aebdb_put(
     ot = lookup_txn(txnid);
     if(ot)
         th_group = ot->th_group;
+    else
+        /* implicit transaction - use the semaphore */
+        aesop_sem_down(&txn_sem);
 
     AETHREAD_RUN(th_group);
     ret = db->put(db, txnid, key, data, flags);
+
+    if (!ot)
+        aesop_sem_up(&txn_sem);
 
     return(ret);
 }
