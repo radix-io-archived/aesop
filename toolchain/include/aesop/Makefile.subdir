@@ -17,5 +17,8 @@ pkginclude_HEADERS += \
  include/aesop/resource.h \
  include/aesop/sem.hae \
  include/aesop/timer.hae \
- include/aesop/aekinetic.hae \
  include/aesop/worker.h
+
+if KINETIC_ENABLED
+pkginclude_HEADERS += include/aesop/aekinetic.hae
+endif
