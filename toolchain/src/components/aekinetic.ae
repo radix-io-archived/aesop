@@ -50,14 +50,6 @@ do { \
         return(-EINTR); \
 }while(0) 
 
-static __blocking int aekinetic_put_wmode (void       *instance,
-                                           const void *key,
-                                           size_t      key_len,
-                                           const void *buffer,
-                                           size_t      buf_len,
-                                           uint64_t    version,
-                                           int         mode);
-
 static inline int key_compare (struct triton_list_link *link, void *key)
 {
    aekinetic_data_t *data = (aekinetic_data_t *) link;
@@ -106,7 +98,7 @@ int aekinetic_init (void      **instance,
             return(ret);
         }
 
-        KineticClient_Init(NULL, -1);
+        KineticClient_Init(NULL, 1);
     }
 
     snprintf(list_key, sizeof(list_key), "%s:%d", host, port);
@@ -221,53 +213,33 @@ __blocking int aekinetic_put (void       *instance,
                               size_t      key_len,
                               const void *buffer,
                               size_t      buf_len,
-                              uint64_t    version)
-{
-    return aekinetic_put_wmode(instance,
-                               key, key_len, 
-                               buffer, buf_len,
-                               version,
-                               KINETIC_SYNCHRONIZATION_WRITEBACK);
-}
-
-static __blocking int aekinetic_put_wmode (void       *instance,
-                                           const void *key,
-                                           size_t      key_len,
-                                           const void *buffer,
-                                           size_t      buf_len,
-                                           uint64_t    version,
-                                           int         mode)
+                              uint64_t    version,
+                              int         mode)
 {
     KineticStatus    status;
     KineticEntry     ke;
     int              result;
     aekinetic_data_t *data;
 
-    data = (aekinetic_data_t*) instance;
+    data   = (aekinetic_data_t*) instance;
+    result = 0;
 
     AETHREAD_RUN(data->pool);
 
-    ke.key             = ByteBuffer_Create(key, key_len);
-    ke.key.bytesUsed   = key_len;
+    ke.key             = ByteBuffer_Create(key, key_len, key_len);
     ke.algorithm       = KINETIC_ALGORITHM_SHA1;
-    ke.newVersion      = ByteBuffer_Create(&version, sizeof(version));
-    ke.newVersion.bytesUsed = sizeof(version);
+    ke.newVersion      = ByteBuffer_Create(&version, sizeof(version), sizeof(version));
     ke.dbVersion       = BYTE_BUFFER_NONE;
-    ke.tag             = BYTE_BUFFER_NONE;
-    ke.value           = ByteBuffer_Create(buffer, buf_len);
-    ke.value.bytesUsed = buf_len;
+    ke.tag             = ByteBuffer_Create("triton", 6, 6);
+    ke.value           = ByteBuffer_Create(buffer, buf_len, buf_len);
     ke.force           = true;
     ke.synchronization = mode;
 
-    status = KineticClient_Put(data->handle, &ke);
-    if (status == KINETIC_STATUS_SUCCESS)
+    status = KineticClient_Put(data->handle, &ke, NULL);
+    if (status != KINETIC_STATUS_SUCCESS)
     {
-        result = 0;
-    }
-    else
-    {
-        printf("status: %d\n", status);
-        result = status;
+        fprintf(stderr, "KineticClient_Put failed: %d\n", status);
+        result = -1;
     }
 
     return result;
@@ -297,48 +269,161 @@ __blocking int aekinetic_get (void       *instance,
     KineticEntry     ke;
     int              result;
     aekinetic_data_t *data;
+    char             tagdata[1024];
 
-    data = (aekinetic_data_t*) instance;
+    data    = (aekinetic_data_t*) instance;
+    result  = -1;
 
     AETHREAD_RUN(data->pool);
 
-    ke.key             = ByteBuffer_Create(key, *key_len);
-    ke.key.bytesUsed   = *key_len;
+    ke.key             = ByteBuffer_Create(key, *key_len, *key_len);
     ke.algorithm       = KINETIC_ALGORITHM_SHA1;
-    ke.dbVersion       = ByteBuffer_Create(version, sizeof(*version));
-    ke.dbVersion.bytesUsed = sizeof(*version);
+    ke.dbVersion       = ByteBuffer_Create(version, sizeof(*version), 0);
     ke.newVersion      = BYTE_BUFFER_NONE;
-    //ke.tag             = BYTE_BUFFER_NONE;
-    ke.tag             = ByteBuffer_Create(malloc(64), 64);
-    ke.value           = ByteBuffer_Create(buffer, *buf_len);
+    ke.tag             = ByteBuffer_Create(tagdata, sizeof(tagdata), 0);
+    ke.value           = ByteBuffer_Create(buffer, *buf_len, 0);
     ke.synchronization = 0;
 
-    status = KineticClient_Get(data->handle, &ke);
+    status = KineticClient_Get(data->handle, &ke, NULL);
     if (status == KINETIC_STATUS_SUCCESS)
     {
         *key_len = ke.key.bytesUsed;
         *buf_len = ke.value.bytesUsed;
-printf("buf_len: bU=%ld len=%ld\n", ke.value.bytesUsed, ke.value.array.len);
         result = 0;
     }
-
-    free (ke.tag.array.data);
+    else
+    {
+        fprintf(stderr, "KineticClient_Get failed: %d\n", status);
+    }
 
     return result;
 }
 
+/*
+ * aekinetic_flush
+ *
+ *   Flushes all pending put and delete operations.
+ *
+ *  instance - from aekinetic_init
+ */ 
 __blocking int aekinetic_flush (void *instance)
 {
-    char key = 0;
-    char val = 0;
+    aekinetic_data_t *data;
+    KineticStatus    rc;
+    int              result;
 
-    /* place holder until a flush api available */
+    data    = (aekinetic_data_t*) instance;
+    result  = 0;
 
-    return aekinetic_put_wmode(instance,
-                               &key, sizeof(key),
-                               &val, sizeof(val),
-                               1,
-                               KINETIC_SYNCHRONIZATION_FLUSH);
+    AETHREAD_RUN(data->pool);
+
+    rc = KineticClient_Flush(data->handle, NULL);
+    if (rc != KINETIC_STATUS_SUCCESS)
+    {
+        fprintf(stderr, "KineticClient_Flush failed: %d\n", rc);
+        result = -1;
+    }
+
+    return result;
+}
+
+/*
+ * aekinetic_delete
+ *
+ *   Deletes an object
+ *
+ *  instance - from aekinetic_init
+ *  key      - key to use
+ *  key_len  - length of key
+ *  mode     - synchronization mode
+ */ 
+__blocking int aekinetic_delete (void     *instance,
+                                 void     *key,
+                                 size_t    key_len,
+                                 uint64_t  version,
+                                 int       mode)
+{
+    aekinetic_data_t *data;
+    KineticStatus     rc;
+    KineticEntry      ke;
+    int               result;
+
+    data    = (aekinetic_data_t*) instance;
+    result  = 0;
+
+    AETHREAD_RUN(data->pool);
+
+    ke.key             = ByteBuffer_Create(key, key_len, key_len);
+    ke.algorithm       = KINETIC_ALGORITHM_SHA1;
+    ke.dbVersion       = ByteBuffer_Create(&version, sizeof(version), 0);
+    ke.newVersion      = BYTE_BUFFER_NONE;
+    ke.tag             = BYTE_BUFFER_NONE;
+    ke.value           = BYTE_BUFFER_NONE;
+    ke.synchronization = KINETIC_SYNCHRONIZATION_WRITEBACK;
+    ke.force           = true;
+
+    rc = KineticClient_Delete(data->handle, &ke, NULL);
+    if (rc != KINETIC_STATUS_SUCCESS)
+    {
+        fprintf(stderr, "KineticClient_Delete failed: %d\n", rc);
+        result = -1;
+    }
+
+    return result;
+}
+
+/*
+ * aekinetic_getlog
+ *
+ *   Gets diagnostic data from kinetic drive.
+ *
+ *  instance - from aekinetic_init
+ *  type     - type of diagnostic info to return
+ *  info     - reference to pointer which will hold allocated data,
+ *             must be freed by caller.
+ */ 
+__blocking int aekinetic_getlog (void *instance,
+                                 KineticDeviceInfo_Type type,
+                                 KineticDeviceInfo** info)
+{
+    aekinetic_data_t *data;
+    KineticStatus     rc;
+    int               result;
+
+    data    = (aekinetic_data_t*) instance;
+    result  = 0;
+
+    AETHREAD_RUN(data->pool);
+
+    rc = KineticClient_GetLog(data->handle, type, info, NULL);
+    if (rc != KINETIC_STATUS_SUCCESS)
+    {
+        fprintf(stderr, "KineticClient_GetLog failed: %d\n", rc);
+        result = -1;
+    }    
+
+    return result;
+}
+
+int aekinetic_getlog_nb (void *instance,
+                         KineticDeviceInfo_Type type,
+                         KineticDeviceInfo** info)
+{
+    aekinetic_data_t *data;
+    KineticStatus     rc;
+    int               result;
+
+    data    = (aekinetic_data_t*) instance;
+    result  = 0;
+
+    rc = KineticClient_GetLog(data->handle, type, info, NULL);
+    if (rc != KINETIC_STATUS_SUCCESS)
+    {
+        fprintf(stderr, "KineticClient_GetLog failed: %d\n", rc);
+        result = -1;
+    }    
+
+    return result;
 }
 
 /*

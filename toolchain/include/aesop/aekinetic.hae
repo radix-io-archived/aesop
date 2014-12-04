@@ -8,6 +8,7 @@
 #define __AEKINETIC_HAE__
 
 #include <aesop/aesop.h>
+#include "kinetic_client.h"
 
 int aekinetic_init (void      **instance,
                     int         nthread,
@@ -24,7 +25,8 @@ __blocking int aekinetic_put (void       *instance,
                               size_t      key_len,
                               const void *buffer,
                               size_t      buf_len,
-                              uint64_t    version);
+                              uint64_t    version,
+                              int         mode);
 
 __blocking int aekinetic_get (void       *instance,
                               void       *key,
@@ -33,7 +35,21 @@ __blocking int aekinetic_get (void       *instance,
                               size_t     *buf_len,
                               uint64_t   *version);
 
+__blocking int aekinetic_delete (void       *instance,
+                                 void       *key,
+                                 size_t      key_len,
+                                 uint64_t    version,
+                                 int         mode);
+
 __blocking int aekinetic_flush (void *instance);
+
+__blocking int aekinetic_getlog (void *instance,
+                                 KineticDeviceInfo_Type type,
+                                 KineticDeviceInfo** info);
+
+int aekinetic_getlog_nb (void *instance,
+                         KineticDeviceInfo_Type type,
+                         KineticDeviceInfo** info);
 
 #endif
 
