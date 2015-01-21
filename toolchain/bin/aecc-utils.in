@@ -587,7 +587,7 @@ doCPP()
         jcppopt="-D__blocking='' -Dpbranch='' -Dpwait='' -Dpbreak=''"
     fi
     runCmd $verbose "Preprocessing step failed:" \
-           "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${AECC_CFLAGS} ${ccopts} ${cppinput}"
+           "${ccpath} -DAESOP_PARSER -x c ${jcppopt} -o ${cppout} ${ccopts} ${AECC_CFLAGS} ${cppinput}"
     return $?
 }
 
@@ -611,7 +611,7 @@ parseAesopSource()
     printVerbose "parseAesopSource(): $input"
 
     runCmd $verbose "Aesop parsing step failed: " \
-           "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${AECC_CFLAGS} ${compileropts}"
+           "${AEPARSER} -c ${compiler} ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${compileropts} ${AECC_CFLAGS}"
     return $?
 }
 
@@ -633,7 +633,7 @@ parseAesopHeader()
     fi
 
     runCmd $verbose "Aesop header parsing failed: " \
-           "${AEPARSER} -c ${compiler} -j ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${AECC_CFLAGS} ${compileropts}"
+           "${AEPARSER} -c ${compiler} -j ${popts} -r ${namedinput} -o ${output} -i ${input} -- ${compileropts} ${AECC_CFLAGS}"
     return $?
 }
 
@@ -652,7 +652,7 @@ doCompile()
     printVerbose "doCompile()"
 
     runCmd $verbose "Compilation step failed: " \
-           "${compiler} -x c -c -o ${outfile} ${AECC_CFLAGS} ${compileropts} ${infile}"
+           "${compiler} -x c -c -o ${outfile} ${compileropts} ${AECC_CFLAGS} ${infile}"
     return $?
 }
 
