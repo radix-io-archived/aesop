@@ -216,10 +216,9 @@ AE_SRC += \
 AE_HDR += \
  tests/parser/btest.hae
 
-noinst_LIBRARIES += tests/parser/libbtest.a
-tests_parser_libbtest_a_SOURCES = tests/parser/btest-impl.c tests/parser/btest.hae
-LDADD += tests/parser/libbtest.a
-tests/parser/btest-impl.o: tests/parser/btest.h
+noinst_LTLIBRARIES += tests/parser/libbtest.la
+tests_parser_libbtest_la_SOURCES = tests/parser/btest-impl.c tests/parser/btest.hae
+LDADD += tests/parser/libbtest.la
 
 # include extra files needed for make check in dist package
 EXTRA_DIST += \

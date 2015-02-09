@@ -17,8 +17,15 @@ AE_COMPILE_FLAGS = $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 #
 # rule for compiling aesop .ae files
 #
-.ae.o: 
-	$(AM_V_GEN)AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" $(AECC) $(AE_COMPILE_FLAGS) -o $@ $<
+.ae.o:
+	$(AM_V_GEN) AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" $(AECC) $(AE_COMPILE_FLAGS) -o $@ $<
+
+.ae.lo:
+	$(AM_V_GEN) AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" \
+        $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOL_FLAGS) \
+        $(LIBTOOLFLAGS) --mode=compile \
+        $(AECC) $(AE_COMPILE_FLAGS) -o $@ $<
+
 
 .hae.h:
 	$(AM_V_GEN)AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" $(AECC) --ae-parse-hae $(AE_COMPILE_FLAGS) -o $@ $<

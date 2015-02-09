@@ -5,9 +5,8 @@ SUFFIXES =
 
 bin_PROGRAMS =
 bin_SCRIPTS = bin/aecc bin/aecc-utils
-noinst_LIBRARIES =
+noinst_LTLIBRARIES =
 noinst_PROGRAMS =
-lib_LIBRARIES =
 lib_LTLIBRARIES =
 noinst_HEADERS =
 pkginclude_HEADERS = 
@@ -43,9 +42,9 @@ AECC = bin/aecc
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = maint/aesop.pc
 
-lib_LIBRARIES += src/libaesop.a
-src_libaesop_a_SOURCES = 
-LDADD = src/libaesop.a
+lib_LTLIBRARIES += src/libaesop.la
+src_libaesop_la_SOURCES = 
+LDADD = src/libaesop.la
 
 include Make.rules
 include $(top_srcdir)/src/Makefile.subdir
@@ -56,7 +55,7 @@ include $(top_srcdir)/tests/resources/Makefile.subdir
 include $(top_srcdir)/tests/components/Makefile.subdir
 include $(top_srcdir)/tests/parser/Makefile.subdir
 include $(top_srcdir)/include/aesop/Makefile.subdir
-
 -include $(AE_SRC:.ae=.ae.d)
 -include $(AE_HDR:.hae=.hae.d)
 
+BUILT_SOURCES += $(AE_HDR:.hae=.h)

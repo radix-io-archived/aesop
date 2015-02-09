@@ -24,13 +24,17 @@ AC_DEFINE_UNQUOTED(AESOP_VERSION_SUB,   $AESOP_SUB, sub version number)
 AC_CONFIG_HEADER(aesop-config.h)
 AC_CONFIG_AUX_DIR(maint/config)
 
+AC_CONFIG_MACRO_DIR([maint/config])
+
 AM_INIT_AUTOMAKE([foreign subdir-objects -Wall])
 AM_SILENT_RULES([yes])
+
+LT_PREREQ([2.2])
+LT_INIT()
 
 AC_PROG_INSTALL
 AC_PROG_CC
 AC_PROG_CPP
-AC_PROG_RANLIB
 
 AC_MSG_CHECKING([for required gcc])
 if test "x$GCC" = "x"; then

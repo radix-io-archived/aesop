@@ -19,6 +19,17 @@ pkginclude_HEADERS += \
  include/aesop/timer.hae \
  include/aesop/worker.h
 
+AE_HDR += \
+ include/aesop/aebdb.hae \
+ include/aesop/aefile.hae \
+ include/aesop/aesocket.hae \
+ include/aesop/aethread.hae \
+ include/aesop/cond.hae \
+ include/aesop/resourcebuilder.hae \
+ include/aesop/sem.hae \
+ include/aesop/timer.hae
+
 if KINETIC_ENABLED
 pkginclude_HEADERS += include/aesop/aekinetic.hae
+AE_HDR += include/aesop/aekinetic.hae
 endif

@@ -1,16 +1,5 @@
-src_libaesop_a_SOURCES += \
+src_libaesop_la_SOURCES += \
  src/resources/sem.c \
  src/resources/cond.c \
  src/resources/aethread.c \
  src/resources/worker.c
-
-AE_HDR += \
- include/aesop/sem.hae \
- include/aesop/cond.hae \
- include/aesop/aethread.hae \
- include/aesop/worker.hae
-
-src/resources/sem.o: include/aesop/sem.h
-src/resources/aethread.o: include/aesop/aethread.h
-src/resources/cond.o: include/aesop/cond.h
-src/resources/worker.o: include/aesop/worker.h

@@ -37,5 +37,5 @@ check_PROGRAMS += tests/components/aebdb-example
 TESTS += tests/components/aebdb-example
 AE_SRC += tests/components/aebdb-example.ae
 tests_components_aebdb_example_LDFLAGS = $(DB_LDFLAGS)
-tests_components_aebdb_example_LDADD = src/libaesop.a $(DB_LIB)
+tests_components_aebdb_example_LDADD = src/libaesop.la $(DB_LIB)
 endif

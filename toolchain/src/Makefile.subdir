@@ -1,4 +1,4 @@
-src_libaesop_a_SOURCES += \
+src_libaesop_la_SOURCES += \
  src/ae-ctl.c \
  src/aesop.c \
  src/hints.c \

@@ -1,4 +1,4 @@
-src_libaesop_a_SOURCES += \
+src_libaesop_la_SOURCES += \
  src/components/aefile.ae \
  src/components/resourcebuilder.ae \
  src/components/aesocket.ae \
@@ -12,11 +12,11 @@ AE_SRC += \
 
 # only build bdb support if enabled at configure time
 if DB_ENABLED
-src_libaesop_a_SOURCES += src/components/aebdb.ae 
+src_libaesop_la_SOURCES += src/components/aebdb.ae 
 AE_SRC += src/components/aebdb.ae 
 endif
 
 if KINETIC_ENABLED
-src_libaesop_a_SOURCES += src/components/aekinetic.ae 
+src_libaesop_la_SOURCES += src/components/aekinetic.ae 
 AE_SRC += src/components/aekinetic.ae 
 endif
