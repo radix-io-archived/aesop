@@ -11,14 +11,17 @@ distversion:
 .phony: tests
 tests: $(check_PROGRAMS)
 
+AE_COMPILE_FLAGS = $(DEFS) $(DEFAULT_INCLUDE) $(INCLUDES) $(AM_CPPFLAGS) \
+    $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+
 #
 # rule for compiling aesop .ae files
 #
 .ae.o: 
-	$(AM_V_GEN)AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" $(AECC) -o $@ $< -- $(CFLAGS) $(AM_CPPFLAGS) $(CPPFLAGS)
+	$(AM_V_GEN)AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" $(AECC) $(AE_COMPILE_FLAGS) -o $@ $<
 
 .hae.h:
-	$(AM_V_GEN)AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" $(AECC) -o $@ $< -j -- $(CFLAGS) $(AM_CPPFLAGS) $(CPPFLAGS)
+	$(AM_V_GEN)AE_BLOCKING_PARSER="$(AE_BLOCKING_PARSER)" $(AECC) --ae-parse-hae $(AE_COMPILE_FLAGS) -o $@ $<
 
 #
 # rules for .ae dependencies

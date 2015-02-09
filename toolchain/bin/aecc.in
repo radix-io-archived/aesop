@@ -19,22 +19,23 @@ if [[ $? != 0 ]]; then
     exit 1
 fi
 
-setUsageMessage "Usage: aecc <options> <file> -- <compiler options>.  Specify --help for a list of options."
+setUsageMessage "Usage: aecc <options> <file> -- <compiler options>.  Specify --ae-help for a list of options."
 
-setHelpStart "Usage: aecc <options> <file> -- <compiler options>.\n"
-setHelpEnd "\tAll other options (after --) are passed on to the compiler.\n"
+setHelpStart "Usage: aecc [options] <file...>\n"
+setHelpEnd "\tAll options not recognized by aecc, in addition to all files not
+ending in .ae or .hae, are passed on to the underlying compiler.\n"
 
-addOption h help no none no empty printHelpAndExit "This message."
-addOption c compiler yes compiler no "<compiler path>" none "Path to the compiler to use.  Default specified at configure time."
-addOption p "pretty" no none no empty none "Have the parser output pretty code (no source lines)."
-addOption d "debug" no none no empty none "Enable debugging for the parser."
-addOption s "just-source" no none no empty none "Just generate C source and header files."
-addOption v "show-commands" no none no empty none "Show commands run."
-addOption o "output-file" yes outputfile no "<output file>" none "Specifies the output file [default=a.out]."
-addOption i "interm-file" yes intermfile no "<interm file>" none "Specifies the intermediate file."
-addOption S "from-interm" no none no empty none "Start from (existing) intermediate file."
-addOption j "parse-hae" no none no empty none "Generate a C .h header from an Aesop .hae header."
-addOption l "pre-compile" no none no empty none "Pre-compile aesop for syntax checking."
+addOption no "ae-help" no none no empty printHelpAndExit "This message."
+addOption no "ae-compiler" yes compiler no "<compiler path>" none "Path to the compiler to use.  Default specified at configure time."
+addOption no "ae-pretty" no none no empty none "Have the parser output pretty code (no source lines)."
+addOption no "ae-debug" no none no empty none "Enable debugging for the parser."
+addOption no "ae-just-source" no none no empty none "Just generate C source and header files."
+addOption no "ae-show-commands" no none no empty none "Show commands run."
+addOption o "ae-output-file" yes outputfile no "<output file>" none "Specifies the output file [default=a.out]."
+addOption no "ae-interm-file" yes intermfile no "<interm file>" none "Specifies the intermediate file."
+addOption no "ae-from-interm" no none no empty none "Start from (existing) intermediate file."
+addOption no "ae-parse-hae" no none no empty none "Generate a C .h header from an Aesop .hae header."
+addOption no "ae-pre-compile" no none no empty none "Pre-compile aesop for syntax checking."
 
 compiler=@CC@
 parseropts=""
@@ -45,7 +46,7 @@ parseOpts $@
 clean=
 addToClean()
 {
-    if test "${hasOpt_pretty}" != "yes"; then
+    if test "${hasOpt_ae_pretty}" != "yes"; then
         clean="${clean} $1"
     fi
 }
@@ -60,25 +61,25 @@ exitIfFailed()
 }
 
 verbose=no
-if test "${hasOpt_show_commands}" = "yes"; then
+if test "${hasOpt_ae_show_commands}" = "yes"; then
     verbose=yes
 fi
 
-if test "${hasOpt_pretty}" = "yes"; then
+if test "${hasOpt_ae_pretty}" = "yes"; then
     parseropts="${parseropts} --pretty"
 fi
-if test "${hasOpt_debug}" = "yes"; then
+if test "${hasOpt_ae_debug}" = "yes"; then
     parseropts="${parseropts} --debug"
 fi
 
-if test "${hasOpt_parse_hae}" = "yes"; then
-    if test "${hasOpt_from_interm}" = "yes"; then
+if test "${hasOpt_ae_parse_hae}" = "yes"; then
+    if test "${hasOpt_ae_from_interm}" = "yes"; then
         echo "Can't specify to only compile intermediate with --parse-hae (-j)."
         showUsage 1
     fi
 fi
 
-if test "${hasOpt_from_interm}" != "yes"; then
+if test "${hasOpt_ae_from_interm}" != "yes"; then
     
     # This makes assumptions about current PWD!
     #buildifile=$(echo "${INPUTFILES}" | sed -e "s|^ *${SRCDIR}||" | sed -e "s|^/||")
@@ -100,14 +101,14 @@ if test "${hasOpt_from_interm}" != "yes"; then
     # Step 2: next run parser on preprocessed file
     if test -n "${intermfile}"; then
         poutfile=${intermfile}
-    elif test "${hasOpt_parse_hae}" = "yes"; then
+    elif test "${hasOpt_ae_parse_hae}" = "yes"; then
         poutfile=${outputfile}
     else
         poutfile=${outputfile%.*}.s
         addToClean ${poutfile}
     fi
 
-    if test "${hasOpt_parse_hae}" = "yes"; then
+    if test "${hasOpt_ae_parse_hae}" = "yes"; then
         parseAesopHeader ${verbose} ${compiler} ${cppout} ${poutfile} "${INPUTFILES}" "${parseropts}" ${COMPILEROPTS}
         exitIfFailed $?
     else
@@ -116,7 +117,7 @@ if test "${hasOpt_from_interm}" != "yes"; then
     fi
 
     # if only source file (.c) or header (.h) was supposed to be generated, stop here
-    if test "${hasOpt_just_source}" = "yes" || test "${hasOpt_parse_hae}" = "yes"; then
+    if test "${hasOpt_ae_just_source}" = "yes" || test "${hasOpt_ae_parse_hae}" = "yes"; then
         doClean ${clean}
         exit 0
     fi

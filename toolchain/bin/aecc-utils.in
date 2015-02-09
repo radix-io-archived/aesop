@@ -80,7 +80,12 @@ HELPMESSAGE=
 addOption()
 {
     # <short> <long> <takesArg> <arg variable> <arg accum> <arg string> <callback> <message>
-    shortopt="$1" ; shift
+    if test "$1" == "no"; then
+        shortopt=IGNOREME
+    else
+        shortopt="$1"
+    fi
+    shift
     longopt="$1" ; shift
     takesArg="$1" ; shift
     argVar="$1" ; shift
@@ -89,7 +94,6 @@ addOption()
     callback="$1" ; shift
     message="$1" ; shift
 
-    eval optionInd${optind}="${shortopt}"
     eval optionCB${optind}=${callback}
     eval optionArg${optind}=${takesArg}
     eval optionArgVar${optind}=${argVar}
@@ -103,13 +107,18 @@ addOption()
         eval ${argVar}=
     fi
 
-    canon=$(echo ${longopt} | sed -e "s|-|_|")
+    canon=$(echo ${longopt} | sed -e "s|-|_|g")
     eval hasOpt_${canon}=no
     eval optionLongCanon${optind}=${canon}
 
     optind=$(expr ${optind} + 1)
 
-    msg="    -${shortopt},--${longopt}"
+    msg="    "
+    if test ${shortopt} != "IGNOREME" ; then
+        msg="${msg}-${shortopt},"
+    fi
+    msg="${msg}--${longopt}"
+
     if test "${takesArg}" = "yes"; then
         msg="${msg} ${argString}"
     fi
@@ -193,7 +202,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon0}=yes
                 shift
                 if test "${optionArg0}" = "yes"; then
-                    hasArg "${optionShort0}" $@
+                    hasArg "${optionLong0}" $@
                     if test "${optionArgAccum0}" = "yes"; then
                         eval ${optionArgVar0}="\"\${$optionArgVar0} $1\""
                     else
@@ -209,7 +218,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon1}=yes
                 shift
                 if test "${optionArg1}" = "yes"; then
-                    hasArg "${optionShort1}" $@
+                    hasArg "${optionLong1}" $@
                     if test "${optionArgAccum1}" = "yes"; then
                         eval ${optionArgVar1}="\"\${$optionArgVar1} $1\""
                     else
@@ -225,7 +234,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon2}=yes
                 shift
                 if test "${optionArg2}" = "yes"; then
-                    hasArg "${optionShort2}" $@
+                    hasArg "${optionLong2}" $@
                     if test "${optionArgAccum2}" = "yes"; then
                         eval ${optionArgVar2}="\"\${$optionArgVar2} $1\""
                     else
@@ -241,7 +250,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon3}=yes
                 shift
                 if test "${optionArg3}" = "yes"; then
-                    hasArg "${optionShort3}" $@
+                    hasArg "${optionLong3}" $@
                     if test "${optionArgAccum3}" = "yes"; then
                         eval ${optionArgVar3}="\"\${$optionArgVar3} $1\""
                     else
@@ -257,7 +266,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon4}=yes
                 shift
                 if test "${optionArg4}" = "yes"; then
-                    hasArg "${optionShort4}" $@
+                    hasArg "${optionLong4}" $@
                     if test "${optionArgAccum4}" = "yes"; then
                         eval ${optionArgVar4}="\"\${$optionArgVar4} $1\""
                     else
@@ -273,7 +282,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon5}=yes
                 shift
                 if test "${optionArg5}" = "yes"; then
-                    hasArg "${optionShort5}" $@
+                    hasArg "${optionLong5}" $@
                     if test "${optionArgAccum5}" = "yes"; then
                         eval ${optionArgVar5}="\"\${$optionArgVar5} $1\""
                     else
@@ -289,7 +298,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon6}=yes
                 shift
                 if test "${optionArg6}" = "yes"; then
-                    hasArg "${optionShort6}" $@
+                    hasArg "${optionLong6}" $@
                     if test "${optionArgAccum6}" = "yes"; then
                         eval ${optionArgVar6}="\"\${$optionArgVar6} $1\""
                     else
@@ -305,7 +314,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon7}=yes
                 shift
                 if test "${optionArg7}" = "yes"; then
-                    hasArg "${optionShort7}" $@
+                    hasArg "${optionLong7}" $@
                     if test "${optionArgAccum7}" = "yes"; then
                         eval ${optionArgVar7}="\"\${$optionArgVar7} $1\""
                     else
@@ -321,7 +330,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon8}=yes
                 shift
                 if test "${optionArg8}" = "yes"; then
-                    hasArg "${optionShort8}" $@
+                    hasArg "${optionLong8}" $@
                     if test "${optionArgAccum8}" = "yes"; then
                         eval ${optionArgVar8}="\"\${$optionArgVar8} $1\""
                     else
@@ -337,7 +346,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon9}=yes
                 shift
                 if test "${optionArg9}" = "yes"; then
-                    hasArg "${optionShort9}" $@
+                    hasArg "${optionLong9}" $@
                     if test "${optionArgAccum9}" = "yes"; then
                         eval ${optionArgVar9}="\"\${$optionArgVar9} $1\""
                     else
@@ -353,7 +362,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon10}=yes
                 shift
                 if test "${optionArg10}" = "yes"; then
-                    hasArg "${optionShort10}" $@
+                    hasArg "${optionLong10}" $@
                     if test "${optionArgAccum10}" = "yes"; then
                         eval ${optionArgVar10}="\"\${$optionArgVar10} $1\""
                     else
@@ -369,7 +378,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon11}=yes
                 shift
                 if test "${optionArg11}" = "yes"; then
-                    hasArg "${optionShort11}" $@
+                    hasArg "${optionLong11}" $@
                     if test "${optionArgAccum11}" = "yes"; then
                         eval ${optionArgVar11}="\"\${$optionArgVar11} $1\""
                     else
@@ -385,7 +394,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon12}=yes
                 shift
                 if test "${optionArg12}" = "yes"; then
-                    hasArg "${optionShort12}" $@
+                    hasArg "${optionLong12}" $@
                     if test "${optionArgAccum12}" = "yes"; then
                         eval ${optionArgVar12}="\"\${$optionArgVar12} $1\""
                     else
@@ -401,7 +410,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon13}=yes
                 shift
                 if test "${optionArg13}" = "yes"; then
-                    hasArg "${optionShort13}" $@
+                    hasArg "${optionLong13}" $@
                     if test "${optionArgAccum13}" = "yes"; then
                         eval ${optionArgVar13}="\"\${$optionArgVar13} $1\""
                     else
@@ -417,7 +426,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon14}=yes
                 shift
                 if test "${optionArg14}" = "yes"; then
-                    hasArg "${optionShort14}" $@
+                    hasArg "${optionLong14}" $@
                     if test "${optionArgAccum14}" = "yes"; then
                         eval ${optionArgVar14}="\"\${$optionArgVar14} $1\""
                     else
@@ -433,7 +442,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon15}=yes
                 shift
                 if test "${optionArg15}" = "yes"; then
-                    hasArg "${optionShort15}" $@
+                    hasArg "${optionLong15}" $@
                     if test "${optionArgAccum15}" = "yes"; then
                         eval ${optionArgVar15}="\"\${$optionArgVar15} $1\""
                     else
@@ -449,7 +458,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon16}=yes
                 shift
                 if test "${optionArg16}" = "yes"; then
-                    hasArg "${optionShort16}" $@
+                    hasArg "${optionLong16}" $@
                     if test "${optionArgAccum16}" = "yes"; then
                         eval ${optionArgVar16}="\"\${$optionArgVar16} $1\""
                     else
@@ -465,7 +474,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon17}=yes
                 shift
                 if test "${optionArg17}" = "yes"; then
-                    hasArg "${optionShort17}" $@
+                    hasArg "${optionLong17}" $@
                     if test "${optionArgAccum17}" = "yes"; then
                         eval ${optionArgVar17}="\"\${$optionArgVar17} $1\""
                     else
@@ -481,7 +490,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon18}=yes
                 shift
                 if test "${optionArg18}" = "yes"; then
-                    hasArg "${optionShort18}" $@
+                    hasArg "${optionLong18}" $@
                     if test "${optionArgAccum18}" = "yes"; then
                         eval ${optionArgVar18}="\"\${$optionArgVar18} $1\""
                     else
@@ -497,7 +506,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon19}=yes
                 shift
                 if test "${optionArg19}" = "yes"; then
-                    hasArg "${optionShort19}" $@
+                    hasArg "${optionLong19}" $@
                     if test "${optionArgAccum19}" = "yes"; then
                         eval ${optionArgVar19}="\"\${$optionArgVar19} $1\""
                     else
@@ -513,7 +522,7 @@ parseOpts()
                 eval hasOpt_${optionLongCanon20}=yes
                 shift
                 if test "${optionArg20}" = "yes"; then
-                    hasArg "${optionShort20}" $@
+                    hasArg "${optionLong20}" $@
                     if test "${optionArgAccum20}" = "yes"; then
                         eval ${optionArgVar20}="\"\${$optionArgVar20} $1\""
                     else
@@ -525,24 +534,19 @@ parseOpts()
                     eval ${optionCB20}
                 fi
                 ;;
-          --)
+          -*)
+                COMPILEROPTS="${COMPILEROPTS} $1"
                 shift
-                break
-                ;;
-          -?)
-                echo "Invalid argument: $1"
-                showUsage 1
                 ;;
           *)
-                INPUTFILES="${INPUTFILES} $1"
+                if [ "${1##*.}" = ae ] || [ "${1##*.}" = "hae" ] ; then
+                    INPUTFILES="${INPUTFILES} $1"
+                else
+                    COMPILEROPTS="${COMPILEROPTS} $1"
+                fi
                 shift
                 ;;
         esac
-    done
-
-    while test -n "$1"; do
-        COMPILEROPTS="${COMPILEROPTS} $1"
-        shift
     done
 }
 
