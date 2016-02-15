@@ -6,14 +6,14 @@ dnl You may need to use autoheader as well if changing any DEFINEs
 
 CONFIGURE_TIME=`date -u +"%Y-%m-%d-%H%M%S"`
 AESOP_MAJOR=0
-AESOP_MINOR=1
-AESOP_SUB=1
+AESOP_MINOR=2
+AESOP_SUB=2
 AESOP_PRE="pre-$CONFIGURE_TIME"
 
 AESOP_VERSION=$AESOP_MAJOR.$AESOP_MINOR.$AESOP_SUB$AESOP_PRE
 
 AC_PREREQ(2.50)
-AC_INIT([aesop], [0.2.1], [http://trac.mcs.anl.gov/projects/aesop],[],[http://www.mcs.anl.gov/projects/aesop])
+AC_INIT([aesop], [0.2.2], [http://trac.mcs.anl.gov/projects/aesop],[],[http://www.mcs.anl.gov/projects/aesop])
 
 AC_SUBST(AESOP_VERSION)
 
