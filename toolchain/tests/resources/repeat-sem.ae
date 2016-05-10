@@ -1,0 +1,78 @@
+#include <stdio.h>
+#include <aesop/aesop.h>
+#include <aesop/sem.hae>
+
+aesop_sem_t *m;
+
+int maxiter = 10;
+
+static void optputs (const char * s)
+{
+   if (getenv ("DEBUG"))
+      puts (s);
+}
+
+static __blocking void
+test_ae_sem_down(void)
+{
+    int rc, loop;
+
+    rc = loop = 0;
+    do {
+	optputs ("consumer sem down\n");
+	rc = aesop_sem_down(m);
+	loop++;
+    } while (rc == 0 && loop < maxiter);
+    assert(rc == 0);
+    return;
+}
+
+static __blocking void
+test_ae_sem_up(void)
+{
+    int rc, loop;
+
+    rc = loop = 0;
+
+    do {
+	optputs ("producer sem up\n");
+	rc = aesop_sem_up(m);
+	loop++;
+    } while (rc == 0 && loop < maxiter);
+    assert(rc == 0);
+}
+
+__blocking int
+test_ae_sem(int argc, char **argv)
+{
+    aesop_sem_module_init();
+
+    m = malloc(sizeof(aesop_sem_t));
+    aesop_sem_init(m, 0);
+
+    pwait {
+	pbranch {
+	    //consumer
+	    test_ae_sem_down();
+	}
+	pbranch {
+	    //producer
+	    test_ae_sem_up();
+	}
+    }
+
+    aesop_sem_module_finalize();
+
+    return 0;
+}
+
+aesop_main_set(test_ae_sem);
+
+/*
+ * Local variables:
+ *  c-indent-level: 4
+ *  c-basic-offset: 4
+ * End:
+ *
+ * vim: ft=c ts=8 sts=4 sw=4 expandtab
+ */

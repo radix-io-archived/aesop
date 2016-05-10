@@ -2,6 +2,7 @@ XFAIL_TESTS += \
  tests/resources/cancel-sem-before-down
 
 check_PROGRAMS += \
+ tests/resources/repeat-sem \
  tests/resources/aethread-cancel \
  tests/resources/aethread-example \
  tests/resources/cancel-sem \
@@ -13,6 +14,7 @@ check_PROGRAMS += \
  tests/resources/worker
 
 TESTS += \
+ tests/resources/repeat-sem \
  tests/resources/aethread-cancel \
  tests/resources/aethread-example \
  tests/resources/cancel-sem \
@@ -24,6 +26,7 @@ TESTS += \
  tests/resources/worker
 
 AE_SRC += \
+ tests/resources/repeat-sem.ae \
  tests/resources/aethread-cancel.ae \
  tests/resources/aethread-example.ae \
  tests/resources/cancel-sem.ae \
