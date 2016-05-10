@@ -10,7 +10,6 @@
 > import Data.Typeable
 > import Data.Maybe
 > import Data.Either
-> import Data.HashTable
 > import Data.Generics
 > import Data.Generics.Schemes
 > import qualified Data.ByteString

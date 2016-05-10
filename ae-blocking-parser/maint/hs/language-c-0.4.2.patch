@@ -1,56 +1,206 @@
-diff -Naur language-c-0.4.2/language-c.cabal language-c-0.4.2-new/language-c.cabal
---- language-c-0.4.2/language-c.cabal	2011-08-24 09:51:22.000000000 -0500
-+++ language-c-0.4.2-new/language-c.cabal	2012-05-26 11:43:57.893087938 -0500
-@@ -1,4 +1,4 @@
--Name:           language-c
-+Name:           language-aesop
- Version:        0.4.2
- Cabal-Version:  >= 1.6
- Build-Type:     Simple
-@@ -6,7 +6,7 @@
- License-File:   LICENSE
- Copyright:      LICENSE
- Author:         AUTHORS
--Maintainer:     benedikt.huber@gmail.com
-+Maintainer:     benedikt.huber@gmail.com [Modified by Sam Lang (slang@mcs.anl.gov) for aesop]
- Stability:      experimental
- Homepage:       http://www.sivity.net/projects/language.c/
- Bug-reports:    http://www.sivity.net/projects/language.c/
-@@ -15,6 +15,7 @@
- Description:    Language C is a haskell library for the analysis and generation of C code.
-                 It features a complete, well tested parser and pretty printer for all of C99 and a large
-                 set of GNU extensions.
-+                This modified version includes extensions for AESOP.
- Category:       Language
-
- Extra-Source-Files: AUTHORS AUTHORS.c2hs ChangeLog README
-diff -Naur language-c-0.4.2/src/Language/C/Data/Ident.hs language-c-0.4.2-new/src/Language/C/Data/Ident.hs
---- language-c-0.4.2/src/Language/C/Data/Ident.hs	2011-08-24 09:51:19.000000000 -0500
-+++ language-c-0.4.2-new/src/Language/C/Data/Ident.hs	2012-05-26 11:45:06.753087732 -0500
-@@ -17,7 +17,7 @@
- module Language.C.Data.Ident (
-     Ident(..),
-     SUERef(..), isAnonymousRef,
--    mkIdent, builtinIdent, internalIdent, internalIdentAt, isInternalIdent, identToString, dumpIdent)
-+    mkIdent, builtinIdent, internalIdent, internalIdentAt, isInternalIdent, identToString, dumpIdent, hashIdent)
- where
-
- -- TODO (comment from manuel):
-@@ -133,3 +133,6 @@
+diff -Naur old-language-c-0.4.2/src/Language/C/Data/Ident.hs new-language-c-0.4.2/src/Language/C/Data/Ident.hs
+--- old-language-c-0.4.2/src/Language/C/Data/Ident.hs	2011-08-24 08:51:19.000000000 -0600
++++ new-language-c-0.4.2/src/Language/C/Data/Ident.hs	2016-03-31 23:17:22.533411853 -0600
+@@ -1,4 +1,5 @@
+ {-# LANGUAGE DeriveDataTypeable #-}
++{-# LANGUAGE DeriveGeneric #-}
+ -----------------------------------------------------------------------------
+ -- |
+ -- Module      :  Language.C.Data.Ident
+@@ -28,13 +29,15 @@
+ import Language.C.Data.Node
+ import Language.C.Data.Name   (Name,nameId)
+ import Data.Generics
++import Data.Hashable
++import GHC.Generics
+ 
+ -- | References uniquely determining a struct, union or enum type.
+ -- Those are either identified by an string identifier, or by a unique
+ -- name (anonymous types).
+ data SUERef =  AnonymousRef Name
+              | NamedRef Ident
+-    deriving (Typeable, Data, Ord, Eq)
++    deriving (Typeable, Data, Ord, Eq, GHC.Generics.Generic)
+ instance Show SUERef where
+     show (AnonymousRef name) = "$" ++ show (nameId name)
+     show (NamedRef ident) = identToString ident
+@@ -48,7 +51,7 @@
+ data Ident = Ident String       -- lexeme
+                    {-# UNPACK #-}   !Int     -- hash to speed up equality check
+                    NodeInfo                   -- attributes of this ident. incl. position
+-             deriving (Data,Typeable)
++             deriving (Data,Typeable,GHC.Generics.Generic)
+ 
+ -- the definition of the equality allows identifiers to be equal that are
+ -- defined at different source text positions, and aims at speeding up the
+@@ -133,3 +136,9 @@
  -- | dump the identifier string and its positions for debugging purposes
  dumpIdent     :: Ident -> String
  dumpIdent ide  = identToString ide ++ " at " ++ show (nodeInfo ide)
 +
-+hashIdent :: Ident -> Int
-+hashIdent (Ident _ h _) = h
-diff -Naur language-c-0.4.2/src/Language/C/Parser/Lexer.x language-c-0.4.2-new/src/Language/C/Parser/Lexer.x
---- language-c-0.4.2/src/Language/C/Parser/Lexer.x	2011-08-24 09:51:19.000000000 -0500
-+++ language-c-0.4.2-new/src/Language/C/Parser/Lexer.x	2012-05-26 11:46:33.213087517 -0500
-@@ -358,7 +358,14 @@
++addSaltIdent :: Int -> Int -> Int
++addSaltIdent a b = if a < b then b - a else a - b
++
++instance Hashable Ident where
++  hashWithSalt salt (Ident _ h _) = addSaltIdent salt h
+diff -Naur old-language-c-0.4.2/src/Language/C/Data/Ident.hs~ new-language-c-0.4.2/src/Language/C/Data/Ident.hs~
+--- old-language-c-0.4.2/src/Language/C/Data/Ident.hs~	1969-12-31 17:00:00.000000000 -0700
++++ new-language-c-0.4.2/src/Language/C/Data/Ident.hs~	2016-03-31 23:09:01.059448566 -0600
+@@ -0,0 +1,147 @@
++{-# LANGUAGE DeriveDataTypeable #-}
++{-# LANGUAGE DeriveGeneric #-}
++-----------------------------------------------------------------------------
++-- |
++-- Module      :  Language.C.Data.Ident
++-- Copyright   :  (c) [1995..1999] Manuel M. T. Chakravarty
++--                (c) 2008 Benedikt Huber
++-- License     :  BSD-style
++-- Maintainer  :  benedikt.huber@gmail.com
++-- Stability   :  experimental
++-- Portability :  ghc
++--
++-- This module provides the notion of identifiers in C, speed up using hashing.
++-- Identifiers are associated optionally associated with a 'NodeInfo', i.e. with
++-- a unique 'Name' and a source location ('Position'). The ordering relation on
++-- identifiers is based on the hash and does not follow the lexical order.
++-----------------------------------------------------------------------------
++module Language.C.Data.Ident (
++    Ident(..),
++    SUERef(..), isAnonymousRef,
++    mkIdent, builtinIdent, internalIdent, internalIdentAt, isInternalIdent, identToString, dumpIdent)
++where
++
++-- TODO (comment from manuel):
++--  * Hashing is not 8bit clean.
++
++import Data.Char
++import Language.C.Data.Position
++import Language.C.Data.Node
++import Language.C.Data.Name   (Name,nameId)
++import Data.Generics
++import Data.Hashable
++import GHC.Generics
++
++-- | References uniquely determining a struct, union or enum type.
++-- Those are either identified by an string identifier, or by a unique
++-- name (anonymous types).
++data SUERef =  AnonymousRef Name
++             | NamedRef Ident
++    deriving (Typeable, Data, Ord, Eq, GHC.Generics.Generic)
++instance Show SUERef where
++    show (AnonymousRef name) = "$" ++ show (nameId name)
++    show (NamedRef ident) = identToString ident
++
++-- | Return true if the struct\/union\/enum reference is anonymous.
++isAnonymousRef :: SUERef -> Bool
++isAnonymousRef (AnonymousRef _) = True
++isAnonymousRef _ = False
++
++-- | C identifiers
++data Ident = Ident String       -- lexeme
++                   {-# UNPACK #-}   !Int     -- hash to speed up equality check
++                   NodeInfo                   -- attributes of this ident. incl. position
++             deriving (Data,Typeable,GHC.Generics.Generic)
++
++-- the definition of the equality allows identifiers to be equal that are
++-- defined at different source text positions, and aims at speeding up the
++-- equality test, by comparing the lexemes only if the two numbers are equal
++--
++instance Eq Ident where
++  (Ident s h _) == (Ident s' h' _) = (h == h') && (s == s')
++
++-- this does *not* follow the alphanumerical ordering of the lexemes
++--
++instance Ord Ident where
++  compare (Ident s h _) (Ident s' h' _) = compare (h, s) (h', s')
++
++-- for displaying identifiers
++instance Show Ident where
++  showsPrec _ ide = showString ("\"" ++ identToString ide ++ "\"")
++
++-- identifiers are attributed
++instance CNode Ident where
++  nodeInfo (Ident _ _ at) = at
++instance Pos Ident where
++  posOf = posOfNode . nodeInfo
++-- to speed up the equality test we compute some hash-like value for each
++-- identifiers lexeme and store it in the identifiers representation
++
++-- hash function from the dragon book pp437; assumes 7 bit characters and needs
++-- the (nearly) full range of values guaranteed for `Int' by the Haskell
++-- language definition; can handle 8 bit characters provided we have 29 bit
++-- for the `Int's without sign
++--
++quad                 :: String -> Int
++quad (c1:c2:c3:c4:s)  = ((ord c4 * bits21
++                          + ord c3 * bits14
++                          + ord c2 * bits7
++                          + ord c1)
++                         `mod` bits28)
++                        + (quad s `mod` bits28)
++quad (c1:c2:c3:[]  )  = ord c3 * bits14 + ord c2 * bits7 + ord c1
++quad (c1:c2:[]     )  = ord c2 * bits7 + ord c1
++quad (c1:[]        )  = ord c1
++quad ([]           )  = 0
++
++bits7 :: Int
++bits7  = 2^(7::Int)
++bits14 :: Int
++bits14 = 2^(14::Int)
++bits21 :: Int
++bits21 = 2^(21::Int)
++bits28 :: Int
++bits28 = 2^(28::Int)
++
++-- | build an identifier from a string.
++--
++-- * only minimal error checking, e.g., the characters of the identifier are
++--   not checked for being alphanumerical only; the correct lexis of the
++--   identifier should be ensured by the caller, e.g., the scanner.
++--
++-- * for reasons of simplicity the complete lexeme is hashed.
++mkIdent            :: Position -> String -> Name -> Ident
++mkIdent pos s name  = Ident s (quad s) (mkNodeInfo' pos (pos,length s) name)
++
++-- | returns an /internal/ identifier (has internal position and no unique name)
++internalIdent   :: String -> Ident
++internalIdent s  = Ident s (quad s) (mkNodeInfoOnlyPos internalPos)
++
++-- | return an /internal/ identifier with position info
++internalIdentAt :: Position -> String -> Ident
++internalIdentAt pos s = Ident s (quad s) (mkNodeInfoPosLen pos (pos, length s))
++
++-- | returns a /builtin/ identifier (has builtin position and no unique name)
++builtinIdent   :: String -> Ident
++builtinIdent s  = Ident s (quad s) (mkNodeInfoOnlyPos builtinPos)
++
++-- | return @True@ if the given identifier is /internal/
++isInternalIdent :: Ident -> Bool
++isInternalIdent (Ident _ _ nodeinfo) = isInternalPos (posOfNode nodeinfo)
++
++-- | string of an identifier
++identToString               :: Ident -> String
++identToString (Ident s _ _)  = s
++
++-- | dump the identifier string and its positions for debugging purposes
++dumpIdent     :: Ident -> String
++dumpIdent ide  = identToString ide ++ " at " ++ show (nodeInfo ide)
++
++addSaltIdent :: Int -> Int -> Int
++addSaltIdent a b = if a < b then b - a else a - b
++
++instance Hashable Ident where
++  hashWithSalt salt (Ident _ h _) = addSaltIdent salt h
++
++-- instance Hashable Ident
++
+diff -Naur old-language-c-0.4.2/src/Language/C/Parser/Lexer.x new-language-c-0.4.2/src/Language/C/Parser/Lexer.x
+--- old-language-c-0.4.2/src/Language/C/Parser/Lexer.x	2011-08-24 08:51:19.000000000 -0600
++++ new-language-c-0.4.2/src/Language/C/Parser/Lexer.x	2016-03-31 22:05:24.224728000 -0600
+@@ -358,6 +358,13 @@
  idkwtok ('v' : 'o' : 'l' : 'a' : 't' : 'i' : 'l' : 'e' : []) = tok 8 CTokVolatile
  idkwtok ('_' : '_' : 'v' : 'o' : 'l' : 'a' : 't' : 'i' : 'l' : 'e' : '_' : '_' : []) = tok 12 CTokVolatile
  idkwtok ('w' : 'h' : 'i' : 'l' : 'e' : []) = tok 5 CTokWhile
--
 +idkwtok ('_':'_':'b':'l':'o':'c':'k':'i':'n':'g':[]) = tok 10 CTokBlocking
 +idkwtok ('_':'_':'r':'e':'m':'o':'t':'e':[]) = tok 10 CTokRemote
 +idkwtok ('p':'w':'a':'i':'t':[]) = tok 5 CTokPWait
@@ -58,13 +208,12 @@ diff -Naur language-c-0.4.2/src/Language/C/Parser/Lexer.x language-c-0.4.2-new/s
 +idkwtok ('p':'b':'r':'e':'a':'k':[]) = tok 6 CTokPBreak
 +idkwtok ('p':'p':'r':'i':'v':'a':'t':'e':[]) = tok 6 CTokPPrivate
 +idkwtok ('p':'s':'h':'a':'r':'e':'d':[]) = tok 6 CTokPShared
-+
+ 
  idkwtok cs = \pos -> do
    name <- getNewName
-   let len = case length cs of l -> l
-diff -Naur language-c-0.4.2/src/Language/C/Parser/Parser.y language-c-0.4.2-new/src/Language/C/Parser/Parser.y
---- language-c-0.4.2/src/Language/C/Parser/Parser.y	2011-08-24 09:51:19.000000000 -0500
-+++ language-c-0.4.2-new/src/Language/C/Parser/Parser.y	2012-05-26 11:51:02.101086845 -0500
+diff -Naur old-language-c-0.4.2/src/Language/C/Parser/Parser.y new-language-c-0.4.2/src/Language/C/Parser/Parser.y
+--- old-language-c-0.4.2/src/Language/C/Parser/Parser.y	2011-08-24 08:51:19.000000000 -0600
++++ new-language-c-0.4.2/src/Language/C/Parser/Parser.y	2016-03-31 22:05:24.225728000 -0600
 @@ -217,6 +217,8 @@
  typedef		{ CTokTypedef	_ }
  typeof		{ CTokTypeof	_ }
@@ -74,32 +223,30 @@ diff -Naur language-c-0.4.2/src/Language/C/Parser/Parser.y language-c-0.4.2-new/
  union		{ CTokUnion	_ }
  unsigned	{ CTokUnsigned	_ }
  void		{ CTokVoid	_ }
-@@ -236,7 +238,12 @@
+@@ -236,6 +238,11 @@
  "__builtin_va_arg"		{ CTokGnuC GnuCVaArg    _ }
  "__builtin_offsetof"		{ CTokGnuC GnuCOffsetof _ }
  "__builtin_types_compatible_p"	{ CTokGnuC GnuCTyCompat _ }
--
 +pwait		{ CTokPWait _ }
 +pbranch		{ CTokPBranch _ }
 +pbreak		{ CTokPBreak _ }
 +pshared		{ CTokPShared _ }
 +pprivate	{ CTokPPrivate _ }
-+
+ 
  %%
-
-
+ 
 @@ -359,6 +366,7 @@
    | iteration_statement		{ $1 }
    | jump_statement			  { $1 }
    | asm_statement			    {% withNodeInfo $1 (CAsm $1) }
 +  | parallel_statement { $1 }
-
-
+ 
+ 
  -- parse C labeled statement (C99 6.8.1)
 @@ -374,7 +382,19 @@
    	{% withNodeInfo $1 $ CCases $2 $4 $6 }
-
-
+ 
+ 
 --- parse C compound statement (C99 6.8.2)
 +-- parse Parallel C statement
 +--
@@ -125,10 +272,10 @@ diff -Naur language-c-0.4.2/src/Language/C/Parser/Parser.y language-c-0.4.2-new/
 +storage_class              :-   typedef | extern | static | auto | register | __thread | __blocking | pprivate | ppshared
  type_qualifier             :-   const | volatile | restrict | inline
  type_qualifier_list        :-   type_qualifier+
-
+ 
 @@ -755,7 +775,7 @@
-
-
+ 
+ 
  -- A mixture of type qualifiers (const, volatile, restrict, inline) and storage class specifiers
 --- (extern, static, auto, register, __thread), in any order, but containing at least one storage class specifier.
 +-- (extern, static, auto, register, __thread, __blocking, pshared, pprivate), in any order, but containing at least one storage class specifier.
@@ -143,12 +290,12 @@ diff -Naur language-c-0.4.2/src/Language/C/Parser/Parser.y language-c-0.4.2-new/
 +  | "__remote"	        {% withNodeInfo $1 $ CRemote }
 +  | pshared	        {% withNodeInfo $1 $ CPShared }
 +  | pprivate	        {% withNodeInfo $1 $ CPPrivate }
-
+ 
  -- a list containing at least one type_qualifier (const, volatile, restrict, inline)
  --    and additionally CAttrs
 @@ -2161,13 +2185,17 @@
  withAsmNameAttrs (mAsmName, newAttrs) declr = setAsmName mAsmName (appendObjAttrsR newAttrs declr)
-
+ 
  appendDeclrAttrs :: [CAttr] -> CDeclrR -> CDeclrR
 -appendDeclrAttrs newAttrs (CDeclrR ident (Reversed []) asmname cattrs at)
 -    = CDeclrR ident empty asmname (cattrs ++ newAttrs) at
@@ -167,17 +314,16 @@ diff -Naur language-c-0.4.2/src/Language/C/Parser/Parser.y language-c-0.4.2-new/
 +              hasFunDeclr ds = any isFunDeclr ds
 +appendDeclrAttrs newAttrs (CDeclrR ident derived asmname cattrs at)
 +    = CDeclrR ident derived asmname (cattrs ++ newAttrs) at
-
+ 
  ptrDeclr :: CDeclrR -> [CTypeQual] -> NodeInfo -> CDeclrR
  ptrDeclr (CDeclrR ident derivedDeclrs asmname cattrs dat) tyquals at
-diff -Naur language-c-0.4.2/src/Language/C/Parser/Tokens.hs language-c-0.4.2-new/src/Language/C/Parser/Tokens.hs
---- language-c-0.4.2/src/Language/C/Parser/Tokens.hs	2011-08-24 09:51:19.000000000 -0500
-+++ language-c-0.4.2-new/src/Language/C/Parser/Tokens.hs	2012-05-26 11:52:19.589086751 -0500
-@@ -132,7 +132,14 @@
+diff -Naur old-language-c-0.4.2/src/Language/C/Parser/Tokens.hs new-language-c-0.4.2/src/Language/C/Parser/Tokens.hs
+--- old-language-c-0.4.2/src/Language/C/Parser/Tokens.hs	2011-08-24 08:51:19.000000000 -0600
++++ new-language-c-0.4.2/src/Language/C/Parser/Tokens.hs	2016-03-31 22:05:24.225728000 -0600
+@@ -132,6 +132,13 @@
              | CTokTyIdent  !PosLength !Ident     -- `typedef-name' identifier
              | CTokGnuC !GnuCTok !PosLength       -- special GNU C tokens
              | CTokEof                           -- end of file
--
 + 	        | CTokBlocking !PosLength            -- '__blocking'
 + 	        | CTokRemote   !PosLength            -- '__remote'
 + 	        | CTokPWait    !PosLength            -- `pwait'
@@ -185,10 +331,9 @@ diff -Naur language-c-0.4.2/src/Language/C/Parser/Tokens.hs language-c-0.4.2-new
 + 	        | CTokPBreak   !PosLength		-- `pbreak'
 +            | CTokPShared  !PosLength           -- `pshared'
 +            | CTokPPrivate !PosLength           -- `pprivate'
-+
+ 
  -- special tokens used in GNU C extensions to ANSI C
  --
- data GnuCTok = GnuCAttrTok              -- `__attribute__'
 @@ -242,6 +249,13 @@
  posLenOfTok (CTokIdent    pos _) = pos
  posLenOfTok (CTokTyIdent  pos _) = pos
@@ -201,7 +346,7 @@ diff -Naur language-c-0.4.2/src/Language/C/Parser/Tokens.hs language-c-0.4.2-new
 +posLenOfTok (CTokPPrivate pos  ) = pos
 +posLenOfTok (CTokPShared  pos  ) = pos
  posLenOfTok CTokEof = error "tokenPos: Eof"
-
+ 
  instance Show CToken where
 @@ -327,11 +341,18 @@
    showsPrec _ (CTokTypedef  _  ) = showString "typedef"
@@ -222,9 +367,9 @@ diff -Naur language-c-0.4.2/src/Language/C/Parser/Tokens.hs language-c-0.4.2-new
    showsPrec _ (CTokCLit     _ c) = shows c
    showsPrec _ (CTokILit     _ i) = shows i
    showsPrec _ (CTokFLit     _ f) = shows f
-diff -Naur language-c-0.4.2/src/Language/C/Pretty.hs language-c-0.4.2-new/src/Language/C/Pretty.hs
---- language-c-0.4.2/src/Language/C/Pretty.hs	2011-08-24 09:51:19.000000000 -0500
-+++ language-c-0.4.2-new/src/Language/C/Pretty.hs	2012-05-26 11:53:45.233086438 -0500
+diff -Naur old-language-c-0.4.2/src/Language/C/Pretty.hs new-language-c-0.4.2/src/Language/C/Pretty.hs
+--- old-language-c-0.4.2/src/Language/C/Pretty.hs	2011-08-24 08:51:19.000000000 -0600
++++ new-language-c-0.4.2/src/Language/C/Pretty.hs	2016-03-31 22:05:24.225728000 -0600
 @@ -154,7 +154,11 @@
      pretty (CReturn Nothing _) = ii $ text "return" <> semi
      pretty (CReturn (Just e) _) = ii $ text "return" <+> pretty e <> semi
@@ -238,19 +383,17 @@ diff -Naur language-c-0.4.2/src/Language/C/Pretty.hs language-c-0.4.2-new/src/La
          let inner = text "{" $+$ mlistP ppLblDecls localLabels $+$ vcat (map pretty bis) $$ text "}"
          in  if p == -1 then inner else ii inner
          where ppLblDecls =  vcat . map (\l -> text "__label__" <+> identP l <+> semi)
-@@ -253,7 +257,11 @@
+@@ -253,6 +257,10 @@
      pretty (CRestrQual _) = text "__restrict"
      pretty (CInlineQual _) = text "inline"
      pretty (CAttrQual a)  = attrlistP [a]
--
 +    pretty (CBlocking _) = text "__blocking"
 +    pretty (CRemote _) = text "__remote"
 +    pretty (CPShared _) = text "pshared"
 +    pretty (CPPrivate _) = text "pprivate"
-+
+ 
  instance Pretty CStructUnion where
      pretty (CStruct tag ident Nothing cattrs _) = pretty tag <+> attrlistP cattrs <+> maybeP identP ident
-     pretty (CStruct tag ident (Just []) cattrs _) =
 @@ -375,8 +383,8 @@
             <+> maybeP pretty expr2 <+> text ":" <+> prettyPrec 4 expr3
      prettyPrec p (CBinary op expr1 expr2 _) =
@@ -262,9 +405,9 @@ diff -Naur language-c-0.4.2/src/Language/C/Pretty.hs language-c-0.4.2-new/src/La
      prettyPrec p (CCast decl expr _) =
          parenPrec p 25 $ text "(" <> pretty decl <> text ")"
                         <+> prettyPrec 25 expr
-diff -Naur language-c-0.4.2/src/Language/C/Syntax/AST.hs language-c-0.4.2-new/src/Language/C/Syntax/AST.hs
---- language-c-0.4.2/src/Language/C/Syntax/AST.hs	2011-08-24 09:51:19.000000000 -0500
-+++ language-c-0.4.2-new/src/Language/C/Syntax/AST.hs	2012-05-26 11:55:23.797086194 -0500
+diff -Naur old-language-c-0.4.2/src/Language/C/Syntax/AST.hs new-language-c-0.4.2/src/Language/C/Syntax/AST.hs
+--- old-language-c-0.4.2/src/Language/C/Syntax/AST.hs	2011-08-24 08:51:19.000000000 -0600
++++ new-language-c-0.4.2/src/Language/C/Syntax/AST.hs	2016-03-31 22:05:24.226728000 -0600
 @@ -295,6 +295,9 @@
    | CReturn (Maybe (CExpression a)) a
    -- | assembly statement
@@ -273,7 +416,7 @@ diff -Naur language-c-0.4.2/src/Language/C/Syntax/AST.hs language-c-0.4.2-new/sr
 +  | CPBranch (CStatement a) a
 +  | CPBreak a
      deriving (Show, Data,Typeable {-! , CNode , Annotated !-})
-
+ 
  -- Derived instance relies on fmap2 :(
 @@ -453,6 +456,10 @@
    | CRestrQual a
@@ -284,8 +427,8 @@ diff -Naur language-c-0.4.2/src/Language/C/Syntax/AST.hs language-c-0.4.2-new/sr
 +  | CPShared  a     -- ^ shared variable across pbranch blocks
 +  | CPPrivate a     -- ^ private variable across pbranch blocks
      deriving (Show, Data,Typeable {-! ,CNode ,Functor ,Annotated !-})
-
-
+ 
+ 
 @@ -857,6 +864,9 @@
          nodeInfo (CBreak d) = nodeInfo d
          nodeInfo (CReturn _ n) = nodeInfo n
@@ -293,7 +436,7 @@ diff -Naur language-c-0.4.2/src/Language/C/Syntax/AST.hs language-c-0.4.2-new/sr
 +        nodeInfo (CPWait _ t) = nodeInfo t
 +        nodeInfo (CPBranch _ t) = nodeInfo t
 +        nodeInfo (CPBreak t) = nodeInfo t
-
+ 
  instance (CNode t1) => Pos (CStatement t1) where
          posOf x = posOf (nodeInfo x)
 @@ -1102,6 +1112,10 @@
@@ -304,6 +447,40 @@ diff -Naur language-c-0.4.2/src/Language/C/Syntax/AST.hs language-c-0.4.2-new/sr
 +        nodeInfo (CRemote d) = nodeInfo d
 +        nodeInfo (CPPrivate d) = nodeInfo d
 +        nodeInfo (CPShared d) = nodeInfo d
-
+ 
  instance (CNode t1) => Pos (CTypeQualifier t1) where
          posOf x = posOf (nodeInfo x)
+--- old-language-c-0.4.2/language-c.cabal	2011-08-24 08:51:22.000000000 -0600
++++ new-language-c-0.4.2/language-c.cabal	2016-03-31 22:58:21.736495372 -0600
+@@ -1,4 +1,4 @@
+-Name:           language-c
++Name:           language-aesop
+ Version:        0.4.2
+ Cabal-Version:  >= 1.6
+ Build-Type:     Simple
+@@ -6,7 +6,7 @@
+ License-File:   LICENSE
+ Copyright:      LICENSE
+ Author:         AUTHORS
+-Maintainer:     benedikt.huber@gmail.com
++Maintainer:     benedikt.huber@gmail.com [Modified by Sam Lang (slang@mcs.anl.gov) for aesop]
+ Stability:      experimental
+ Homepage:       http://www.sivity.net/projects/language.c/
+ Bug-reports:    http://www.sivity.net/projects/language.c/
+@@ -15,6 +15,7 @@
+ Description:    Language C is a haskell library for the analysis and generation of C code.
+                 It features a complete, well tested parser and pretty printer for all of C99 and a large
+                 set of GNU extensions.
++                This modified version includes extensions for AESOP.
+ Category:       Language
+ 
+ Extra-Source-Files: AUTHORS AUTHORS.c2hs ChangeLog README
+@@ -35,7 +36,7 @@
+ 
+ Library
+     Extensions: CPP, DeriveDataTypeable, PatternGuards, BangPatterns, ExistentialQuantification, GeneralizedNewtypeDeriving, ScopedTypeVariables
+-    Build-Depends:  filepath
++    Build-Depends:  filepath, hashable
+ 
+     if flag(splitBase)
+         Build-Depends: base >= 3 && < 5, process, directory, array, containers, pretty

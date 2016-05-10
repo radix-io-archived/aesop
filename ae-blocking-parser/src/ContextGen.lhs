@@ -5,7 +5,6 @@
 > import Data.Typeable
 > import Data.Maybe
 > import Data.Either
-> import Data.HashTable
 > import Control.Exception
 > import Control.Monad.State
 > import Data.List

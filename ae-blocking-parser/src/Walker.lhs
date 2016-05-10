@@ -7,7 +7,8 @@
 > import Data.Typeable
 > import Data.Maybe
 > import Data.Either
-> import Data.HashTable
+> import qualified Data.HashTable.IO as H
+> import Data.Hashable
 > import Control.Exception
 > import Data.Generics
 > import Data.Generics.Schemes
@@ -18,6 +19,8 @@
 > import CParse
 > import CGen
 > import Control.Monad.Error
+
+> type HashTable k v = H.BasicHashTable k v
 
 Registry for blocking operations.  Once we see a function declaration
 with the __blocking specifier, we add it to the registry.
@@ -69,32 +72,32 @@ The struct (FPStruct) is a struct with a function pointer as one of its fields.
 
 > newVarRegistry :: IO VarRegistry
 > newVarRegistry = do
->	l <- Data.HashTable.new (==) (Data.HashTable.hashInt . hashIdent)
->	g <- Data.HashTable.new (==) (Data.HashTable.hashInt . hashIdent)
+>	l <- H.new
+>	g <- H.new
 >	return $ VarRegistry l g
 
 > resetLocalVarsInRegistry :: VarRegistry -> IO VarRegistry
 > resetLocalVarsInRegistry v = do
->	l <- Data.HashTable.new (==) (Data.HashTable.hashInt . hashIdent)
+>	l <- H.new
 >	return $ VarRegistry l (globals v)
 
 > insertGlobalDeclsToVarRegistry :: [CDecl] -> VarRegistry -> IO ()
 > insertGlobalDeclsToVarRegistry decls v = do
 >	let alldecls = concatMap splitDecls decls
->	mapM_ (\d -> Data.HashTable.insert (globals v) (getCDeclName $ d) d) alldecls
+>	mapM_ (\d -> H.insert (globals v) (getCDeclName $ d) d) alldecls
 
 > insertLocalDeclsToVarRegistry :: [CDecl] -> VarRegistry -> IO ()
 > insertLocalDeclsToVarRegistry decls v = do
 >	let alldecls = concatMap splitDecls decls
->	    insertD d = Data.HashTable.insert (locals v) (getCDeclName $ d) d
+>	    insertD d = H.insert (locals v) (getCDeclName $ d) d
 >	mapM_ insertD alldecls
 
 > lookupInVarRegistry :: Ident -> VarRegistry -> IO (Maybe CDecl)
 > lookupInVarRegistry i v = do
->	res <- Data.HashTable.lookup (locals v) i
+>       res <- H.lookup (locals v) i
 >	if isJust res
 >	  then return res
->	  else Data.HashTable.lookup (globals v) i 
+>	  else H.lookup (globals v) i
 
 The monad transformer that we thread through our functions
 

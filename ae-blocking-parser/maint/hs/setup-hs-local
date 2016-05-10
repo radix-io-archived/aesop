@@ -8,3 +8,4 @@ cabal install happy
 cabal install regex-posix
 cabal install regex-pcre
 cabal install mtl
+cabal install hashtables
