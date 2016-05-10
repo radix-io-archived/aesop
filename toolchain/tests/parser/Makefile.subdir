@@ -1,5 +1,4 @@
 XFAIL_TESTS += \
- tests/parser/consecutive-resource-completions \
  tests/parser/parallelfor2 \
  tests/parser/pbranch-completion \
  tests/parser/pbreak-immed-cancel \
@@ -9,6 +8,7 @@ XFAIL_TESTS += \
  tests/parser/local-var-forloop
 
 check_PROGRAMS += \
+ tests/parser/consecutive-resource-completions \
  tests/parser/local-var-def \
  tests/parser/local-var-forloop \
  tests/parser/basic \

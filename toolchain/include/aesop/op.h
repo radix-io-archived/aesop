@@ -129,7 +129,9 @@ static inline struct ae_op * intptr2op (intptr_t op)
  * Call the callback described by the op.
  */
 #define ae_op_execute(__op, __ret_type, __error_code) do { \
-    void (*__callback)(void *, __ret_type) = (__op)->callback; \
+    struct ae_ctl *__ctl = (__op)->user_ptr; \
+    __ctl->op_state &= ~OP_COMPLETED_NORMAL; \
+    void (*__callback)(void *, __ret_type) = (__op)->callback;	\
     void* __user_ptr = (__op)->user_ptr; \
     __ret_type __saved_error_code = __error_code; \
     __callback(__user_ptr, __saved_error_code); \
